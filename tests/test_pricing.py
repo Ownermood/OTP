@@ -14,7 +14,6 @@ def test_percent_and_fixed_fee(settings):
     assert breakdown.percent_fee == 50
     assert breakdown.fixed_fee == 200
     assert breakdown.total == 1250
-    assert breakdown.markup == 250
 
 
 def test_minimum_price_floor(settings):

@@ -23,10 +23,6 @@ class PriceBreakdown:
     fixed_fee: int
     total: int
 
-    @property
-    def markup(self) -> int:
-        return self.percent_fee + self.fixed_fee
-
 
 class PricingService:
     """Turns a provider cost into a final price using the configured markup."""
