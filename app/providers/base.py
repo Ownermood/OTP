@@ -41,6 +41,20 @@ class SmsCountry:
 
 
 @dataclass(frozen=True, slots=True)
+class CountryOffer:
+    """One service offered *in a given country*, with that country's cost.
+
+    The country-first flow needs the inverse of :class:`SmsCountry`: not "where
+    can I get WhatsApp" but "what can I get in India, and for how much".
+    """
+
+    service: SmsService
+    #: Provider cost in *minor units of our currency*, already converted.
+    cost: int = 0
+    available: int | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class Activation:
     """A freshly purchased number."""
 
@@ -138,6 +152,18 @@ class BaseSMSProvider(BaseProvider):
         background rather than inside a user's button press.
         """
         return None
+
+    @abstractmethod
+    async def get_all_countries(self) -> list[SmsCountry]:
+        """Every country offered, costed at its cheapest service.
+
+        This drives the first screen, so it must not depend on a service the
+        user has not chosen yet.
+        """
+
+    @abstractmethod
+    async def get_services_for(self, country_id: int) -> list[CountryOffer]:
+        """What can be bought in one country, with that country's prices."""
 
     @abstractmethod
     async def get_services(self) -> list[SmsService]:

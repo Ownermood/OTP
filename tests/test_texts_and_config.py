@@ -37,8 +37,8 @@ def test_placeholders_are_substituted(texts):
 
 
 def test_untrusted_values_are_escaped(texts):
-    """A service name from a provider must not be able to inject markup."""
-    rendered = texts.get("buy.select_country", service="<b>evil</b>")
+    """A country name from a provider must not be able to inject markup."""
+    rendered = texts.get("buy.select_service", country="<b>evil</b>", count=1)
     assert "&lt;b&gt;evil&lt;/b&gt;" in rendered
 
 

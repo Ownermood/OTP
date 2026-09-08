@@ -106,8 +106,8 @@ async def test_a_deposit_can_then_be_spent(upi_harness, session_factory):
 
     await h.send("/start")
     await h.tap("Buy Number")
+    await h.tap("IN")
     await h.tap("WhatsApp")
-    await h.tap("India")
     await h.tap("Confirm")
 
     assert "NUMBER PURCHASED" in h.text

@@ -11,6 +11,7 @@ from app.providers.base import (
     BasePaymentProvider,
     BaseSMMProvider,
     BaseSMSProvider,
+    CountryOffer,
     Invoice,
     SmmOrderStatus,
     SmmService,
@@ -36,7 +37,17 @@ class FakeSmsProvider(BaseSMSProvider):
         return [SmsService(code="wa", name="WhatsApp", available=120)]
 
     async def get_countries(self, service_code: str):
-        return [SmsCountry(id=22, name="India", cost=self.cost, available=120)]
+        return [SmsCountry(id=22, name="India", flag="🇮🇳", cost=self.cost, available=120)]
+
+    async def get_all_countries(self):
+        return await self.get_countries("wa")
+
+    async def get_services_for(self, country_id: int):
+        services = await self.get_services()
+        return [
+            CountryOffer(service=service, cost=self.cost, available=service.available)
+            for service in services
+        ]
 
     async def get_price(self, service_code: str, country_id: int) -> int:
         return self.cost

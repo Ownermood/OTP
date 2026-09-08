@@ -6,11 +6,11 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from app.bot.callbacks import (
-    CountryCB,
     FavoriteCB,
     Nav,
     OrderCB,
     OrdersListCB,
+    QuoteCB,
     WalletCB,
 )
 from app.bot.keyboards.common import _nav_row
@@ -141,7 +141,7 @@ def favorite_detail(
     if token:
         builder.row(
             InlineKeyboardButton(
-                text=texts.button("buy_now", locale), callback_data=CountryCB(token=token).pack(), style=SUCCESS
+                text=texts.button("buy_now", locale), callback_data=QuoteCB(token=token).pack(), style=SUCCESS
             )
         )
     builder.row(

@@ -30,7 +30,14 @@ class ServiceCB(CallbackData, prefix="svc"):
 
 
 class CountryCB(CallbackData, prefix="cty"):
-    """Pick a country for a service. The quote lives behind ``token``."""
+    """Open a country's service list. A country id carries no authority."""
+
+    id: int
+    page: int = 1
+
+
+class QuoteCB(CallbackData, prefix="qte"):
+    """Ask for the quote behind ``token``. Peeking does not consume it."""
 
     token: str
 

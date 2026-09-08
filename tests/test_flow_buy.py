@@ -5,20 +5,20 @@ from tests.flow_helpers import fund
 
 
 async def test_buy_flow_end_to_end(harness, session_factory):
-    """/start → Buy → service → country → confirm → a number on screen."""
+    """/start → Buy → country → service → confirm → a number on screen."""
     await harness.send("/start")
     await fund(session_factory, harness.user_id, 10_000)
 
     await harness.tap("Buy Number")
     assert "BUY NUMBER" in harness.text
-    assert any("WhatsApp" in b for b in harness.buttons())
+    # The country button carries the flag, dial code and cheapest price.
+    assert any("🇮🇳" in b and "+91" in b and "11.00" in b for b in harness.buttons())
+
+    await harness.tap("IN")
+    assert "India" in harness.text
+    assert any("WhatsApp" in b and "11.00" in b for b in harness.buttons())
 
     await harness.tap("WhatsApp")
-    assert "SELECT COUNTRY" in harness.text
-    # The country button carries the price, and the availability dot.
-    assert any("India" in b and "11.00" in b for b in harness.buttons())
-
-    await harness.tap("India")
     assert "ORDER CONFIRMATION" in harness.text
     assert "₹11.00" in harness.text
 
@@ -35,8 +35,8 @@ async def test_buying_debits_exactly_once(harness, session_factory):
     await fund(session_factory, harness.user_id, 10_000)
 
     await harness.tap("Buy Number")
+    await harness.tap("IN")
     await harness.tap("WhatsApp")
-    await harness.tap("India")
     confirm = harness.screen.callback_for("Confirm")
 
     await harness.press(confirm)
@@ -48,8 +48,8 @@ async def _reach_confirm(harness, session_factory, funds: int = 10_000) -> str:
     await harness.send("/start")
     await fund(session_factory, harness.user_id, funds)
     await harness.tap("Buy Number")
+    await harness.tap("IN")
     await harness.tap("WhatsApp")
-    await harness.tap("India")
     return harness.screen.callback_for("Confirm")
 
 
@@ -89,8 +89,8 @@ async def test_buying_without_balance_shows_a_helpful_error(harness):
     await harness.send("/start")
 
     await harness.tap("Buy Number")
+    await harness.tap("IN")
     await harness.tap("WhatsApp")
-    await harness.tap("India")
     await harness.tap("Confirm")
 
     assert "Insufficient balance" in harness.text
@@ -105,8 +105,8 @@ async def test_no_numbers_available_is_reported_and_refunded(harness, session_fa
     await fund(session_factory, harness.user_id, 10_000)
 
     await harness.tap("Buy Number")
+    await harness.tap("IN")
     await harness.tap("WhatsApp")
-    await harness.tap("India")
     harness.sms.fail_next = True
     await harness.tap("Confirm")
 
@@ -115,9 +115,32 @@ async def test_no_numbers_available_is_reported_and_refunded(harness, session_fa
         assert await WalletService(session).get_balance(harness.user_id) == 10_000
 
 
-async def test_service_search(harness):
+async def test_country_search_comes_first(harness):
+    """The opening screen searches countries, because it lists countries."""
     await harness.send("/start")
     await harness.tap("Buy Number")
+    await harness.tap("Search")
+
+    assert "SEARCH COUNTRY" in harness.text
+
+    await harness.send("india")
+    assert "Results for" in harness.text
+    assert any("🇮🇳" in b for b in harness.buttons())
+
+
+async def test_a_country_can_be_found_by_dial_code(harness):
+    await harness.send("/start")
+    await harness.tap("Buy Number")
+    await harness.tap("Search")
+    await harness.send("91")
+
+    assert any("🇮🇳" in b for b in harness.buttons())
+
+
+async def test_service_search_happens_inside_a_country(harness):
+    await harness.send("/start")
+    await harness.tap("Buy Number")
+    await harness.tap("IN")
     await harness.tap("Search")
 
     assert "SEARCH SERVICE" in harness.text
@@ -146,8 +169,8 @@ async def test_an_expired_quote_does_not_buy(harness, session_factory):
     await fund(session_factory, harness.user_id, 10_000)
 
     await harness.tap("Buy Number")
+    await harness.tap("IN")
     await harness.tap("WhatsApp")
-    await harness.tap("India")
     confirm = harness.screen.callback_for("Confirm")
 
     # Simulate the bot restarting between the quote and the tap.

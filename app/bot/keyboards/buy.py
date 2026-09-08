@@ -14,61 +14,67 @@ from app.bot.callbacks import (
     Nav,
     NoopCB,
     OrderCB,
-    ServiceCB,
+    QuoteCB,
 )
 from app.bot.keyboards.common import _chunks, _nav_row
 from app.bot.keyboards.style import DANGER, PRIMARY, SUCCESS
 from app.bot.texts import Texts
 from app.core.constants import GRID_COLUMNS
+from app.core.countries import dial_code, iso_code
 from app.core.money import format_money
 from app.utils.formatting import availability_icon, truncate
 from app.utils.pagination import Page
 
 
-def services(
+def country_grid(
     texts: Texts,
     locale: str | None,
     page: Page,
+    currency: str,
     recent: Sequence = (),
-    show_search: bool = True,
+    recent_tokens: dict[str, str] | None = None,
 ) -> InlineKeyboardMarkup:
-    """Service picker: recently used first, then the paginated catalogue."""
-    builder = InlineKeyboardBuilder()
+    """The opening screen: which country do you want a number from.
 
-    if recent:
+    Countries come first because that is the question a buyer actually has,
+    and because providers price *per country* -- a service list without one
+    chosen is 2000 opaque codes with no prices against them.
+    """
+    builder = InlineKeyboardBuilder()
+    tokens = recent_tokens or {}
+    if recent and tokens:
         builder.row(
             InlineKeyboardButton(text=texts.button("recent", locale), callback_data=NoopCB().pack())
         )
-        for chunk in _chunks(list(recent), GRID_COLUMNS):
+        for chunk in _chunks([o for o in recent if _recent_key(o) in tokens], GRID_COLUMNS):
             builder.row(
                 *[
                     InlineKeyboardButton(
-                        text=truncate(order.service_name, 22),
-                        callback_data=ServiceCB(code=order.service_code).pack(),
+                        text=truncate(f"{order.service_name} · {order.country_name}", 22),
+                        callback_data=QuoteCB(token=tokens[_recent_key(order)]).pack(),
                     )
                     for order in chunk
                 ]
             )
 
-    if show_search:
-        builder.row(
-            InlineKeyboardButton(
-                text=texts.button("show_all", locale),
-                callback_data=Nav(to="services_all").pack(), style=PRIMARY,
-            ),
-            InlineKeyboardButton(
-                text=texts.button("search", locale), callback_data=Nav(to="buy_search").pack(), style=PRIMARY
-            ),
-        )
-
+    builder.row(
+        InlineKeyboardButton(
+            text=texts.button("show_all", locale),
+            callback_data=Nav(to="countries_all").pack(), style=PRIMARY,
+        ),
+        InlineKeyboardButton(
+            text=texts.button("search", locale),
+            callback_data=Nav(to="country_search").pack(), style=PRIMARY,
+        ),
+    )
     for chunk in _chunks(list(page.items), GRID_COLUMNS):
         builder.row(
             *[
                 InlineKeyboardButton(
-                    text=truncate(service.name, 22),
-                    callback_data=ServiceCB(code=service.code).pack(),
+                    text=country_label(priced, currency),
+                    callback_data=CountryCB(id=priced.country.id).pack(),
                 )
-                for service in chunk
+                for priced in chunk
             ]
         )
 
@@ -83,23 +89,41 @@ def services(
     return builder.as_markup()
 
 
-def countries(
+def _recent_key(order) -> str:
+    """A recent purchase is identified by the pair it repeats."""
+    return f"{order.service_code}@{order.country_id}"
+
+
+def country_label(priced, currency: str) -> str:
+    """``🇮🇳 IN +91 · ₹13`` -- flag, short code, dial code, cheapest price.
+
+    The ISO code rather than the name keeps two buttons per row readable; a
+    country we have no code for falls back to its (truncated) name.
+    """
+    name = priced.country.name
+    short = iso_code(name) or truncate(name, 10)
+    dial = dial_code(name)
+    head = " ".join(part for part in (priced.country.flag, short, dial) if part)
+    return f"{head} · {format_money(priced.price, currency)}"
+
+
+def country_services(
     texts: Texts,
     locale: str | None,
     page: Page,
-    tokens: dict[int, str],
+    tokens: dict[str, str],
     currency: str,
-    back_to: str = "buy",
 ) -> InlineKeyboardMarkup:
-    """Country picker. Each button carries a token, never a price."""
+    """Service picker *within a country*. Each button carries a token, never a price."""
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
             text=texts.button("show_all", locale),
-            callback_data=Nav(to="countries_all").pack(), style=PRIMARY,
+            callback_data=Nav(to="services_all").pack(), style=PRIMARY,
         ),
         InlineKeyboardButton(
-            text=texts.button("search", locale), callback_data=Nav(to="country_search").pack(), style=PRIMARY
+            text=texts.button("search", locale),
+            callback_data=Nav(to="buy_search").pack(), style=PRIMARY,
         ),
     )
     for chunk in _chunks(list(page.items), GRID_COLUMNS):
@@ -107,23 +131,23 @@ def countries(
             *[
                 InlineKeyboardButton(
                     text=(
-                        f"{availability_icon(priced.country.available)} "
-                        f"{truncate(priced.country.name, 14)} · "
+                        f"{availability_icon(priced.offer.available)} "
+                        f"{truncate(priced.offer.service.name, 12)} · "
                         f"{format_money(priced.price, currency)}"
                     ),
-                    callback_data=CountryCB(token=tokens[priced.country.id]).pack(),
+                    callback_data=QuoteCB(token=tokens[priced.offer.service.code]).pack(),
                 )
                 for priced in chunk
-                if priced.country.id in tokens
+                if priced.offer.service.code in tokens
             ]
         )
 
-    nav = _nav_row(texts, page, lambda p: Nav(to="countries", page=p).pack(), locale)
+    nav = _nav_row(texts, page, lambda p: Nav(to="country", page=p).pack(), locale)
     if len(nav) > 1:
         builder.row(*nav)
     builder.row(
         InlineKeyboardButton(
-            text=texts.button("back", locale), callback_data=Nav(to=back_to).pack()
+            text=texts.button("back", locale), callback_data=Nav(to="buy").pack()
         ),
         InlineKeyboardButton(
             text=texts.button("home", locale), callback_data=Nav(to="home").pack()

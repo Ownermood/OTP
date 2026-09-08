@@ -27,9 +27,10 @@ import asyncio
 import time
 from decimal import Decimal, InvalidOperation
 
+from app.core.countries import flag
 from app.core.exceptions import NoNumbersAvailableError, ProviderError
 from app.core.logging import get_logger
-from app.providers.base import Activation, SmsCountry, SmsService
+from app.providers.base import Activation, CountryOffer, SmsCountry, SmsService
 from app.providers.service_names import service_name
 from app.providers.sms_activate import SmsActivateProvider
 
@@ -63,6 +64,41 @@ class TemporaSmsProvider(SmsActivateProvider):
     async def warm(self) -> int | None:
         catalogue = await self._load()
         return len({code for offers in catalogue.values() for code in offers})
+
+    async def get_all_countries(self) -> list[SmsCountry]:
+        catalogue = await self._load()
+        countries = []
+        for country_id, offers in catalogue.items():
+            if not offers:
+                continue
+            cheapest = min(offer[0] for offer in offers.values())
+            stock = sum(offer[1] or 0 for offer in offers.values())
+            name = self._country_names.get(country_id, str(country_id))
+            countries.append(
+                SmsCountry(
+                    id=country_id,
+                    name=name,
+                    flag=flag(name),
+                    cost=cheapest,
+                    available=stock or None,
+                )
+            )
+        countries.sort(key=lambda country: country.name)
+        return countries
+
+    async def get_services_for(self, country_id: int) -> list[CountryOffer]:
+        catalogue = await self._load()
+        offers = catalogue.get(country_id) or (await self._fetch_country(country_id))
+        result = [
+            CountryOffer(
+                service=SmsService(code=code, name=service_name(code), available=stock),
+                cost=cost,
+                available=stock,
+            )
+            for code, (cost, stock) in offers.items()
+        ]
+        result.sort(key=lambda offer: (offer.cost, offer.service.name))
+        return result
 
     async def get_services(self) -> list[SmsService]:
         catalogue = await self._load()

@@ -14,10 +14,10 @@ async def test_a_crashing_provider_shows_a_friendly_message_not_a_traceback(
         raise RuntimeError("upstream exploded")
 
     await harness.tap("Buy Number")
-    # Patched after the service catalogue is cached, so the crash lands on the
-    # country lookup, which is resolved per call.
-    monkeypatch.setattr(harness.sms, "get_countries", explode)
-    await harness.tap("WhatsApp")
+    # Patched after the country list is cached, so the crash lands on the
+    # per-country service lookup, which is resolved on the next tap.
+    monkeypatch.setattr(harness.sms, "get_services_for", explode)
+    await harness.tap("IN")
 
     assert "Something went wrong" in harness.text
     assert "Traceback" not in harness.text

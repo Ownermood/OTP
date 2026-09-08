@@ -8,8 +8,8 @@ async def test_orders_screen_lists_a_purchase(harness, session_factory):
     await harness.send("/start")
     await fund(session_factory, harness.user_id, 10_000)
     await harness.tap("Buy Number")
+    await harness.tap("IN")
     await harness.tap("WhatsApp")
-    await harness.tap("India")
     await harness.tap("Confirm")
 
     await harness.send("/start")
@@ -26,8 +26,8 @@ async def test_cancelling_an_order_refunds_it(harness, session_factory):
     await harness.send("/start")
     await fund(session_factory, harness.user_id, 10_000)
     await harness.tap("Buy Number")
+    await harness.tap("IN")
     await harness.tap("WhatsApp")
-    await harness.tap("India")
     await harness.tap("Confirm")
 
     await harness.tap("Cancel")
@@ -56,8 +56,8 @@ async def test_favorites_can_be_added_from_a_quote_and_bought_back(harness, sess
     await fund(session_factory, harness.user_id, 10_000)
 
     await harness.tap("Buy Number")
+    await harness.tap("IN")
     await harness.tap("WhatsApp")
-    await harness.tap("India")
     await harness.tap("Add to Favorites")
     assert any("favorites" in alert.lower() for alert in harness.alerts)
 
@@ -118,8 +118,8 @@ async def test_an_activation_still_offers_cancel(harness, session_factory):
     await h.send("/start")
     await fund(session_factory, h.user_id, 10_000)
     await h.tap("Buy Number")
+    await h.tap("IN")
     await h.tap("WhatsApp")
-    await h.tap("India")
     await h.tap("Confirm")
 
     await h.send("/start")

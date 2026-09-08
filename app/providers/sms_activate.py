@@ -12,6 +12,7 @@ from decimal import Decimal
 
 import httpx
 
+from app.core.countries import flag
 from app.core.exceptions import (
     InsufficientProviderBalanceError,
     NoNumbersAvailableError,
@@ -24,9 +25,11 @@ from app.providers.base import (
     Activation,
     ActivationStatus,
     BaseSMSProvider,
+    CountryOffer,
     SmsCountry,
     SmsService,
 )
+from app.providers.service_names import service_name
 from app.utils.http import request
 
 logger = get_logger(__name__)
@@ -100,6 +103,60 @@ class SmsActivateProvider(BaseSMSProvider):
             )
         countries.sort(key=lambda country: country.cost)
         return countries
+
+    async def get_all_countries(self) -> list[SmsCountry]:
+        """Built from one un-filtered getPrices, which prices every country."""
+        payload = await self._json({"action": "getPrices"})
+        names = await self._country_names()
+        countries: list[SmsCountry] = []
+        for country_key, services in (payload or {}).items():
+            country_id = _as_int(country_key)
+            if country_id is None or not isinstance(services, dict):
+                continue
+            costs = [entry["cost"] for entry in services.values() if "cost" in entry]
+            if not costs:
+                continue
+            name = names.get(country_id, str(country_id))
+            countries.append(
+                SmsCountry(
+                    id=country_id,
+                    name=name,
+                    flag=flag(name),
+                    cost=self._to_minor(min(costs)),
+                    available=sum(_as_int(e.get("count")) or 0 for e in services.values()) or None,
+                )
+            )
+        countries.sort(key=lambda country: country.name)
+        return countries
+
+    async def get_services_for(self, country_id: int) -> list[CountryOffer]:
+        payload = await self._json({"action": "getPrices", "country": country_id})
+        services = (payload or {}).get(str(country_id), {})
+        offers = [
+            CountryOffer(
+                service=SmsService(code=str(code), name=service_name(str(code))),
+                cost=self._to_minor(entry["cost"]),
+                available=_as_int(entry.get("count")),
+            )
+            for code, entry in services.items()
+            if isinstance(entry, dict) and "cost" in entry
+        ]
+        offers.sort(key=lambda offer: (offer.cost, offer.service.name))
+        return offers
+
+    async def _country_names(self) -> dict[int, str]:
+        """id -> English name, so the first screen shows countries, not numbers."""
+        try:
+            payload = await self._json({"action": "getCountries"})
+        except ProviderError:
+            return {}
+        names: dict[int, str] = {}
+        for key, entry in (payload or {}).items():
+            country_id = _as_int(entry.get("id") if isinstance(entry, dict) else key)
+            name = entry.get("eng") if isinstance(entry, dict) else entry
+            if country_id is not None and name:
+                names[country_id] = str(name).title()
+        return names
 
     async def get_price(self, service_code: str, country_id: int) -> int:
         payload = await self._json(

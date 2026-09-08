@@ -190,3 +190,34 @@ async def test_a_failed_refresh_keeps_serving_the_last_good_catalogue(api):
     api.missing = {"getPrices", "getCountries"}
     assert await provider.get_countries("ttf")
     await provider.close()
+
+
+async def test_countries_carry_a_flag_and_their_cheapest_price(api):
+    provider = build(api)
+    countries = await provider.get_all_countries()
+    india = next(c for c in countries if c.id == 22)
+
+    assert india.flag == "🇮🇳"
+    assert india.cost == 400  # the cheapest tier that has stock, not 0.0195
+    assert india.available == 126  # 123 for ttf plus 3 for obi, across services
+    await provider.close()
+
+
+async def test_a_country_lists_its_services_cheapest_first(api):
+    provider = build(api)
+    offers = await provider.get_services_for(22)
+
+    assert [offer.service.code for offer in offers] == ["ttf", "obi"]
+    assert offers[0].cost == 400
+    assert offers[1].cost == 5000  # 0.5 * 100
+    await provider.close()
+
+
+async def test_both_views_share_one_fetch(api):
+    """The opening screen and the screen after it must not each pay for a load."""
+    provider = build(api)
+    await provider.get_all_countries()
+    await provider.get_services_for(22)
+
+    assert api.actions().count("getPrices") == 1
+    await provider.close()

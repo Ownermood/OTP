@@ -1,12 +1,17 @@
 """The buy-a-number flow.
 
-Service → country → confirm → purchase, with search at both list steps.
+Country → service → confirm → purchase, with search at both list steps.
 
-The safety-critical part is what a callback carries. A country button holds an
-opaque token; the service code, country id and quoted price behind it live in
-the server-side token store. The confirm button consumes that token exactly
-once, so a double tap cannot buy twice, and the price is re-read from the
-provider before the wallet is touched regardless.
+Country comes first because that is the question a buyer has, and because
+providers price per country: a service list with no country chosen is
+thousands of opaque codes with no prices against them.
+
+The safety-critical part is what a callback carries. A country button holds
+only a country id, which grants nothing. A service button holds an opaque
+token; the service code, country id and quoted price behind it live in the
+server-side token store. The confirm button consumes that token exactly once,
+so a double tap cannot buy twice, and the price is re-read from the provider
+before the wallet is touched regardless.
 """
 
 from __future__ import annotations
@@ -16,11 +21,10 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from app.bot import keyboards
-from app.bot.callbacks import ConfirmCB, CountryCB, FavoriteCB, Nav, ServiceCB
+from app.bot.callbacks import ConfirmCB, CountryCB, FavoriteCB, Nav, QuoteCB
 from app.bot.handlers.common import Context, build_context, show, toast
-from app.bot.listing import country_lines, paginate_lines, service_lines
+from app.bot.listing import country_lines, offer_lines, paginate_lines
 from app.bot.states import BuyStates
-from app.core.exceptions import ValidationError
 from app.core.logging import get_logger
 from app.utils.pagination import paginate
 from app.utils.validators import clean_search_query
@@ -29,55 +33,159 @@ router = Router(name="buy")
 logger = get_logger(__name__)
 
 
-# -- service selection ------------------------------------------------------
+# -- country selection (the opening screen) ---------------------------------
 
 
 @router.callback_query(Nav.filter(F.to == "buy"))
-async def open_services(query: CallbackQuery, callback_data: Nav, state: FSMContext, **data):
+async def open_countries(query: CallbackQuery, callback_data: Nav, state: FSMContext, **data):
     await state.clear()
     context = build_context(data)
-    await _render_services(query, context, page=callback_data.page)
+    await _render_countries(query, context, page=callback_data.page)
 
 
-@router.callback_query(Nav.filter(F.to == "services_all"))
-async def show_all_services(query: CallbackQuery, **data):
-    """Dump the whole service catalogue as text.
+@router.callback_query(Nav.filter(F.to == "countries_all"))
+async def show_all_countries(query: CallbackQuery, **data):
+    """Dump every country as text.
 
     The button grid is for picking; this is for seeing what exists without
     tapping through pages of it.
     """
     context = build_context(data)
-    services = await context.catalog.services()
-    await _send_listing(
-        query,
-        context,
-        service_lines(services),
-        header=context.text("buy.all_services", count=len(services)),
-        back_to="buy",
-    )
-
-
-@router.callback_query(Nav.filter(F.to == "countries_all"))
-async def show_all_countries(query: CallbackQuery, state: FSMContext, **data):
-    """Every country for the chosen service, with price and stock."""
-    context = build_context(data)
-    service_code = (await state.get_data()).get("service_code")
-    if not service_code:
-        await _render_services(query, context)
-        return
-
-    service = await context.catalog.find_service(service_code)
-    countries = await context.catalog.countries(service_code)
+    countries = await context.catalog.all_countries()
     await _send_listing(
         query,
         context,
         country_lines(countries, context.settings.currency_symbol),
-        header=context.text(
-            "buy.all_countries",
-            service=service.name if service else service_code,
-            count=len(countries),
+        header=context.text("buy.all_countries", count=len(countries)),
+        back_to="buy",
+    )
+
+
+@router.callback_query(Nav.filter(F.to == "country_search"))
+async def prompt_country_search(query: CallbackQuery, state: FSMContext, **data):
+    context = build_context(data)
+    await state.set_state(BuyStates.searching_country)
+    await show(
+        query,
+        context.text("buy.search_country_prompt"),
+        keyboards.back_home(context.texts, context.locale, back_to="buy"),
+    )
+
+
+@router.message(BuyStates.searching_country)
+async def search_countries(message: Message, state: FSMContext, **data):
+    context = build_context(data)
+    query_text = clean_search_query(message.text or "")
+    matches = await context.catalog.search_all_countries(query_text)
+    await state.clear()
+
+    if not matches:
+        await show(
+            message,
+            context.text("buy.search_empty", query=query_text),
+            keyboards.back_home(context.texts, context.locale, back_to="buy"),
+        )
+        return
+
+    await show(
+        message,
+        context.text("buy.search_results", query=query_text, count=len(matches)),
+        keyboards.country_grid(
+            context.texts, context.locale, paginate(matches, 1), context.settings.currency_symbol
         ),
-        back_to="countries",
+    )
+
+
+# -- service selection, within the chosen country ---------------------------
+
+
+@router.callback_query(CountryCB.filter())
+async def open_services(query: CallbackQuery, callback_data: CountryCB, state: FSMContext, **data):
+    context = build_context(data)
+    await state.update_data(country_id=callback_data.id)
+    await _render_services(query, context, callback_data.id, callback_data.page)
+
+
+@router.callback_query(Nav.filter(F.to == "country"))
+async def paginate_services(query: CallbackQuery, callback_data: Nav, state: FSMContext, **data):
+    context = build_context(data)
+    country_id = (await state.get_data()).get("country_id")
+    if country_id is None:
+        await _render_countries(query, context)
+        return
+    await _render_services(query, context, country_id, callback_data.page)
+
+
+@router.callback_query(Nav.filter(F.to == "services_all"))
+async def show_all_services(query: CallbackQuery, state: FSMContext, **data):
+    """Every service available in the chosen country, with price and stock."""
+    context = build_context(data)
+    country_id = (await state.get_data()).get("country_id")
+    if country_id is None:
+        await _render_countries(query, context)
+        return
+
+    country = await context.catalog.find_any_country(country_id)
+    offers = await context.catalog.offers_in(country_id)
+    await _send_listing(
+        query,
+        context,
+        offer_lines(offers, context.settings.currency_symbol),
+        header=context.text(
+            "buy.all_services",
+            country=country.country.name if country else country_id,
+            count=len(offers),
+        ),
+        back_to="country",
+    )
+
+
+@router.callback_query(Nav.filter(F.to == "buy_search"))
+async def prompt_service_search(query: CallbackQuery, state: FSMContext, **data):
+    context = build_context(data)
+    if (await state.get_data()).get("country_id") is None:
+        await _render_countries(query, build_context(data))
+        return
+    await state.set_state(BuyStates.searching_service)
+    await show(
+        query,
+        context.text("buy.search_service_prompt"),
+        keyboards.back_home(context.texts, context.locale, back_to="country"),
+    )
+
+
+@router.message(BuyStates.searching_service)
+async def search_services(message: Message, state: FSMContext, **data):
+    context = build_context(data)
+    stored = await state.get_data()
+    country_id = stored.get("country_id")
+    if country_id is None:
+        await state.clear()
+        await _render_countries(message, context)
+        return
+
+    query_text = clean_search_query(message.text or "")
+    matches = await context.catalog.search_offers(country_id, query_text)
+    await state.set_state(None)
+    await state.update_data(country_id=country_id)
+
+    if not matches:
+        await show(
+            message,
+            context.text("buy.search_empty", query=query_text),
+            keyboards.back_home(context.texts, context.locale, back_to="country"),
+        )
+        return
+
+    country = await context.catalog.find_any_country(country_id)
+    page = paginate(matches, 1)
+    tokens = _issue_tokens(context, message.from_user.id, country, page.items)
+    await show(
+        message,
+        context.text("buy.search_results", query=query_text, count=len(matches)),
+        keyboards.country_services(
+            context.texts, context.locale, page, tokens, context.settings.currency_symbol
+        ),
     )
 
 
@@ -100,123 +208,19 @@ async def _send_listing(query, context, lines, header: str, back_to: str) -> Non
         )
 
 
-@router.callback_query(Nav.filter(F.to == "buy_search"))
-async def prompt_service_search(query: CallbackQuery, state: FSMContext, **data):
-    context = build_context(data)
-    await state.set_state(BuyStates.searching_service)
-    await show(
-        query,
-        context.text("buy.search_service_prompt"),
-        keyboards.back_home(context.texts, context.locale, back_to="buy"),
-    )
-
-
-@router.message(BuyStates.searching_service)
-async def search_services(message: Message, state: FSMContext, **data):
-    context = build_context(data)
-    query_text = clean_search_query(message.text or "")
-    matches = await context.catalog.search_services(query_text)
-    await state.clear()
-
-    if not matches:
-        await show(
-            message,
-            context.text("buy.search_empty", query=query_text),
-            keyboards.back_home(context.texts, context.locale, back_to="buy"),
-        )
-        return
-
-    page = paginate(matches, 1)
-    await show(
-        message,
-        context.text("buy.search_results", query=query_text, count=len(matches)),
-        keyboards.services(context.texts, context.locale, page, show_search=False),
-    )
-
-
-# -- country selection ------------------------------------------------------
-
-
-@router.callback_query(ServiceCB.filter())
-async def open_countries(
-    query: CallbackQuery, callback_data: ServiceCB, state: FSMContext, **data
-):
-    context = build_context(data)
-    await state.update_data(service_code=callback_data.code)
-    await _render_countries(query, context, callback_data.code, callback_data.page)
-
-
-@router.callback_query(Nav.filter(F.to == "countries"))
-async def paginate_countries(
-    query: CallbackQuery, callback_data: Nav, state: FSMContext, **data
-):
-    context = build_context(data)
-    service_code = (await state.get_data()).get("service_code")
-    if not service_code:
-        await _render_services(query, context)
-        return
-    await _render_countries(query, context, service_code, callback_data.page)
-
-
-@router.callback_query(Nav.filter(F.to == "country_search"))
-async def prompt_country_search(query: CallbackQuery, state: FSMContext, **data):
-    context = build_context(data)
-    await state.set_state(BuyStates.searching_country)
-    await show(
-        query,
-        context.text("buy.search_country_prompt"),
-        keyboards.back_home(context.texts, context.locale, back_to="buy"),
-    )
-
-
-@router.message(BuyStates.searching_country)
-async def search_countries(message: Message, state: FSMContext, **data):
-    context = build_context(data)
-    stored = await state.get_data()
-    service_code = stored.get("service_code")
-    if not service_code:
-        await state.clear()
-        await _render_services(message, context)
-        return
-
-    query_text = clean_search_query(message.text or "")
-    matches = await context.catalog.search_countries(service_code, query_text)
-    await state.set_state(None)
-    await state.update_data(service_code=service_code)
-
-    if not matches:
-        await show(
-            message,
-            context.text("buy.search_empty", query=query_text),
-            keyboards.back_home(context.texts, context.locale, back_to="buy"),
-        )
-        return
-
-    service = await context.catalog.find_service(service_code)
-    page = paginate(matches, 1)
-    tokens = _issue_tokens(context, message.from_user.id, service_code, service, page.items)
-    await show(
-        message,
-        context.text("buy.search_results", query=query_text, count=len(matches)),
-        keyboards.countries(
-            context.texts, context.locale, page, tokens, context.settings.currency_symbol
-        ),
-    )
-
-
 # -- confirmation and purchase ---------------------------------------------
 
 
-@router.callback_query(CountryCB.filter())
+@router.callback_query(QuoteCB.filter())
 async def confirm_purchase(
-    query: CallbackQuery, callback_data: CountryCB, state: FSMContext, **data
+    query: CallbackQuery, callback_data: QuoteCB, state: FSMContext, **data
 ):
     """Show the quote. Peeking does not consume the token -- confirming does."""
     context = build_context(data)
     payload = context.tokens.peek(callback_data.token, query.from_user.id)
     if payload is None:
         await toast(query, context.text("errors.expired_action"), alert=True)
-        await _render_services(query, context)
+        await _render_countries(query, context)
         return
 
     await state.update_data(quote_token=callback_data.token)
@@ -300,42 +304,82 @@ async def add_favorite_from_quote(query: CallbackQuery, state: FSMContext, **dat
 # -- rendering helpers ------------------------------------------------------
 
 
-async def _render_services(event, context: Context, page: int = 1) -> None:
-    services = await context.catalog.services()
-    recent = await context.orders.recently_used(context.user.id) if page == 1 else ()
+async def _render_countries(event, context: Context, page: int = 1) -> None:
+    countries = await context.catalog.all_countries()
+    recent, recent_tokens = await _recent_pairs(context, event.from_user.id, page)
     await show(
         event,
-        context.text("buy.select_service"),
-        keyboards.services(context.texts, context.locale, paginate(services, page), recent),
+        context.text("buy.select_country", count=len(countries)),
+        keyboards.country_grid(
+            context.texts,
+            context.locale,
+            paginate(countries, page),
+            context.settings.currency_symbol,
+            recent,
+            recent_tokens,
+        ),
     )
 
 
-async def _render_countries(event, context: Context, service_code: str, page: int) -> None:
-    service = await context.catalog.find_service(service_code)
-    if service is None:
-        raise ValidationError("unknown service")
+async def _recent_pairs(context: Context, user_id: int, page: int):
+    """Recently bought service/country pairs, quoted at today's price.
 
-    countries = await context.catalog.countries(service_code)
-    paged = paginate(countries, page)
-    tokens = _issue_tokens(context, event.from_user.id, service_code, service, paged.items)
+    Only on the first page, and only for pairs still on sale -- a shortcut that
+    leads to "unavailable" is worse than no shortcut.
+    """
+    if page != 1:
+        return (), {}
+
+    recent = await context.orders.recently_used(context.user.id)
+    tokens: dict[str, str] = {}
+    usable = []
+    for order in recent:
+        offer = await context.catalog.find_offer(order.country_id, order.service_code)
+        if offer is None:
+            continue
+        usable.append(order)
+        tokens[f"{order.service_code}@{order.country_id}"] = context.tokens.issue(
+            user_id,
+            service_code=order.service_code,
+            service_name=offer.offer.service.name,
+            country_id=order.country_id,
+            country_name=order.country_name,
+            price=offer.price,
+        )
+    return usable, tokens
+
+
+async def _render_services(event, context: Context, country_id: int, page: int = 1) -> None:
+    country = await context.catalog.find_any_country(country_id)
+    offers = await context.catalog.offers_in(country_id)
+    if not offers:
+        await toast(event, context.text("common.empty"), alert=True)
+        await _render_countries(event, context)
+        return
+
+    paged = paginate(offers, page)
+    tokens = _issue_tokens(context, event.from_user.id, country, paged.items)
+    name = country.country.name if country else str(country_id)
     await show(
         event,
-        context.text("buy.select_country", service=service.name),
-        keyboards.countries(
+        context.text("buy.select_service", country=name, count=len(offers)),
+        keyboards.country_services(
             context.texts, context.locale, paged, tokens, context.settings.currency_symbol
         ),
     )
 
 
-def _issue_tokens(context: Context, user_id: int, service_code: str, service, items):
-    """Mint one single-use token per visible country button."""
+def _issue_tokens(context: Context, user_id: int, country, items):
+    """Mint one single-use token per visible service button."""
+    country_id = country.country.id if country else 0
+    country_name = country.country.name if country else str(country_id)
     return {
-        priced.country.id: context.tokens.issue(
+        priced.offer.service.code: context.tokens.issue(
             user_id,
-            service_code=service_code,
-            service_name=service.name if service else service_code,
-            country_id=priced.country.id,
-            country_name=priced.country.name,
+            service_code=priced.offer.service.code,
+            service_name=priced.offer.service.name,
+            country_id=country_id,
+            country_name=country_name,
             price=priced.price,
         )
         for priced in items

@@ -1,4 +1,4 @@
-"""Dial codes, looked up by country name.
+"""Dial codes and flags, looked up by country name.
 
 Deliberately keyed on the name the provider returns rather than on its numeric
 country id. Provider id numbering is undocumented and differs between
@@ -60,3 +60,65 @@ _NORMALISE = re.compile(r"[^a-z]")
 def dial_code(country_name: str) -> str:
     """Return the dial code for a country name, or ``""`` when unknown."""
     return DIAL_CODES.get(_NORMALISE.sub("", country_name.lower()), "")
+
+
+#: Country name (normalised) -> ISO 3166-1 alpha-2 code, which is what a flag
+#: emoji is built from. Same keying as DIAL_CODES, and for the same reason.
+ISO_CODES: dict[str, str] = {
+    "afghanistan": "AF", "albania": "AL", "algeria": "DZ", "angola": "AO",
+    "argentina": "AR", "armenia": "AM", "australia": "AU", "austria": "AT",
+    "azerbaijan": "AZ", "bahrain": "BH", "bangladesh": "BD", "belarus": "BY",
+    "belgium": "BE", "benin": "BJ", "bolivia": "BO", "bosnia": "BA",
+    "botswana": "BW", "brazil": "BR", "bulgaria": "BG", "burkinafaso": "BF",
+    "cambodia": "KH", "cameroon": "CM", "canada": "CA", "chad": "TD",
+    "chile": "CL", "china": "CN", "colombia": "CO", "congo": "CG",
+    "costarica": "CR", "croatia": "HR", "cyprus": "CY", "czechia": "CZ",
+    "czechrepublic": "CZ", "denmark": "DK", "dominicanrepublic": "DO", "ecuador": "EC",
+    "egypt": "EG", "elsalvador": "SV", "england": "GB", "estonia": "EE",
+    "ethiopia": "ET", "finland": "FI", "france": "FR", "gabon": "GA",
+    "gambia": "GM", "georgia": "GE", "germany": "DE", "ghana": "GH",
+    "greece": "GR", "guatemala": "GT", "guinea": "GN", "haiti": "HT",
+    "honduras": "HN", "hongkong": "HK", "hungary": "HU", "india": "IN",
+    "indonesia": "ID", "iran": "IR", "iraq": "IQ", "ireland": "IE",
+    "israel": "IL", "italy": "IT", "ivorycoast": "CI", "jamaica": "JM",
+    "japan": "JP", "jordan": "JO", "kazakhstan": "KZ", "kenya": "KE",
+    "korea": "KR", "kuwait": "KW", "kyrgyzstan": "KG", "laos": "LA",
+    "latvia": "LV", "lebanon": "LB", "liberia": "LR", "libya": "LY",
+    "lithuania": "LT", "luxembourg": "LU", "macao": "MO", "madagascar": "MG",
+    "malawi": "MW", "malaysia": "MY", "mali": "ML", "malta": "MT",
+    "mauritania": "MR", "mauritius": "MU", "mexico": "MX", "moldova": "MD",
+    "mongolia": "MN", "montenegro": "ME", "morocco": "MA", "mozambique": "MZ",
+    "myanmar": "MM", "namibia": "NA", "nepal": "NP", "netherlands": "NL",
+    "newzealand": "NZ", "nicaragua": "NI", "niger": "NE", "nigeria": "NG",
+    "norway": "NO", "oman": "OM", "pakistan": "PK", "panama": "PA",
+    "papuanewguinea": "PG", "paraguay": "PY", "peru": "PE", "philippines": "PH",
+    "poland": "PL", "portugal": "PT", "puertorico": "PR", "qatar": "QA",
+    "romania": "RO", "russia": "RU", "rwanda": "RW", "salvador": "SV",
+    "saudiarabia": "SA", "senegal": "SN", "serbia": "RS", "seychelles": "SC",
+    "sierraleone": "SL", "singapore": "SG", "slovakia": "SK", "slovenia": "SI",
+    "somalia": "SO", "southafrica": "ZA", "southkorea": "KR", "spain": "ES",
+    "srilanka": "LK", "sudan": "SD", "sweden": "SE", "switzerland": "CH",
+    "syria": "SY", "taiwan": "TW", "tajikistan": "TJ", "tanzania": "TZ",
+    "thailand": "TH", "togo": "TG", "tunisia": "TN", "turkey": "TR",
+    "turkmenistan": "TM", "uae": "AE", "uganda": "UG", "uk": "GB",
+    "ukraine": "UA", "unitedarabemirates": "AE", "unitedkingdom": "GB", "unitedstates": "US",
+    "uruguay": "UY", "usa": "US", "uzbekistan": "UZ", "venezuela": "VE",
+    "vietnam": "VN", "yemen": "YE", "zambia": "ZM", "zimbabwe": "ZW",
+}
+
+
+def iso_code(country_name: str) -> str:
+    """Return the ISO alpha-2 code for a country name, or ``""`` when unknown."""
+    return ISO_CODES.get(_NORMALISE.sub("", country_name.lower()), "")
+
+
+def flag(country_name: str) -> str:
+    """Return the flag emoji for a country name, or ``""`` when unknown.
+
+    A flag is two regional-indicator letters, each 127397 above its ASCII
+    letter. Deriving it beats storing 156 emoji: there is nothing to mistype.
+    """
+    code = iso_code(country_name)
+    if len(code) != 2:
+        return ""
+    return "".join(chr(ord(letter) + 127397) for letter in code)

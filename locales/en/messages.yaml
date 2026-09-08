@@ -64,33 +64,38 @@ start:
 
 buy:
   all_services: |
-    🗂 <b>ALL SERVICES</b> · {count}
-  all_countries: |
-    🗂 <b>ALL COUNTRIES</b> · {service} · {count}
+    🗂 <b>ALL SERVICES</b> · {country} · {count}
 
     <i>🟢 in stock · 🟡 low · 🔴 none</i>
-  select_service: |
+  all_countries: |
+    🌍 <b>ALL COUNTRIES</b> · {count}
+
+    <i>🟢 in stock · 🟡 low · 🔴 none</i>
+  select_country: |
     🛍 <b>BUY NUMBER</b>
 
-    Select the service you need:
-  select_country: |
-    🌍 <b>SELECT COUNTRY</b>
+    🌍 Tap a country to see its services and prices.
+    Prices shown are the cheapest in that country.
 
-    📱 Service: <b>{service}</b>
+    <i>{count} countries available</i>
+  select_service: |
+    📱 <b>{country}</b>
 
-    Choose your country:
-  search_service_prompt: |
-    🔍 <b>SEARCH SERVICE</b>
+    Choose the service you need:
 
-    Send me the service name:
-
-    <i>Example: whats</i>
+    <i>{count} services available</i>
   search_country_prompt: |
     🔍 <b>SEARCH COUNTRY</b>
 
-    Send me the country name:
+    Send me a country name or dial code:
 
-    <i>Example: india</i>
+    <i>Example: india · 91</i>
+  search_service_prompt: |
+    🔍 <b>SEARCH SERVICE</b>
+
+    Send me the service name or code:
+
+    <i>Example: whats · wa</i>
   search_results: |
     🔎 <b>Results for:</b> {query}
 

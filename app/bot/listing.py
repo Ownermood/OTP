@@ -67,18 +67,19 @@ def country_lines(priced: Iterable, currency: str) -> list[str]:
     it is worse than a dearer one that works -- so it ends the line where the
     eye lands.
     """
-    from app.core.countries import dial_code
+    from app.core.countries import dial_code, flag
     from app.core.money import format_money
     from app.utils.formatting import availability_icon
 
     lines = []
     for item in priced:
         country = item.country
+        emoji = country.flag or flag(country.name)
         dial = dial_code(country.name)
-        prefix = f"{dial} " if dial else ""
+        head = " ".join(part for part in (emoji, f"<b>{country.name}</b>", dial) if part)
         stock = "—" if country.available is None else f"{country.available:,}"
         lines.append(
-            f"{availability_icon(country.available)} <b>{prefix}{country.name}</b> · "
+            f"{availability_icon(country.available)} {head} · "
             f"{format_money(item.price, currency)} · {stock}"
         )
     return lines
@@ -94,6 +95,22 @@ def service_lines(services: Iterable) -> list[str]:
         lines.append(
             f"{availability_icon(service.available)} <b>{service.name}</b>"
             f" <code>{service.code}</code>{stock}"
+        )
+    return lines
+
+
+def offer_lines(priced: Iterable, currency: str) -> list[str]:
+    """One line per service available in the chosen country, with its price."""
+    from app.core.money import format_money
+    from app.utils.formatting import availability_icon
+
+    lines = []
+    for item in priced:
+        service = item.offer.service
+        stock = "" if item.offer.available is None else f" · {item.offer.available:,}"
+        lines.append(
+            f"{availability_icon(item.offer.available)} <b>{service.name}</b>"
+            f" <code>{service.code}</code> · {format_money(item.price, currency)}{stock}"
         )
     return lines
 

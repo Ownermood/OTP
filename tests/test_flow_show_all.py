@@ -5,7 +5,7 @@ import pytest
 from tests.flow_helpers import fund
 
 
-async def test_the_services_screen_offers_show_all_and_search(harness):
+async def test_the_country_screen_offers_show_all_and_search(harness):
     await harness.send("/start")
     await harness.tap("Buy Number")
 
@@ -14,35 +14,38 @@ async def test_the_services_screen_offers_show_all_and_search(harness):
     assert "Search" in buttons
 
 
-async def test_show_all_services_lists_them(harness):
+async def test_show_all_countries_lists_flag_price_and_stock(harness):
     await harness.send("/start")
     await harness.tap("Buy Number")
-    await harness.tap("Show All")
-
-    assert "ALL SERVICES" in harness.text
-    assert "WhatsApp" in harness.text
-    assert "<code>wa</code>" in harness.text
-
-
-async def test_the_countries_screen_offers_show_all(harness):
-    await harness.send("/start")
-    await harness.tap("Buy Number")
-    await harness.tap("WhatsApp")
-
-    assert "Show All" in " ".join(harness.buttons())
-
-
-async def test_show_all_countries_lists_price_and_stock(harness):
-    await harness.send("/start")
-    await harness.tap("Buy Number")
-    await harness.tap("WhatsApp")
     await harness.tap("Show All")
 
     assert "ALL COUNTRIES" in harness.text
     assert "India" in harness.text
+    assert "🇮🇳" in harness.text        # flag, derived from the ISO code
     assert "₹11.00" in harness.text   # 1000 cost + 10% fee
     assert "120" in harness.text      # stock
     assert "+91" in harness.text      # dial code, looked up by name
+
+
+async def test_the_service_screen_offers_show_all(harness):
+    await harness.send("/start")
+    await harness.tap("Buy Number")
+    await harness.tap("IN")
+
+    assert "Show All" in " ".join(harness.buttons())
+
+
+async def test_show_all_services_lists_them_with_prices(harness):
+    await harness.send("/start")
+    await harness.tap("Buy Number")
+    await harness.tap("IN")
+    await harness.tap("Show All")
+
+    assert "ALL SERVICES" in harness.text
+    assert "India" in harness.text
+    assert "WhatsApp" in harness.text
+    assert "<code>wa</code>" in harness.text
+    assert "₹11.00" in harness.text
 
 
 async def test_a_listing_ends_with_a_way_back(harness):
@@ -53,12 +56,12 @@ async def test_a_listing_ends_with_a_way_back(harness):
     assert "Back" in " ".join(harness.buttons())
 
 
-async def test_show_all_countries_without_a_service_returns_to_the_picker(harness):
+async def test_show_all_services_without_a_country_returns_to_the_picker(harness):
     """A stale button from a previous session must not blow up."""
     from app.bot.callbacks import Nav
 
     await harness.send("/start")
-    await harness.press(Nav(to="countries_all").pack())
+    await harness.press(Nav(to="services_all").pack())
 
     assert "BUY NUMBER" in harness.text
 
@@ -89,8 +92,8 @@ async def test_show_all_still_lets_you_buy(harness, session_factory):
     await harness.tap("Show All")
     await harness.tap("Back")
 
+    await harness.tap("IN")
     await harness.tap("WhatsApp")
-    await harness.tap("India")
     await harness.tap("Confirm")
 
     assert "NUMBER PURCHASED" in harness.text

@@ -5,7 +5,13 @@ consistent: long lists paginate through one shared control row, and every
 screen below the main menu ends with Back and/or Home.
 """
 
-from app.bot.keyboards.buy import activation, cancel_confirm, countries, purchase_confirm, services
+from app.bot.keyboards.buy import (
+    activation,
+    cancel_confirm,
+    country_grid,
+    country_services,
+    purchase_confirm,
+)
 from app.bot.keyboards.common import back_home, confirm_or_cancel, main_menu
 from app.bot.keyboards.orders import (
     favorite_detail,
@@ -31,7 +37,8 @@ __all__ = [
     "back_home",
     "cancel_confirm",
     "confirm_or_cancel",
-    "countries",
+    "country_grid",
+    "country_services",
     "favorite_detail",
     "favorites_list",
     "help_menu",
@@ -44,7 +51,6 @@ __all__ = [
     "profile",
     "purchase_confirm",
     "referral",
-    "services",
     "settings_menu",
     "smm_categories",
     "smm_order",
