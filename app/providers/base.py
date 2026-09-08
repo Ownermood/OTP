@@ -12,7 +12,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 
-
 # --------------------------------------------------------------------------
 # Value objects. Providers translate their own wire formats into these, so
 # nothing provider-shaped leaks past the adapter boundary.
@@ -139,7 +138,8 @@ class BaseProvider(ABC):
             return False
 
     async def close(self) -> None:
-        """Release network resources."""
+        """Release network resources. No-op for providers that hold none."""
+        return None
 
 
 class BaseSMSProvider(BaseProvider):

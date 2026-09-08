@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
-from app.core.constants import OrderKind, OrderStatus, TransactionType
+from app.core.constants import OrderKind, TransactionType
 from app.core.exceptions import ValidationError
 from app.core.logging import get_logger
 from app.database.models import User

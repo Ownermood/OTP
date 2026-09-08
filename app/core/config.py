@@ -11,7 +11,6 @@ from __future__ import annotations
 from decimal import Decimal
 from functools import lru_cache
 from pathlib import Path
-
 from typing import Annotated
 
 from pydantic import Field, field_validator, model_validator
@@ -153,7 +152,7 @@ class Settings(BaseSettings):
         return value.lstrip("@")
 
     @model_validator(mode="after")
-    def _check_dependent_settings(self) -> "Settings":
+    def _check_dependent_settings(self) -> Settings:
         if self.sms_provider == "sms_activate" and not self.sms_activate_api_token:
             raise ValueError("SMS_ACTIVATE_API_TOKEN is required when SMS_PROVIDER=sms_activate")
         if self.cryptobot_enabled and not self.cryptobot_api_token:

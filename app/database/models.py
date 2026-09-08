@@ -58,7 +58,7 @@ class User(Base, TimestampMixin):
         DateTime, default=datetime.utcnow, nullable=False, index=True
     )
 
-    orders: Mapped[list["Order"]] = relationship(back_populates="user", lazy="raise")
+    orders: Mapped[list[Order]] = relationship(back_populates="user", lazy="raise")
 
 
 class Order(Base, IntPK, TimestampMixin):

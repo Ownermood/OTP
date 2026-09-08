@@ -12,8 +12,8 @@ import uuid
 from datetime import datetime, timedelta
 from decimal import ROUND_CEILING, Decimal
 
-from app.providers.base import BasePaymentProvider, Invoice
 from app.core.money import to_major
+from app.providers.base import BasePaymentProvider, Invoice
 
 
 class TelegramStarsProvider(BasePaymentProvider):

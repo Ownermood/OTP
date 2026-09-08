@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Generic, Sequence, TypeVar
+from typing import Generic, TypeVar
 
 from app.core.constants import PAGE_SIZE
 

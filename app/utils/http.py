@@ -8,7 +8,8 @@ creates state upstream (buying a number, creating an invoice) passes
 from __future__ import annotations
 
 import asyncio
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 
 import httpx
 

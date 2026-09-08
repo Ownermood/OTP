@@ -1,0 +1,33 @@
+services:
+  bot:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./locales:/app/locales:ro
+    # Uncomment together with the db service below to run on Postgres.
+    # depends_on:
+    #   db:
+    #     condition: service_healthy
+
+  # Postgres is optional. To use it, uncomment this block and set
+  # DATABASE_URL=postgresql+asyncpg://bot:CHANGE_ME@db:5432/bot in .env
+  # (and add asyncpg to requirements.txt).
+  # db:
+  #   image: postgres:16-alpine
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_USER: bot
+  #     POSTGRES_PASSWORD: CHANGE_ME
+  #     POSTGRES_DB: bot
+  #   volumes:
+  #     - pgdata:/var/lib/postgresql/data
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U bot"]
+  #     interval: 5s
+  #     retries: 10
+
+# volumes:
+#   pgdata:

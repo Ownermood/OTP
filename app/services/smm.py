@@ -22,7 +22,8 @@ from app.core.exceptions import (
 from app.core.logging import get_logger
 from app.database.models import Order
 from app.database.repositories import OrderRepository, UserRepository
-from app.providers.base import BaseSMMProvider, SmmService as ProviderSmmService
+from app.providers.base import BaseSMMProvider
+from app.providers.base import SmmService as ProviderSmmService
 from app.services.pricing import PriceBreakdown, PricingService
 from app.services.wallet import WalletService
 from app.utils.cache import TTLCache

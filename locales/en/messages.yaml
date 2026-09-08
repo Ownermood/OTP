@@ -1,0 +1,734 @@
+# All user-facing text. Change wording here, never inside a handler.
+#
+# Placeholders use {curly_braces} and are filled by the renderer. Values that
+# come from users or providers are HTML-escaped before substitution.
+
+common:
+  divider: "━━━━━━━━━━━━━━"
+  loading: "⏳ Loading…"
+  cancelled: "🚫 Cancelled."
+  done: "✅ Done."
+  empty: "Nothing here yet."
+
+buttons:
+  buy: "🛍 Buy Number"
+  rent: "⏳ Rent Number"
+  smm: "📈 SMM Panel"
+  orders: "📦 My Orders"
+  profile: "👤 My Profile"
+  favorites: "⭐ Favorites"
+  wallet: "💳 Balance"
+  referral: "🎁 Referral"
+  help: "ℹ️ Help"
+  search: "🔍 Search"
+  back: "🔙 Back"
+  home: "🏠 Main Menu"
+  cancel: "❌ Cancel"
+  confirm: "✅ Confirm"
+  refresh: "🔄 Refresh"
+  previous: "⬅️"
+  next: "➡️"
+  add_favorite: "⭐ Add to Favorites"
+  remove: "🗑 Remove"
+  buy_now: "🛍 Buy Now"
+  deposit: "➕ Add Balance"
+  history: "📜 History"
+  promo: "🎟 Promo Code"
+  transfer: "💸 Transfer"
+  settings: "⚙️ Settings"
+  support: "🆘 Contact Support"
+  faq: "📖 FAQ"
+  share: "📤 Share Link"
+  details: "📦 Details"
+  pay: "💳 Pay Now"
+  check_payment: "🔄 Check Payment"
+  recent: "🕘 Recently Used"
+  popular: "🔥 Popular"
+
+start:
+  welcome: |
+    ⚡️ <b>WELCOME TO {service_name}</b>
+
+    📱 Virtual Numbers & SMS Verification
+    {smm_line}
+    {divider}
+
+    Choose an option below:
+  smm_line: "📈 Instagram, Telegram, YouTube & more\n"
+  returning: |
+    ⚡️ <b>{service_name}</b>
+
+    💳 Balance: <b>{balance}</b>
+
+    {divider}
+
+    What would you like to do?
+
+menu:
+  services: |
+    🛍 <b>SERVICES</b>
+
+    Choose what you need:
+
+buy:
+  select_service: |
+    🛍 <b>BUY NUMBER</b>
+
+    Select the service you need:
+  select_country: |
+    🌍 <b>SELECT COUNTRY</b>
+
+    📱 Service: <b>{service}</b>
+
+    Choose your country:
+  search_service_prompt: |
+    🔍 <b>SEARCH SERVICE</b>
+
+    Send me the service name:
+
+    <i>Example: whats</i>
+  search_country_prompt: |
+    🔍 <b>SEARCH COUNTRY</b>
+
+    Send me the country name:
+
+    <i>Example: india</i>
+  search_results: |
+    🔎 <b>Results for:</b> {query}
+
+    Found {count} match(es):
+  search_empty: |
+    🔎 <b>No matches for:</b> {query}
+
+    Try a shorter word.
+  confirm: |
+    🛒 <b>ORDER CONFIRMATION</b>
+
+    📱 Service: <b>{service}</b>
+    🌍 Country: <b>{country}</b>
+
+    💰 Price: <b>{price}</b>
+
+    {divider}
+
+    💳 Your balance: {balance}
+    💵 After purchase: {balance_after}
+
+    Ready to continue?
+  purchased: |
+    ✅ <b>NUMBER PURCHASED</b>
+
+    📱 <b>Number:</b>
+    <code>{phone}</code>
+
+    🌍 Country: {country}
+    🛍 Service: {service}
+    💰 Price: {price}
+    🆔 Order: <code>#{order_id}</code>
+
+    {divider}
+
+    ⏳ <b>Waiting for SMS…</b>
+
+    <i>Tap the number to copy it. The code arrives here automatically.</i>
+  waiting: "⏳ Waiting for SMS…"
+
+sms:
+  received: |
+    📨 <b>SMS RECEIVED</b>
+
+    🛍 Service: {service}
+    📱 Number: <code>{phone}</code>
+
+    {divider}
+
+    🔐 <b>Code:</b>
+    <code>{code}</code>
+
+    {divider}
+
+    <i>Tap the code to copy it.</i>
+  expired: |
+    ⌛ <b>ACTIVATION EXPIRED</b>
+
+    Order <code>#{order_id}</code> did not receive an SMS in time.
+
+    ↩️ <b>{price}</b> has been refunded to your balance.
+  cancelled: |
+    🚫 <b>ACTIVATION CANCELLED</b>
+
+    Order <code>#{order_id}</code> was cancelled by the provider.
+
+    ↩️ <b>{price}</b> has been refunded to your balance.
+  cancel_confirm: |
+    ⚠️ <b>Cancel Activation?</b>
+
+    Order: <code>#{order_id}</code>
+    📱 {phone}
+
+    {divider}
+
+    {refund_policy}
+  cancel_done: |
+    🚫 <b>ACTIVATION CANCELLED</b>
+
+    ↩️ <b>{price}</b> refunded.
+    💳 New balance: <b>{balance}</b>
+
+rental:
+  select_duration: |
+    ⏱ <b>SELECT DURATION</b>
+
+    🌍 Country: {country}
+    📱 Service: {service}
+
+    How long do you need the number?
+  custom_prompt: |
+    ⚙️ <b>CUSTOM DURATION</b>
+
+    Enter the number of hours ({minimum}–{maximum}):
+  confirm: |
+    🛒 <b>RENTAL CONFIRMATION</b>
+
+    📱 Service: <b>{service}</b>
+    🌍 Country: <b>{country}</b>
+    ⏱ Duration: <b>{duration}</b>
+
+    💰 Price: <b>{price}</b>
+
+    {divider}
+
+    💳 Balance: {balance}
+    💵 After: {balance_after}
+  created: |
+    ✅ <b>NUMBER RENTED</b>
+
+    📱 <b>Number:</b>
+    <code>{phone}</code>
+
+    ⏱ Duration: {duration}
+    🆔 Order: <code>#{order_id}</code>
+
+    {divider}
+
+    Incoming messages will be forwarded here.
+  message: |
+    📨 <b>RENTAL SMS</b>
+
+    📱 To: <code>{phone}</code>
+    👤 From: {sender}
+
+    {divider}
+
+    {text}
+
+orders:
+  root: |
+    📦 <b>MY ORDERS</b>
+
+    Choose a section:
+  list: |
+    📦 <b>{title}</b>
+
+    {count} order(s) total.
+  empty: |
+    📦 <b>{title}</b>
+
+    You have no orders yet.
+  detail: |
+    🧾 <b>RECEIPT</b>
+
+    🆔 Order: <code>#{order_id}</code>
+    {status_icon} Status: <b>{status}</b>
+
+    {divider}
+
+    🛍 Service: {service}
+    {country_line}📱 Number: <code>{phone}</code>
+    💰 Price: {price}
+    📅 Date: {created_at}
+
+    {code_block}
+
+favorites:
+  list: |
+    ⭐ <b>FAVORITES</b>
+
+    Your saved combinations:
+  empty: |
+    ⭐ <b>FAVORITES</b>
+
+    You have no favorites yet.
+
+    <i>Add one from any country screen to buy it in two taps next time.</i>
+  detail: |
+    ⭐ <b>FAVORITE</b>
+
+    🌍 {country}
+    🛍 {service}
+
+    {divider}
+
+    💰 Current price: <b>{price}</b>
+    {availability_icon} Availability: {availability}
+  added: "⭐ Added to favorites."
+  exists: "⭐ Already in your favorites."
+  removed: "🗑 Removed from favorites."
+
+profile:
+  main: |
+    👤 <b>MY PROFILE</b>
+
+    Hello, {name}!
+
+    🆔 User ID: <code>{user_id}</code>
+    💳 Balance: <b>{balance}</b>
+
+    {divider}
+
+    📊 <b>STATISTICS</b>
+
+    📱 Numbers purchased: {activations}
+    ⏳ Rentals: {rentals}
+    📈 SMM orders: {smm_orders}
+    💰 Total spent: {total_spent}
+    🎁 Referral earnings: {referral_earned}
+
+settings:
+  main: |
+    ⚙️ <b>SETTINGS</b>
+
+    🔔 Notifications: <b>{notifications}</b>
+    🌐 Language: <b>{language}</b>
+  notifications_on: "🔔 Notifications enabled."
+  notifications_off: "🔕 Notifications disabled. You will still receive SMS codes and payment confirmations."
+
+wallet:
+  main: |
+    💳 <b>WALLET</b>
+
+    Current balance:
+    <b>{balance}</b>
+
+    {divider}
+
+    Choose an option:
+  select_method: |
+    💳 <b>ADD BALANCE</b>
+
+    Select a payment method:
+  enter_amount: |
+    💰 <b>ENTER AMOUNT</b>
+
+    Minimum: {minimum}
+    Maximum: {maximum}
+
+    Send the amount you want to add:
+  invoice: |
+    🧾 <b>PAYMENT</b>
+
+    💰 Amount: <b>{amount}</b>
+    💳 Method: {method}
+    🔖 Pay: <b>{provider_amount}</b>
+
+    {divider}
+
+    ⏱ Expires in: <b>{countdown}</b>
+
+    <i>Your balance updates automatically once the payment lands.</i>
+  success: |
+    ✅ <b>PAYMENT RECEIVED</b>
+
+    ➕ Added: <b>{amount}</b>
+    💳 New balance: <b>{balance}</b>
+  history: |
+    📜 <b>TRANSACTION HISTORY</b>
+
+    {count} record(s).
+  history_empty: |
+    📜 <b>TRANSACTION HISTORY</b>
+
+    No transactions yet.
+  transfer_user: |
+    💸 <b>TRANSFER BALANCE</b>
+
+    Send the recipient's Telegram username:
+
+    <i>Example: @username</i>
+  transfer_amount: |
+    💸 <b>TRANSFER BALANCE</b>
+
+    👤 Recipient: @{username}
+    💳 Your balance: {balance}
+
+    Enter the amount:
+  transfer_confirm: |
+    ⚠️ <b>CONFIRM TRANSFER</b>
+
+    👤 Recipient: @{username}
+    💰 Amount: <b>{amount}</b>
+
+    This cannot be undone.
+  transfer_done: |
+    ✅ <b>TRANSFER SENT</b>
+
+    💰 {amount} → @{username}
+    💳 New balance: <b>{balance}</b>
+  transfer_received: |
+    💸 <b>BALANCE RECEIVED</b>
+
+    ➕ {amount}
+    💳 New balance: <b>{balance}</b>
+
+promo:
+  prompt: |
+    🎟 <b>PROMO CODE</b>
+
+    Enter your promo code:
+  success: |
+    🎉 <b>PROMO ACTIVATED</b>
+
+    🎟 Code: <code>{code}</code>
+    ➕ Bonus: <b>{amount}</b>
+    💳 New balance: <b>{balance}</b>
+  invalid: "❌ Invalid or expired promo code."
+
+referral:
+  main: |
+    🎁 <b>REFERRAL PROGRAM</b>
+
+    Invite friends and earn on every deposit they make.
+
+    {divider}
+
+    👥 Invited: <b>{invited}</b>
+    💰 Earned: <b>{earned}</b>
+    📈 Commission: <b>{percent}%</b>
+
+    {divider}
+
+    🔗 <b>Your link:</b>
+    <code>{link}</code>
+  history: |
+    📜 <b>REFERRAL HISTORY</b>
+
+    {count} referral(s).
+
+smm:
+  main: |
+    📈 <b>SMM PANEL</b>
+
+    Boost your social presence.
+
+    Select a platform:
+  disabled: |
+    📈 <b>SMM PANEL</b>
+
+    This module is currently unavailable.
+  select_service: |
+    📈 <b>{platform}</b>
+
+    Select a service:
+  service_detail: |
+    📈 <b>{service}</b>
+
+    {divider}
+
+    💰 Rate: <b>{rate}</b> per 1000
+    📦 Min: {minimum}
+    📦 Max: {maximum}
+
+    Send the <b>link</b> for this order:
+  enter_quantity: |
+    📈 <b>{service}</b>
+
+    🔗 Link: {link}
+
+    {divider}
+
+    Enter the quantity ({minimum}–{maximum}):
+  confirm: |
+    🛒 <b>ORDER CONFIRMATION</b>
+
+    📈 Service: <b>{service}</b>
+    🔗 Link: {link}
+    📦 Quantity: <b>{quantity}</b>
+
+    💰 Price: <b>{price}</b>
+
+    {divider}
+
+    💳 Balance: {balance}
+    💵 After: {balance_after}
+  created: |
+    📦 <b>ORDER CREATED</b>
+
+    🆔 Order: <code>#{order_id}</code>
+    📈 Service: {service}
+    📦 Quantity: {quantity}
+    💰 Price: {price}
+
+    {divider}
+
+    🔄 Status: <b>Processing</b>
+
+    <i>Use Track Status to check progress.</i>
+  status: |
+    🔄 <b>ORDER STATUS</b>
+
+    🆔 Order: <code>#{order_id}</code>
+    {status_icon} Status: <b>{status}</b>
+
+    📦 Ordered: {quantity}
+    ▶️ Start count: {start_count}
+    ⏳ Remaining: {remains}
+  finished: |
+    ✅ <b>SMM ORDER FINISHED</b>
+
+    🆔 Order: <code>#{order_id}</code>
+    📈 {service}
+    {status_icon} Status: <b>{status}</b>
+
+help:
+  main: |
+    ℹ️ <b>HELP CENTER</b>
+
+    Pick a topic:
+  faq_buy: |
+    📱 <b>HOW TO BUY A NUMBER</b>
+
+    1. Tap 🛍 Buy Number
+    2. Pick a service (or search for it)
+    3. Pick a country
+    4. Confirm the price
+    5. The code arrives here automatically
+
+    <i>Make sure your balance covers the price first.</i>
+  faq_payment: |
+    💳 <b>PAYMENT HELP</b>
+
+    Add balance from 💳 Balance → ➕ Add Balance.
+    Your balance updates automatically once the payment lands — usually within a minute.
+
+    If it does not, contact support with your invoice id.
+  faq_no_sms: |
+    📩 <b>SMS NOT RECEIVED</b>
+
+    • Wait the full activation window — some services are slow
+    • Make sure you requested the code on the right service
+    • If nothing arrives, cancel the activation for an automatic refund
+  faq_refund: |
+    💰 <b>REFUND POLICY</b>
+
+    {refund_policy}
+  terms: |
+    📄 <b>TERMS OF SERVICE</b>
+
+    {terms}
+  privacy: |
+    🔐 <b>PRIVACY POLICY</b>
+
+    {privacy}
+  support: |
+    🆘 <b>SUPPORT</b>
+
+    Need help? Our team can assist you.
+
+    ⏱ Average response time: {response_time}
+
+policies:
+  refund: |
+    Cancelling an activation before an SMS arrives refunds the full price to your balance automatically.
+    Once a code has been delivered the activation is complete and cannot be refunded.
+  terms: |
+    This service provides virtual numbers for lawful verification and social media marketing services.
+    It must not be used for fraud, impersonation, spam, account takeover, or bypassing platform security.
+    Accounts used for such purposes are terminated without refund.
+  privacy: |
+    We store your Telegram id, username, orders and transactions in order to operate the service.
+    We do not sell your data. Numbers and received messages are retained only as long as needed to
+    show them in your order history.
+
+errors:
+  generic: |
+    ⚠️ <b>Something went wrong.</b>
+
+    Please try again in a moment. If the problem continues, contact support.
+  configuration: "⚠️ The bot is misconfigured. An administrator has been notified."
+  provider_unavailable: |
+    ⚠️ <b>Provider unavailable</b>
+
+    Our numbers provider is not responding right now. Please try again shortly.
+  provider_auth: "⚠️ Provider authorisation failed. An administrator has been notified."
+  provider_busy: "⏳ The provider is busy. Please try again in a few seconds."
+  no_numbers: |
+    😔 <b>No numbers available</b>
+
+    This service has no numbers for that country right now. Try another country.
+  insufficient_balance: |
+    💳 <b>Insufficient balance</b>
+
+    You need <b>{required}</b> but have <b>{available}</b>.
+
+    Top up from 💳 Balance.
+  order_not_found: "❌ Order not found."
+  access_denied: "🚫 You do not have access to that."
+  invalid_input: "⚠️ That does not look right. Please try again."
+  promo_invalid: "❌ Invalid or expired promo code."
+  duplicate_operation: "⏳ That is already being processed. Please wait."
+  price_changed: |
+    💱 <b>Price changed</b>
+
+    The price moved while you were deciding. Please review the new price and confirm again.
+  maintenance: |
+    🔧 <b>Maintenance</b>
+
+    The service is temporarily unavailable. Please try again later.
+  expired_action: "⌛ This screen expired. Please start again."
+  rate_limited: "⏳ Slow down a moment."
+  banned: "🚫 Your account has been suspended. Contact support if you believe this is a mistake."
+
+admin:
+  panel: |
+    👨‍💼 <b>ADMIN PANEL</b>
+
+    Role: <b>{role}</b>
+
+    Choose a section:
+  dashboard: |
+    📊 <b>DASHBOARD</b> — {period}
+
+    👥 Total users: <b>{users_total}</b>
+    🆕 New: {users_new}
+    🟢 Active: {users_active}
+
+    {divider}
+
+    📦 Orders: <b>{orders}</b>
+    ✅ Success: {orders_success}
+    ❌ Failed: {orders_failed}
+    📈 Conversion: {conversion}%
+
+    {divider}
+
+    💰 Revenue: <b>{revenue}</b>
+    💳 Deposits: <b>{deposits}</b>
+    ↩️ Refunds: {refunds}
+    🧾 Avg order: {average_order}
+
+    {divider}
+
+    🔥 Top services: {top_services}
+    🌍 Top countries: {top_countries}
+  health: |
+    📡 <b>SYSTEM STATUS</b>
+
+    SMS provider: {sms_status}
+    Payments: {payment_status}
+    SMM: {smm_status}
+    Database: {db_status}
+    Bot: 🟢 Running
+
+    {divider}
+
+    💰 Provider balance: <b>{provider_balance}</b>
+    🔧 Maintenance: <b>{maintenance}</b>
+  search_prompt: |
+    🔍 <b>SEARCH</b>
+
+    Send a user id, username, order id, provider order id, payment id or phone number:
+  user_detail: |
+    👤 <b>USER</b>
+
+    🆔 ID: <code>{user_id}</code>
+    👤 Username: {username}
+
+    💳 Balance: <b>{balance}</b>
+    📦 Orders: {orders}
+    💰 Spent: {spent}
+    🎁 Referral earned: {referral_earned}
+
+    📅 Joined: {joined}
+    Status: <b>{status}</b>
+  balance_prompt: |
+    💰 <b>ADJUST BALANCE</b>
+
+    👤 User: <code>{user_id}</code>
+    💳 Current: <b>{balance}</b>
+
+    Send the amount. Use a minus sign to deduct.
+
+    <i>Example: 100 or -50</i>
+  balance_reason: |
+    📝 <b>REASON</b>
+
+    Amount: <b>{amount}</b>
+
+    Send a short reason for the audit log:
+  balance_done: |
+    ✅ <b>BALANCE ADJUSTED</b>
+
+    👤 User: <code>{user_id}</code>
+    💰 Change: <b>{amount}</b>
+    💳 New balance: <b>{balance}</b>
+
+    📝 {reason}
+  broadcast_audience: |
+    📢 <b>BROADCAST</b>
+
+    Who should receive this?
+  broadcast_text: |
+    📢 <b>BROADCAST</b>
+
+    👥 Audience: {audience} ({count} users)
+
+    Send the message text:
+  broadcast_confirm: |
+    📢 <b>CONFIRM BROADCAST</b>
+
+    👥 Recipients: <b>{count}</b>
+
+    {divider}
+
+    {preview}
+  broadcast_done: |
+    ✅ <b>BROADCAST FINISHED</b>
+
+    📤 Delivered: <b>{delivered}</b>
+    ❌ Failed: {failed}
+  promo_list: |
+    🎟 <b>PROMO CODES</b>
+
+    {count} code(s).
+  promo_create_code: |
+    🎟 <b>CREATE PROMO</b>
+
+    Send the code:
+
+    <i>Example: WELCOME50</i>
+  promo_create_amount: |
+    🎟 <b>CREATE PROMO</b>
+
+    Code: <code>{code}</code>
+
+    Send the bonus amount:
+  promo_create_limit: |
+    🎟 <b>CREATE PROMO</b>
+
+    Code: <code>{code}</code>
+    Bonus: <b>{amount}</b>
+
+    Send the activation limit:
+  promo_created: |
+    ✅ <b>PROMO CREATED</b>
+
+    🎟 Code: <code>{code}</code>
+    💰 Bonus: <b>{amount}</b>
+    🔢 Limit: {limit}
+  audit: |
+    🧾 <b>AUDIT LOG</b>
+
+    Last {count} action(s).
+  maintenance_on: "🔧 Maintenance mode enabled. Only admins can use the bot."
+  maintenance_off: "✅ Maintenance mode disabled."
+  no_results: "🔍 Nothing matched that search."

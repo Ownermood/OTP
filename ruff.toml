@@ -1,0 +1,12 @@
+line-length = 100
+target-version = "py311"
+
+[lint]
+select = ["F", "E", "W", "I", "UP", "B", "SIM"]
+ignore = [
+    "E501",   # long lines are mostly locale strings and URLs in comments
+    "SIM105", # contextlib.suppress is not clearer for best-effort provider calls
+]
+
+[lint.per-file-ignores]
+"tests/*" = ["E402"]  # settings must be in the environment before app imports
