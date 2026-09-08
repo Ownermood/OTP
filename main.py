@@ -16,7 +16,7 @@ from app.core.config import VERSION, Settings, get_settings
 from app.core.exceptions import ConfigurationError
 from app.core.logging import get_logger, setup_logging
 from app.core.money import format_money
-from app.database import check_connection
+from app.database import check_connection, pending_migrations
 
 logger = get_logger(__name__)
 
@@ -28,6 +28,10 @@ async def preflight(app: Application) -> bool:
 
     if not await check_connection(app.engine):
         logger.error("startup.database_unreachable", url=_safe_url(settings.database_url))
+        return False
+    gap = await pending_migrations(app.engine)
+    if gap is not None:
+        logger.error("startup.migrations_pending", detail=gap, fix="alembic upgrade head")
         return False
     logger.info("startup.check", component="database", status="connected")
 

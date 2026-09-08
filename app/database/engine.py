@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
+from app.core.config import ROOT_DIR
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -58,3 +59,31 @@ def _ensure_sqlite_dir(database_url: str) -> None:
     path = database_url.split("///", 1)[-1]
     if path and path != ":memory:":
         Path(path).parent.mkdir(parents=True, exist_ok=True)
+
+
+async def pending_migrations(engine: AsyncEngine) -> str | None:
+    """Describe the schema gap, or ``None`` when the database is up to date.
+
+    Startup used to check only that the database answered, so a database that
+    had never been migrated passed the check and then failed on every worker
+    tick with ``no such table``. Connecting is not the same as being usable.
+    """
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+
+    config = Config(str(ROOT_DIR / "alembic.ini"))
+    head = ScriptDirectory.from_config(config).get_current_head()
+
+    try:
+        async with engine.connect() as connection:
+            result = await connection.execute(text("SELECT version_num FROM alembic_version"))
+            current = result.scalar()
+    except Exception:
+        # No alembic_version table at all: the schema was never created.
+        current = None
+
+    if current == head:
+        return None
+    if current is None:
+        return "the schema has never been created"
+    return f"the schema is at {current}, but {head} is expected"

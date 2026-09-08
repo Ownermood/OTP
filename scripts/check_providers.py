@@ -60,7 +60,13 @@ async def check_sms(settings) -> bool:
 async def check_payments(settings) -> bool:
     print("\n💳 Payment providers")
     providers = build_payment_providers(settings)
-    if not providers:
+
+    # Manual UPI is the primary deposit route and has no API to reach, so it
+    # never appears in the provider registry. Reporting "none enabled" for a
+    # bot that takes UPI deposits told operators to fix a working setup.
+    if settings.manual_payment_enabled:
+        print(f"   {OK} manual UPI: {settings.upi_id} -> channel {settings.manual_payment_channel_id}")
+    elif not providers:
         print(f"   {BAD} none enabled")
         return False
 

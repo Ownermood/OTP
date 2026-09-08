@@ -5,6 +5,7 @@ from app.database.engine import (
     check_connection,
     create_engine,
     create_session_factory,
+    pending_migrations,
 )
 
-__all__ = ["Base", "check_connection", "create_engine", "create_session_factory"]
+__all__ = ["Base", "check_connection", "create_engine", "create_session_factory", "pending_migrations"]

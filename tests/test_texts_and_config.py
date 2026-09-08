@@ -150,3 +150,18 @@ def test_the_shipped_example_env_file_is_loadable(monkeypatch):
         Settings.model_config["env_file"] = "tests/.env-that-does-not-exist"
     assert settings.backup_chat_id == 0
     assert settings.min_deposit == 100
+
+
+async def test_startup_refuses_a_database_that_was_never_migrated(tmp_path):
+    """Connecting is not the same as being usable.
+
+    Without this check the bot started happily and then failed on every worker
+    tick with `no such table`, several times a second, forever.
+    """
+    from app.database import create_engine, pending_migrations
+
+    engine = create_engine(f"sqlite+aiosqlite:///{tmp_path / 'empty.db'}")
+    try:
+        assert await pending_migrations(engine) == "the schema has never been created"
+    finally:
+        await engine.dispose()
