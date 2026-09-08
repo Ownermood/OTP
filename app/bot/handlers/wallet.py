@@ -1,27 +1,25 @@
-"""Wallet: balance, deposits, transaction history, promo codes, transfers."""
+"""Wallet: balance, transaction history and promo redemption.
+
+The router lives here; deposits and transfers register on it from their own
+modules, so the wallet is one router however many files it spans.
+"""
 
 from __future__ import annotations
 
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
-from aiogram.types import (
-    CallbackQuery,
-    LabeledPrice,
-    Message,
-    PreCheckoutQuery,
-)
+from aiogram.types import CallbackQuery, Message
 
 from app.bot import keyboards
-from app.bot.callbacks import Nav, PaymentCB, TransferCB, WalletCB
-from app.bot.handlers.common import Context, build_context, show, toast
-from app.bot.states import PaymentStates, PromoStates, TransferStates
-from app.core.constants import PaymentStatus, TransactionType
-from app.core.exceptions import ValidationError
+from app.bot.callbacks import Nav, WalletCB
+from app.bot.handlers.common import build_context, show
+from app.bot.states import PromoStates
+from app.core.constants import TransactionType
 from app.core.logging import get_logger
-from app.core.money import format_money, parse_amount, to_minor
-from app.utils.formatting import format_countdown, format_datetime
+from app.core.money import format_money
+from app.utils.formatting import format_datetime
 from app.utils.pagination import paginate
-from app.utils.validators import parse_promo_code, parse_username
+from app.utils.validators import parse_promo_code
 
 router = Router(name="wallet")
 logger = get_logger(__name__)
@@ -53,7 +51,6 @@ TYPE_ICONS = {
     TransactionType.ADMIN_ADJUSTMENT: "🛠",
 }
 
-
 @router.callback_query(Nav.filter(F.to == "wallet"))
 async def open_wallet(query: CallbackQuery, state: FSMContext, **data):
     await state.clear()
@@ -66,172 +63,6 @@ async def open_wallet(query: CallbackQuery, state: FSMContext, **data):
 
 
 # -- deposits ---------------------------------------------------------------
-
-
-@router.callback_query(WalletCB.filter(F.action == "deposit"))
-async def choose_method(query: CallbackQuery, **data):
-    context = build_context(data)
-    methods = {
-        name: METHOD_LABELS.get(name, name.title()) for name in context.payments.available
-    }
-    if context.settings.manual_payment_enabled:
-        # Reviewed by a human rather than a gateway, so it has no provider entry.
-        methods["manual"] = METHOD_LABELS["manual"]
-    await show(
-        query,
-        context.text("wallet.select_method"),
-        keyboards.payment_methods(context.texts, context.locale, methods),
-    )
-
-
-# Explicitly not "manual": that method has no gateway and is handled in
-# app/bot/handlers/manual_payments.py. Stated here so the two do not depend on
-# router registration order.
-@router.callback_query(PaymentCB.filter((F.action == "method") & (F.provider != "manual")))
-async def prompt_amount(query: CallbackQuery, callback_data: PaymentCB, state: FSMContext, **data):
-    context = build_context(data)
-    context.payments.provider(callback_data.provider)  # validates it is enabled
-    await state.set_state(PaymentStates.entering_amount)
-    await state.update_data(provider=callback_data.provider)
-    await show(
-        query,
-        context.text(
-            "wallet.enter_amount",
-            minimum=context.money(to_minor(context.settings.min_deposit)),
-            maximum=context.money(to_minor(context.settings.max_deposit)),
-        ),
-        keyboards.back_home(context.texts, context.locale, back_to="wallet"),
-    )
-
-
-@router.message(PaymentStates.entering_amount)
-async def create_invoice(message: Message, state: FSMContext, **data):
-    """Create the invoice. Native providers (Stars) get Telegram's own checkout."""
-    context = build_context(data)
-    amount = parse_amount(message.text or "")
-    if amount is None:
-        raise ValidationError("unparseable amount")
-    context.payments.validate_amount(amount)
-
-    provider_name = (await state.get_data()).get("provider", "")
-    await state.clear()
-
-    payment = await context.payments.create_invoice(message.from_user.id, provider_name, amount)
-    provider = context.payments.provider(provider_name)
-
-    if provider.is_native:
-        await _send_stars_invoice(message, context, payment, provider)
-        return
-
-    await show(
-        message,
-        context.text(
-            "wallet.invoice",
-            amount=context.money(payment.amount),
-            method=METHOD_LABELS.get(provider_name, provider_name),
-            provider_amount=payment.provider_amount,
-            countdown=format_countdown(payment.expires_at),
-        ),
-        keyboards.invoice(context.texts, context.locale, payment.id, payment.pay_url or ""),
-    )
-
-
-async def _send_stars_invoice(message: Message, context: Context, payment, provider) -> None:
-    """Telegram Stars checkout: the invoice id travels as the payload."""
-    stars = int(payment.provider_amount)
-    if stars > provider.max_stars:
-        raise ValidationError("amount exceeds the Telegram Stars limit")
-
-    await message.answer_invoice(
-        title=f"{context.settings.service_name} — balance top-up",
-        description=f"Add {context.money(payment.amount)} to your balance",
-        payload=payment.invoice_id,
-        currency="XTR",
-        prices=[LabeledPrice(label="Top-up", amount=stars)],
-    )
-
-
-@router.pre_checkout_query()
-async def approve_checkout(pre_checkout: PreCheckoutQuery) -> None:
-    """Telegram requires an answer within 10 seconds; nothing to validate here."""
-    await pre_checkout.answer(ok=True)
-
-
-@router.message(F.successful_payment)
-async def stars_paid(message: Message, **data):
-    """Settle a Stars payment.
-
-    The payload is the invoice id, and settlement is keyed on it, so Telegram
-    re-delivering this update cannot credit the balance twice.
-    """
-    context = build_context(data)
-    invoice_id = message.successful_payment.invoice_payload
-    settlement = await context.payments.settle("telegram_stars", invoice_id)
-    if settlement is None:
-        logger.warning("stars.unknown_payload", payload=invoice_id)
-        return
-
-    await message.answer(
-        context.text(
-            "wallet.success",
-            amount=context.money(settlement.payment.amount),
-            balance=context.money(settlement.balance_after),
-        ),
-        reply_markup=keyboards.main_menu(context.texts, context.locale, context.smm.enabled),
-    )
-
-
-@router.callback_query(PaymentCB.filter(F.action == "check"))
-async def check_payment(query: CallbackQuery, callback_data: PaymentCB, **data):
-    """Manual 'has it landed yet' check, alongside the background poller."""
-    context = build_context(data)
-    payments = await context.payments.list_for_user(query.from_user.id)
-    payment = next((p for p in payments if p.id == callback_data.payment_id), None)
-    if payment is None:
-        await toast(query, context.text("errors.order_not_found"), alert=True)
-        return
-
-    if payment.status == PaymentStatus.PAID:
-        await _payment_settled(query, context, payment.amount)
-        return
-
-    provider = context.payments.provider(payment.provider)
-    status = await provider.check_payment(payment.invoice_id)
-    if status != "paid":
-        await toast(query, context.text("common.loading"))
-        return
-
-    settlement = await context.payments.settle(payment.provider, payment.invoice_id)
-    if settlement is not None:
-        await _payment_settled(query, context, settlement.payment.amount)
-
-
-@router.callback_query(PaymentCB.filter(F.action == "cancel"))
-async def cancel_invoice(query: CallbackQuery, callback_data: PaymentCB, **data):
-    context = build_context(data)
-    payments = await context.payments.list_for_user(query.from_user.id)
-    payment = next((p for p in payments if p.id == callback_data.payment_id), None)
-    if payment is not None and payment.status == PaymentStatus.PENDING:
-        provider = context.payments.provider(payment.provider)
-        await provider.cancel_invoice(payment.invoice_id)
-        await context.payments.mark_failed(payment, PaymentStatus.EXPIRED)
-    await show(
-        query,
-        context.text("wallet.main", balance=context.money(context.user.balance)),
-        keyboards.wallet(context.texts, context.locale, context.settings.transfer_enabled),
-    )
-
-
-async def _payment_settled(query: CallbackQuery, context: Context, amount: int) -> None:
-    balance = await context.wallet.get_balance(query.from_user.id)
-    await show(
-        query,
-        context.text("wallet.success", amount=context.money(amount), balance=context.money(balance)),
-        keyboards.back_home(context.texts, context.locale, back_to="wallet"),
-    )
-
-
-# -- history ----------------------------------------------------------------
 
 
 @router.callback_query(WalletCB.filter(F.action.startswith("history")))
@@ -300,99 +131,3 @@ async def redeem_promo(message: Message, state: FSMContext, **data):
 
 
 # -- transfers --------------------------------------------------------------
-
-
-@router.callback_query(WalletCB.filter(F.action == "transfer"))
-async def prompt_transfer_user(query: CallbackQuery, state: FSMContext, **data):
-    context = build_context(data)
-    if not context.settings.transfer_enabled:
-        await toast(query, context.text("errors.invalid_input"), alert=True)
-        return
-    await state.set_state(TransferStates.entering_username)
-    await show(
-        query,
-        context.text("wallet.transfer_user"),
-        keyboards.back_home(context.texts, context.locale, back_to="wallet"),
-    )
-
-
-@router.message(TransferStates.entering_username)
-async def enter_transfer_user(message: Message, state: FSMContext, **data):
-    context = build_context(data)
-    username = parse_username(message.text or "")
-    await state.set_state(TransferStates.entering_amount)
-    await state.update_data(recipient=username)
-    await show(
-        message,
-        context.text(
-            "wallet.transfer_amount",
-            username=username,
-            balance=context.money(context.user.balance),
-        ),
-        keyboards.back_home(context.texts, context.locale, back_to="wallet"),
-    )
-
-
-@router.message(TransferStates.entering_amount)
-async def confirm_transfer(message: Message, state: FSMContext, **data):
-    """Quote the transfer. Money moves only on the confirmation below."""
-    context = build_context(data)
-    amount = parse_amount(message.text or "")
-    if amount is None:
-        raise ValidationError("unparseable amount")
-
-    stored = await state.get_data()
-    username = stored.get("recipient", "")
-    if not username:
-        await state.clear()
-        raise ValidationError("transfer expired")
-
-    # Single-use token, so a double-tapped confirm cannot send twice.
-    token = context.tokens.issue(
-        message.from_user.id, kind="transfer", username=username, amount=amount
-    )
-    await state.clear()
-    await show(
-        message,
-        context.text(
-            "wallet.transfer_confirm", username=username, amount=context.money(amount)
-        ),
-        keyboards.confirm_or_cancel(
-            context.texts, context.locale, TransferCB(token=token).pack(), "wallet"
-        ),
-    )
-
-
-@router.callback_query(TransferCB.filter())
-async def do_transfer(query: CallbackQuery, callback_data: TransferCB, **data):
-    """Perform a confirmed transfer. The token is single-use, so one tap counts."""
-    context = build_context(data)
-    payload = context.tokens.consume(callback_data.token, query.from_user.id)
-    if payload is None:
-        await toast(query, context.text("errors.duplicate_operation"), alert=True)
-        return
-
-    username = payload["username"]
-    amount = payload["amount"]
-    recipient = await context.users.transfer(query.from_user.id, username, amount)
-    balance = await context.wallet.get_balance(query.from_user.id)
-
-    await show(
-        query,
-        context.text(
-            "wallet.transfer_done",
-            amount=context.money(amount),
-            username=username,
-            balance=context.money(balance),
-        ),
-        keyboards.back_home(context.texts, context.locale, back_to="wallet"),
-    )
-    await data["notifications"].notify_user(
-        recipient.id,
-        context.text(
-            "wallet.transfer_received",
-            amount=context.money(amount),
-            balance=context.money(recipient.balance),
-        ),
-        essential=True,
-    )

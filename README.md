@@ -251,14 +251,36 @@ systemctl restart sms-bot     # or: docker compose up -d --build
 
 ```
 app/
-├── core/          config, logging, exceptions, money, constants
-├── database/      models, repositories, engine  (Alembic migrations in migrations/)
-├── providers/     SMS / payment / SMM adapters behind ABCs
-├── services/      business logic — the only place money moves
-├── bot/           handlers, keyboards, states, middlewares, locale rendering
-└── utils/         pagination, validators, HTTP, cache, callback tokens
-locales/en/messages.yaml    every user-facing string
+├── core/                  config, logging, exceptions, money, constants
+├── database/
+│   ├── models.py          the schema
+│   ├── engine.py          engine and session factory
+│   └── repositories/      all SQL, one module per entity
+├── providers/             SMS / payment / SMM adapters behind ABCs
+├── services/
+│   ├── wallet.py          the only place a balance changes
+│   ├── orders.py          the purchase path
+│   ├── payments.py        deposit settlement
+│   ├── manual_payments.py reviewed UPI / bank deposits
+│   ├── …                  pricing, catalog, promo, referrals, smm, admin
+│   └── workers/           one module per background loop
+├── bot/
+│   ├── handlers/          one module per screen area; admin/ is a package
+│   ├── keyboards/         one module per screen area
+│   ├── middlewares.py     session, user, throttle, maintenance, errors
+│   ├── texts.py           locale rendering
+│   ├── callbacks.py       callback data schemas
+│   └── setup.py           wiring
+└── utils/                 pagination, validators, HTTP, cache, tokens
+locales/en/messages.yaml   every user-facing string
+scripts/                   provider connectivity checks
 ```
+
+Some handler modules have no router of their own: `deposits` and `transfers`
+register on the wallet router, `favorites`, `referrals` and `help_center` on
+the profile router, and `manual_review` on the manual-payments router. They are
+imported in `app/bot/handlers/__init__.py` purely so that registration happens.
+
 
 Dependencies point one way: `bot → services → repositories → database`, and
 `services → providers`. A handler never runs SQL, never calls a provider, and

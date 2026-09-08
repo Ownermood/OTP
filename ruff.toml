@@ -10,3 +10,4 @@ ignore = [
 
 [lint.per-file-ignores]
 "tests/*" = ["E402"]  # settings must be in the environment before app imports
+"migrations/versions/*" = ["I001"]  # written by Alembic's template
