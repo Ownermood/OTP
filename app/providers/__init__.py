@@ -7,8 +7,6 @@ from app.providers.base import (
     BaseSMMProvider,
     BaseSMSProvider,
     Invoice,
-    Rental,
-    RentalMessage,
     SmmOrderStatus,
     SmmService,
     SmsCountry,
@@ -22,7 +20,7 @@ from app.providers.registry import (
 
 __all__ = [
     "Activation", "ActivationStatus", "BasePaymentProvider", "BaseSMMProvider",
-    "BaseSMSProvider", "Invoice", "Rental", "RentalMessage", "SmmOrderStatus",
+    "BaseSMSProvider", "Invoice", "SmmOrderStatus",
     "SmmService", "SmsCountry", "SmsService", "build_payment_providers",
     "build_smm_provider", "build_sms_provider",
 ]

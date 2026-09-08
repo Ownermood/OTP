@@ -212,7 +212,7 @@ async def test_a_missing_qr_file_does_not_strand_the_user(upi_harness, settings)
 
     # Falls back to the same details as text rather than sending nothing.
     assert "UPI DEPOSIT" in h.text
-    assert "I Have Paid" in " ".join(h.buttons())
+    assert "i have paid" in " ".join(h.buttons()).lower()
 
 
 async def test_a_relative_qr_path_resolves_against_the_project(monkeypatch):

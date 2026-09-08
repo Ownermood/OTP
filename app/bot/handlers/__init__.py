@@ -1,7 +1,7 @@
 """Handler routers, in dispatch order.
 
 Admin is registered first so ``/admin`` cannot be shadowed, and the buy router
-owns the shared confirm callback that the rental and SMM flows delegate into.
+owns the shared confirm callback that the SMM flow delegates into.
 
 Several modules have no router of their own: they register on another module's
 router and are imported here purely so that registration happens.
@@ -20,7 +20,6 @@ from app.bot.handlers import (
     orders,
     profile,
     referrals,  # noqa: F401  -- registers on the profile router
-    rental,
     smm,
     start,
     transfers,  # noqa: F401  -- registers on the wallet router
@@ -34,7 +33,6 @@ def build_router() -> Router:
         admin.router,
         start.router,
         buy.router,
-        rental.router,
         orders.router,
         wallet.router,
         manual_payments.router,

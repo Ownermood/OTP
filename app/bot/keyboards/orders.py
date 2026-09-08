@@ -27,9 +27,6 @@ def orders_root(texts: Texts, locale: str | None, smm_enabled: bool) -> InlineKe
             text="📱 SMS Activations", callback_data=OrdersListCB(kind="activation").pack()
         )
     )
-    builder.row(
-        InlineKeyboardButton(text="⏳ Rentals", callback_data=OrdersListCB(kind="rental").pack())
-    )
     if smm_enabled:
         builder.row(
             InlineKeyboardButton(text="📈 SMM", callback_data=OrdersListCB(kind="smm").pack())

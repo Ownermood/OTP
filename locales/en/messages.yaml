@@ -10,28 +10,28 @@ common:
   empty: "Nothing here yet."
 
 buttons:
-  buy: "🛍 Buy Number"
-  rent: "⏳ Rent Number"
-  smm: "📈 SMM Panel"
-  orders: "📦 My Orders"
-  profile: "👤 My Profile"
-  favorites: "⭐ Favorites"
-  wallet: "💳 Balance"
-  referral: "🎁 Referral"
-  help: "ℹ️ Help"
+  buy: "🟢 🛍 BUY NUMBER"
+  smm: "🟣 📈 SMM PANEL"
+  orders: "🔵 📦 Orders"
+  profile: "🔵 👤 Profile"
+  favorites: "🔵 ⭐ Favorites"
+  wallet: "🔴 💳 BALANCE"
+  referral: "🔵 🎁 Referral"
+  help: "⚪️ ℹ️ Help"
   search: "🔍 Search"
+  show_all: "🗂 Show All"
   back: "🔙 Back"
   home: "🏠 Main Menu"
   cancel: "❌ Cancel"
-  confirm: "✅ Confirm"
+  confirm: "✅ CONFIRM"
   refresh: "🔄 Refresh"
-  paid: "✅ I Have Paid"
+  paid: "✅ I HAVE PAID"
   previous: "⬅️"
   next: "➡️"
   add_favorite: "⭐ Add to Favorites"
   remove: "🗑 Remove"
-  buy_now: "🛍 Buy Now"
-  deposit: "➕ Add Balance"
+  buy_now: "🟢 🛍 BUY NOW"
+  deposit: "🔴 ➕ ADD BALANCE"
   history: "📜 History"
   promo: "🎟 Promo Code"
   transfer: "💸 Transfer"
@@ -63,6 +63,12 @@ start:
     What would you like to do?
 
 buy:
+  all_services: |
+    🗂 <b>ALL SERVICES</b> · {count}
+  all_countries: |
+    🗂 <b>ALL COUNTRIES</b> · {service} · {count}
+
+    <i>🟢 in stock · 🟡 low · 🔴 none</i>
   select_service: |
     🛍 <b>BUY NUMBER</b>
 
@@ -173,60 +179,6 @@ sms:
     ↩️ <b>{price}</b> refunded.
     💳 New balance: <b>{balance}</b>
 
-rental:
-  select_service: |
-    ⏳ <b>SELECT SERVICE</b>
-
-    🌍 Country: {country}
-    ⏱ Duration: {duration}
-
-    Prices below are for the full rental period:
-  select_duration: |
-    ⏱ <b>SELECT DURATION</b>
-
-    🌍 Country: {country}
-    📱 Service: {service}
-
-    How long do you need the number?
-  custom_prompt: |
-    ⚙️ <b>CUSTOM DURATION</b>
-
-    Enter the number of hours ({minimum}–{maximum}):
-  confirm: |
-    🛒 <b>RENTAL CONFIRMATION</b>
-
-    📱 Service: <b>{service}</b>
-    🌍 Country: <b>{country}</b>
-    ⏱ Duration: <b>{duration}</b>
-
-    💰 Price: <b>{price}</b>
-
-    {divider}
-
-    💳 Balance: {balance}
-    💵 After: {balance_after}
-  created: |
-    ✅ <b>NUMBER RENTED</b>
-
-    📱 <b>Number:</b>
-    <code>{phone}</code>
-
-    ⏱ Duration: {duration}
-    🆔 Order: <code>#{order_id}</code>
-
-    {divider}
-
-    Incoming messages will be forwarded here.
-  message: |
-    📨 <b>RENTAL SMS</b>
-
-    📱 To: <code>{phone}</code>
-    👤 From: {sender}
-
-    {divider}
-
-    {text}
-
 orders:
   root: |
     📦 <b>MY ORDERS</b>
@@ -294,7 +246,6 @@ profile:
     📊 <b>STATISTICS</b>
 
     📱 Numbers purchased: {activations}
-    ⏳ Rentals: {rentals}
     📈 SMM orders: {smm_orders}
     💰 Total spent: {total_spent}
     🎁 Referral earnings: {referral_earned}
@@ -560,6 +511,8 @@ referral:
     {count} referral(s).
 
 smm:
+  all_services: |
+    🗂 <b>ALL SMM SERVICES</b> · {count}
   main: |
     📈 <b>SMM PANEL</b>
 

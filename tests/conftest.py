@@ -138,14 +138,13 @@ async def harness(session_factory, settings, monkeypatch):
         manual_payments,
         orders,
         profile,
-        rental,
         smm,
         start,
         wallet,
     )
 
     for module in (
-        admin, start, buy, rental, orders, wallet, manual_payments, smm, profile
+        admin, start, buy, orders, wallet, manual_payments, smm, profile
     ):
         module.router._parent_router = None
 

@@ -17,8 +17,7 @@ def test_every_key_used_by_a_handler_exists(texts):
     required = [
         "start.welcome", "start.returning", "buy.select_service", "buy.select_country",
         "buy.confirm", "buy.purchased", "sms.received", "sms.expired", "sms.cancelled",
-        "sms.cancel_confirm", "sms.cancel_done", "rental.select_duration", "rental.confirm",
-        "rental.created", "rental.message", "orders.root", "orders.list", "orders.detail",
+        "sms.cancel_confirm", "sms.cancel_done", "orders.root", "orders.list", "orders.detail",
         "favorites.list", "favorites.detail", "profile.main", "wallet.main", "wallet.invoice",
         "wallet.success", "wallet.history", "promo.prompt", "promo.success", "referral.main",
         "smm.main", "smm.confirm", "smm.created", "smm.status", "smm.finished",

@@ -122,10 +122,7 @@ class Settings(BaseSettings):
     referral_min_deposit: Decimal = Decimal("0")
 
     # --- Features -------------------------------------------------------
-    rental_enabled: bool = True
     transfer_enabled: bool = False
-    min_rental_hours: int = 4
-    max_rental_hours: int = 720
     maintenance_mode: bool = False
 
     # --- Infrastructure -------------------------------------------------
@@ -197,8 +194,6 @@ class Settings(BaseSettings):
             raise ValueError("SMM_API_URL and SMM_API_KEY are required when SMM_ENABLED=true")
         if not self.admin_ids:
             raise ValueError("ADMIN_IDS must contain at least one Telegram user id")
-        if self.min_rental_hours > self.max_rental_hours:
-            raise ValueError("MIN_RENTAL_HOURS cannot exceed MAX_RENTAL_HOURS")
         if self.min_deposit > self.max_deposit:
             raise ValueError("MIN_DEPOSIT cannot exceed MAX_DEPOSIT")
         if self.manual_payment_enabled:

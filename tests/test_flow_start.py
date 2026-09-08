@@ -7,10 +7,12 @@ async def test_start_shows_the_welcome_and_the_main_menu(harness):
     await harness.send("/start")
 
     assert "WELCOME" in harness.text
-    buttons = harness.buttons()
-    assert "🛍 Buy Number" in buttons
-    assert "💳 Balance" in buttons
-    assert "ℹ️ Help" in buttons
+    # Labels carry colour cues and casing that may be tuned; assert on the
+    # words, not the decoration.
+    buttons = " ".join(harness.buttons()).lower()
+    assert "buy number" in buttons
+    assert "balance" in buttons
+    assert "help" in buttons
 
 
 async def test_start_creates_the_user(harness, session_factory):

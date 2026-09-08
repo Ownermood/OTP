@@ -1,4 +1,4 @@
-"""Order lifecycle for SMS activations and rentals.
+"""Order lifecycle for SMS activations.
 
 The purchase path is where most of the bug-prevention requirements land, so the
 ordering of steps in :meth:`OrderService.purchase_activation` is deliberate:
@@ -145,76 +145,15 @@ class OrderService:
         )
         return PurchaseResult(order, change.balance_after)
 
-    async def purchase_rental(
-        self,
-        user_id: int,
-        service_code: str,
-        service_name: str,
-        country_id: int,
-        country_name: str,
-        hours: int,
-        quoted_price: int,
-    ) -> PurchaseResult:
-        """Rent a number for ``hours``. Same safety ordering as an activation."""
-        if not self._settings.rental_enabled:
-            raise ValidationError("rentals are disabled")
-        if not self._settings.min_rental_hours <= hours <= self._settings.max_rental_hours:
-            raise ValidationError("rental duration out of range")
-
-        user = await self._users.get(user_id)
-        if user is None or user.balance < quoted_price:
-            raise InsufficientBalanceError(
-                "balance too low", required=quoted_price, available=user.balance if user else 0
-            )
-
-        order = await self._orders.create(
-            user_id=user_id,
-            kind=OrderKind.RENTAL,
-            status=OrderStatus.PENDING,
-            provider=self._provider.name,
-            service_code=service_code,
-            service_name=service_name,
-            country_id=country_id,
-            country_name=country_name,
-            price=quoted_price,
-            rental_hours=hours,
-        )
-        change = await self._wallet.debit(
-            user_id,
-            quoted_price,
-            TransactionType.PURCHASE,
-            idempotency_key=f"purchase:order:{order.id}",
-            reference=f"order #{order.id}",
-            description=f"Rental {service_name} — {country_name} ({hours}h)",
-        )
-        await self._session.commit()
-
-        try:
-            rental = await self._provider.create_rental(service_code, country_id, hours)
-        except ProviderError:
-            await self._fail_and_refund(order, reason="provider rejected the rental")
-            raise
-
-        order.provider_order_id = rental.provider_order_id
-        order.phone = rental.phone
-        order.status = OrderStatus.PROCESSING
-        order.expires_at = rental.expires_at
-        if rental.cost:
-            order.provider_cost = rental.cost
-        await self._session.commit()
-
-        logger.info("rental.created", order_id=order.id, user_id=user_id, hours=hours)
-        return PurchaseResult(order, change.balance_after)
-
     # -- lifecycle ------------------------------------------------------
 
     async def cancel(self, order_id: int, user_id: int) -> Order:
         """Cancel an SMS order the user owns and refund it, exactly once.
 
-        The release call is chosen by order kind. Sending a rental id or an SMM
-        panel id to ``cancel_activation`` would release the wrong thing
-        upstream while still refunding the user, so the kind is checked here
-        rather than trusted from whichever keyboard produced the callback.
+        Sending an SMM panel id to ``cancel_activation`` would release the
+        wrong thing upstream while still refunding the user, so the kind is
+        checked here rather than trusted from whichever keyboard produced the
+        callback.
         """
         order = await self._orders.get_owned(order_id, user_id)
         if order is None:
@@ -228,11 +167,8 @@ class OrderService:
 
         if order.provider_order_id:
             try:
-                if OrderKind(order.kind) is OrderKind.RENTAL:
-                    await self._provider.cancel_rental(order.provider_order_id)
-                else:
-                    await self._provider.cancel_activation(order.provider_order_id)
-            except (ProviderError, NotImplementedError) as exc:
+                await self._provider.cancel_activation(order.provider_order_id)
+            except ProviderError as exc:
                 # The refund still happens: we charged the user, so we own the risk.
                 logger.warning("order.cancel_upstream_failed", order_id=order.id, error=str(exc))
 

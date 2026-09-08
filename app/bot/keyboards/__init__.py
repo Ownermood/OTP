@@ -14,7 +14,6 @@ from app.bot.keyboards.orders import (
     orders_list,
     orders_root,
 )
-from app.bot.keyboards.rental import rental_countries, rental_durations, rental_services
 from app.bot.keyboards.smm import smm_categories, smm_order, smm_services
 from app.bot.keyboards.wallet import (
     help_menu,
@@ -45,9 +44,6 @@ __all__ = [
     "profile",
     "purchase_confirm",
     "referral",
-    "rental_countries",
-    "rental_durations",
-    "rental_services",
     "services",
     "settings_menu",
     "smm_categories",

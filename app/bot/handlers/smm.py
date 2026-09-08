@@ -16,6 +16,7 @@ from aiogram.types import CallbackQuery, Message
 from app.bot import keyboards
 from app.bot.callbacks import ConfirmCB, Nav, SmmCB
 from app.bot.handlers.common import Context, build_context, show, toast
+from app.bot.listing import paginate_lines, smm_service_lines
 from app.bot.states import SmmStates
 from app.core.constants import OrderStatus
 from app.core.exceptions import ValidationError
@@ -62,6 +63,27 @@ async def open_category(query: CallbackQuery, callback_data: SmmCB, **data):
             context.texts, context.locale, page, callback_data.value, context.settings.currency_symbol
         ),
     )
+
+
+@router.callback_query(SmmCB.filter(F.action == "show_all"))
+async def show_all_smm(query: CallbackQuery, **data):
+    """Every SMM service with its rate, across all platforms."""
+    context = build_context(data)
+    services = await context.smm.services()
+    parts = paginate_lines(
+        smm_service_lines(services, context.settings.currency_symbol),
+        context.text("smm.all_services", count=len(services)),
+    )
+    if not parts:
+        await toast(query, context.text("common.empty"), alert=True)
+        return
+
+    await query.answer()
+    keyboard = keyboards.back_home(context.texts, context.locale, back_to="smm")
+    for part in parts:
+        await query.message.answer(
+            part.body, reply_markup=keyboard if part.part == part.total else None
+        )
 
 
 @router.callback_query(SmmCB.filter(F.action == "search"))

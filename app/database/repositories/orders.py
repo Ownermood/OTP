@@ -1,4 +1,4 @@
-"""Activations, rentals and SMM orders."""
+"""SMS activations and SMM orders."""
 
 from __future__ import annotations
 

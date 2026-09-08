@@ -31,7 +31,6 @@ async def open_profile(query: CallbackQuery, state: FSMContext, **data):
             user_id=context.user.id,
             balance=context.money(context.user.balance),
             activations=stats.activations,
-            rentals=stats.rentals,
             smm_orders=stats.smm_orders,
             total_spent=context.money(stats.total_spent),
             referral_earned=context.money(stats.referral_earned),

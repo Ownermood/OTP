@@ -25,7 +25,6 @@ logger = get_logger(__name__)
 @dataclass(frozen=True, slots=True)
 class ProfileStats:
     activations: int
-    rentals: int
     smm_orders: int
     total_spent: int
     referral_earned: int
@@ -57,7 +56,6 @@ class UserService:
         user = await self._users.get(user_id)
         return ProfileStats(
             activations=sum(1 for o in orders if o.kind == OrderKind.ACTIVATION),
-            rentals=sum(1 for o in orders if o.kind == OrderKind.RENTAL),
             smm_orders=sum(1 for o in orders if o.kind == OrderKind.SMM),
             total_spent=user.total_spent if user else 0,
             referral_earned=user.referral_earned if user else 0,

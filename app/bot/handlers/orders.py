@@ -20,7 +20,6 @@ logger = get_logger(__name__)
 
 TITLES = {
     OrderKind.ACTIVATION: "SMS ACTIVATIONS",
-    OrderKind.RENTAL: "RENTALS",
     OrderKind.SMM: "SMM ORDERS",
 }
 

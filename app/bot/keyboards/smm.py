@@ -33,8 +33,12 @@ def smm_categories(
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
+            text=texts.button("show_all", locale),
+            callback_data=SmmCB(action="show_all").pack(),
+        ),
+        InlineKeyboardButton(
             text=texts.button("search", locale), callback_data=SmmCB(action="search").pack()
-        )
+        ),
     )
     for category, count in categories:
         builder.row(

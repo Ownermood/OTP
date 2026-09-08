@@ -9,7 +9,7 @@ from enum import StrEnum
 
 
 class OrderStatus(StrEnum):
-    """Lifecycle of an SMS activation or rental order."""
+    """Lifecycle of an order."""
 
     PENDING = "pending"
     PROCESSING = "processing"
@@ -51,7 +51,6 @@ class OrderKind(StrEnum):
     """What kind of product an order represents."""
 
     ACTIVATION = "activation"
-    RENTAL = "rental"
     SMM = "smm"
 
 
@@ -107,9 +106,6 @@ SMM_CATEGORY_KEYWORDS: dict[SmmCategory, tuple[str, ...]] = {
     SmmCategory.FACEBOOK: ("facebook", "fb "),
     SmmCategory.TWITTER: ("twitter", "x.com"),
 }
-
-#: Rental durations offered as one-tap buttons, in hours.
-RENTAL_PRESET_HOURS: tuple[int, ...] = (4, 12, 24, 72, 168, 720)
 
 #: Items per page for every paginated list.
 PAGE_SIZE = 16

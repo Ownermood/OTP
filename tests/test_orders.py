@@ -160,75 +160,6 @@ async def test_user_cannot_read_another_users_order(orders, session, user):
     with pytest.raises(OrderNotFoundError):
         await orders.cancel(result.order.id, 4004)
 
-
-async def test_rental_creates_a_rental_order(orders, user, settings):
-    result = await orders.purchase_rental(
-        user_id=user.id,
-        service_code="full",
-        service_name="Any service",
-        country_id=22,
-        country_name="India",
-        hours=24,
-        quoted_price=2_000,
-    )
-
-    assert result.order.kind == OrderKind.RENTAL
-    assert result.order.rental_hours == 24
-    assert result.order.provider_order_id == "rent-1"
-
-
-async def test_rental_duration_is_validated(orders, user, settings):
-    from app.core.exceptions import ValidationError
-
-    with pytest.raises(ValidationError):
-        await orders.purchase_rental(
-            user_id=user.id,
-            service_code="full",
-            service_name="Any",
-            country_id=22,
-            country_name="India",
-            hours=settings.max_rental_hours + 1,
-            quoted_price=1_000,
-        )
-
-
-# -- rental catalogue -------------------------------------------------------
-
-
-async def test_rental_price_comes_from_the_provider_not_a_multiplier(
-    session, provider, pricing, wallet, settings
-):
-    """The provider quotes the whole period; we must not scale an hourly rate."""
-    from app.services.catalog import CatalogService
-
-    catalog = CatalogService(provider, pricing, settings)
-
-    four_hours = await catalog.rental_services(country_id=22, hours=4)
-    one_day = await catalog.rental_services(country_id=22, hours=24)
-
-    # Provider cost 1000/hour for "full"; +10% configured fee.
-    assert four_hours[0].offer.code == "full"
-    assert four_hours[0].price == 4_400
-    assert one_day[0].price == 26_400
-
-
-async def test_rental_services_are_sorted_cheapest_first(
-    provider, pricing, settings
-):
-    from app.services.catalog import CatalogService
-
-    offers = await CatalogService(provider, pricing, settings).rental_services(22, 4)
-    assert [o.offer.code for o in offers] == ["full", "wa"]
-
-
-async def test_rental_country_lookup(provider, pricing, settings):
-    from app.services.catalog import CatalogService
-
-    catalog = CatalogService(provider, pricing, settings)
-    assert (await catalog.find_rental_country(22)).name == "India"
-    assert await catalog.find_rental_country(999) is None
-
-
 # -- cancellation routes to the right upstream call -------------------------
 
 
@@ -237,27 +168,6 @@ async def test_cancelling_an_activation_releases_the_activation(orders, user, pr
     await orders.cancel(result.order.id, user.id)
 
     assert provider.cancelled == ["prov-1"]
-    assert provider.rentals_cancelled == []
-
-
-async def test_cancelling_a_rental_releases_the_rental_not_an_activation(
-    orders, user, provider
-):
-    """Regression: a rental id sent to cancel_activation releases the wrong thing."""
-    result = await orders.purchase_rental(
-        user_id=user.id,
-        service_code="full",
-        service_name="Full rent",
-        country_id=22,
-        country_name="India",
-        hours=24,
-        quoted_price=2_000,
-    )
-
-    await orders.cancel(result.order.id, user.id)
-
-    assert provider.rentals_cancelled == ["rent-1"]
-    assert provider.cancelled == []
 
 
 async def test_an_smm_order_cannot_be_cancelled_through_the_sms_service(
@@ -285,7 +195,7 @@ async def test_an_smm_order_cannot_be_cancelled_through_the_sms_service(
 
 async def _charged_but_unsent(session, wallet, user_id: int, price: int = 1_100):
     """Exactly the state a crash between the debit and the provider call leaves."""
-    from app.core.constants import OrderKind, OrderStatus, TransactionType
+    from app.core.constants import OrderStatus, TransactionType
     from app.database.repositories import OrderRepository
 
     order = await OrderRepository(session).create(

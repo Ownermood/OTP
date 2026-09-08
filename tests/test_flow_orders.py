@@ -67,7 +67,7 @@ async def test_favorites_can_be_added_from_a_quote_and_bought_back(harness, sess
 
     await harness.tap("India")
     assert "Current price" in harness.text
-    assert "Buy Now" in " ".join(harness.buttons())
+    assert "buy now" in " ".join(harness.buttons()).lower()
 
 
 async def test_referral_screen_shows_a_working_link(harness):

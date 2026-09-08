@@ -31,7 +31,7 @@ class PricingService:
         self._settings = settings
 
     def quote(self, provider_cost: int, percent_override: Decimal | None = None) -> PriceBreakdown:
-        """Compute the price for an SMS activation or rental."""
+        """Compute the price for an SMS activation."""
         percent = self._settings.service_fee_percent if percent_override is None else percent_override
         percent_fee = apply_percent(provider_cost, percent)
         fixed_fee = to_minor(self._settings.service_fee_fixed)

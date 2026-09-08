@@ -9,8 +9,8 @@ auditable money, and no business logic inside a callback handler.
 ## Features
 
 **Users**
-- 🛍 Buy a number — service search, country search, live prices and availability
-- ⏳ Rent a number — real per-duration provider rates, preset or custom
+- 🛍 Buy a number — service and country search, plus **Show All** to see the
+  whole catalogue with prices and stock in one place
 - 📈 SMM panel — Instagram, Telegram, YouTube, TikTok and more, with order tracking
 - 📦 Order history with receipts, plus refresh and cancel on live SMS orders
 - ⭐ Favourites — saved service+country pairs, re-priced live
@@ -518,12 +518,31 @@ rendering and configuration validation.
 
 ---
 
-## Rentals
+## Show All
 
-Providers price a rental for a whole (country, duration) pair rather than per
-hour, so the flow asks for the country and the duration first and only then
-shows services with their real prices for that period. `MIN_RENTAL_HOURS` and
-`MAX_RENTAL_HOURS` bound both the preset buttons and custom input.
+Every list that paginates also has a **Show All** button beside **Search**. It
+sends the whole catalogue as text — services with their provider codes,
+countries with dial code, price and stock, SMM services with their rate per
+thousand — split across as many messages as it needs, since Telegram caps one
+at 4096 characters.
+
+Dial codes are matched by country name rather than by the provider's numeric
+id, whose numbering is undocumented and differs between providers. A country
+that is not in the table shows no dial code, which is an omission rather than
+a wrong one.
+
+### On button colours
+
+The Bot API has no way to colour an inline keyboard button. Bots that appear to
+have coloured buttons are being viewed in a modified Telegram client applying
+its own theme; the same bot renders in the standard grey for everyone else.
+
+Labels therefore carry their own colour, as an emoji that renders identically
+on every client — 🟢 for the primary action, 🔴 for money, 🔵 for navigation.
+Edit them in `locales/en/messages.yaml` under `buttons`.
+
+Custom (premium) emoji have a separate restriction: a bot may only send them
+once it owns a username bought on Fragment.
 
 ## Troubleshooting
 

@@ -64,9 +64,9 @@ class User(Base, TimestampMixin):
 
 
 class Order(Base, IntPK, TimestampMixin):
-    """An activation, rental or SMM order.
+    """An SMS activation or an SMM order.
 
-    One table for all three kinds keeps "My Orders" and the admin search simple;
+    One table for both kinds keeps "My Orders" and the admin search simple;
     the kind-specific columns are nullable and documented below.
     """
 
@@ -98,12 +98,11 @@ class Order(Base, IntPK, TimestampMixin):
     price: Mapped[int] = mapped_column(Integer, nullable=False)
     provider_cost: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
-    # --- activation / rental ---
+    # --- activation ---
     phone: Mapped[str | None] = mapped_column(String(32), index=True)
     sms_code: Mapped[str | None] = mapped_column(String(32))
     sms_text: Mapped[str | None] = mapped_column(Text)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime, index=True)
-    rental_hours: Mapped[int | None] = mapped_column(Integer)
 
     # --- SMM ---
     link: Mapped[str | None] = mapped_column(String(512))

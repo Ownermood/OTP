@@ -69,18 +69,6 @@ class PaymentCB(CallbackData, prefix="pay"):
     payment_id: int = 0
 
 
-class RentCB(CallbackData, prefix="rnt"):
-    """Rental navigation.
-
-    ``country`` picks a country, ``hours`` a duration (``0`` opens the custom
-    prompt), and ``quote`` carries a server-side token, never a price.
-    """
-
-    action: str
-    value: str | None = None
-    page: int = 1
-
-
 class SmmCB(CallbackData, prefix="smm"):
     action: str
     value: str | None = None

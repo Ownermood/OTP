@@ -12,8 +12,6 @@ from app.providers.base import (
     BaseSMMProvider,
     BaseSMSProvider,
     Invoice,
-    Rental,
-    RentalOffer,
     SmmOrderStatus,
     SmmService,
     SmsCountry,
@@ -25,13 +23,11 @@ class FakeSmsProvider(BaseSMSProvider):
     """A scriptable SMS provider."""
 
     name = "fake_sms"
-    supports_rental = True
 
     def __init__(self, cost: int = 1_000) -> None:
         self.cost = cost
         self.created = 0
         self.cancelled: list[str] = []
-        self.rentals_cancelled: list[str] = []
         self.finished: list[str] = []
         self.fail_next = False
         self.status = ActivationStatus(state="waiting")
@@ -65,31 +61,6 @@ class FakeSmsProvider(BaseSMSProvider):
 
     async def finish_activation(self, provider_order_id: str) -> bool:
         self.finished.append(provider_order_id)
-        return True
-
-    async def get_rental_countries(self):
-        return [SmsCountry(id=22, name="India"), SmsCountry(id=0, name="Russia")]
-
-    async def get_rental_services(self, country_id: int, hours: int):
-        # Real providers price the whole period, so the cost scales with hours.
-        return [
-            RentalOffer(code="full", name="Full rent", cost=self.cost * hours, available=5),
-            RentalOffer(code="wa", name="WhatsApp", cost=self.cost * hours * 2, available=2),
-        ]
-
-    async def create_rental(self, service_code: str, country_id: int, hours: int) -> Rental:
-        if self.fail_next:
-            raise ProviderError("rental unavailable")
-        self.created += 1
-        return Rental(
-            provider_order_id=f"rent-{self.created}",
-            phone="+919876500000",
-            cost=self.cost,
-            expires_at=datetime.utcnow() + timedelta(hours=hours),
-        )
-
-    async def cancel_rental(self, provider_order_id: str) -> bool:
-        self.rentals_cancelled.append(provider_order_id)
         return True
 
     async def get_balance(self) -> int:

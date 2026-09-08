@@ -62,40 +62,6 @@ class ActivationStatus:
 
 
 @dataclass(frozen=True, slots=True)
-class Rental:
-    """A rented number."""
-
-    provider_order_id: str
-    phone: str
-    cost: int = 0
-    expires_at: datetime | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class RentalOffer:
-    """One rentable service, priced for a specific country and duration.
-
-    Providers quote rentals per (country, duration) pair rather than per hour,
-    so the duration is chosen before the price is known.
-    """
-
-    code: str
-    name: str
-    #: Provider cost for the whole rental period, in minor units of our currency.
-    cost: int
-    available: int | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class RentalMessage:
-    """One SMS delivered to a rented number."""
-
-    sender: str
-    text: str
-    received_at: str
-
-
-@dataclass(frozen=True, slots=True)
 class Invoice:
     """A deposit invoice created upstream."""
 
@@ -164,8 +130,6 @@ class BaseSMSProvider(BaseProvider):
     provider. See ``app/providers/sms_activate.py`` for a worked example.
     """
 
-    supports_rental: bool = False
-
     @abstractmethod
     async def get_services(self) -> list[SmsService]:
         """Full service catalogue. Cached by the service layer."""
@@ -193,23 +157,6 @@ class BaseSMSProvider(BaseProvider):
     @abstractmethod
     async def finish_activation(self, provider_order_id: str) -> bool:
         """Confirm the code was used, so the provider closes the activation."""
-
-    async def get_rental_countries(self) -> list[SmsCountry]:
-        """Countries that offer rentals. Often a subset of activation countries."""
-        raise NotImplementedError(f"{self.name} does not support rentals")
-
-    async def get_rental_services(self, country_id: int, hours: int) -> list[RentalOffer]:
-        """Rentable services for a country and duration, with real costs."""
-        raise NotImplementedError(f"{self.name} does not support rentals")
-
-    async def create_rental(self, service_code: str, country_id: int, hours: int) -> Rental:
-        raise NotImplementedError(f"{self.name} does not support rentals")
-
-    async def get_rental_messages(self, provider_order_id: str) -> list[RentalMessage]:
-        raise NotImplementedError(f"{self.name} does not support rentals")
-
-    async def cancel_rental(self, provider_order_id: str) -> bool:
-        raise NotImplementedError(f"{self.name} does not support rentals")
 
 
 class BasePaymentProvider(BaseProvider):

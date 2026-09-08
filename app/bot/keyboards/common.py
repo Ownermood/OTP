@@ -50,15 +50,14 @@ def main_menu(texts: Texts, locale: str | None, smm_enabled: bool) -> InlineKeyb
             text=texts.button("buy", locale), callback_data=Nav(to="buy").pack()
         )
     )
-    second_row = [
-        InlineKeyboardButton(
-            text=texts.button("rent", locale), callback_data=Nav(to="rent").pack()
-        ),
+    builder.row(
         InlineKeyboardButton(
             text=texts.button("orders", locale), callback_data=Nav(to="orders").pack()
         ),
-    ]
-    builder.row(*second_row)
+        InlineKeyboardButton(
+            text=texts.button("favorites", locale), callback_data=Nav(to="favorites").pack()
+        ),
+    )
     if smm_enabled:
         builder.row(
             InlineKeyboardButton(
@@ -70,21 +69,16 @@ def main_menu(texts: Texts, locale: str | None, smm_enabled: bool) -> InlineKeyb
             text=texts.button("profile", locale), callback_data=Nav(to="profile").pack()
         ),
         InlineKeyboardButton(
-            text=texts.button("favorites", locale), callback_data=Nav(to="favorites").pack()
+            text=texts.button("wallet", locale), callback_data=Nav(to="wallet").pack()
         ),
     )
     builder.row(
-        InlineKeyboardButton(
-            text=texts.button("wallet", locale), callback_data=Nav(to="wallet").pack()
-        ),
         InlineKeyboardButton(
             text=texts.button("referral", locale), callback_data=Nav(to="referral").pack()
         ),
-    )
-    builder.row(
         InlineKeyboardButton(
             text=texts.button("help", locale), callback_data=Nav(to="help").pack()
-        )
+        ),
     )
     return builder.as_markup()
 

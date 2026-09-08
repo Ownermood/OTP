@@ -24,9 +24,6 @@ from app.providers.base import (
     Activation,
     ActivationStatus,
     BaseSMSProvider,
-    Rental,
-    RentalMessage,
-    RentalOffer,
     SmsCountry,
     SmsService,
 )
@@ -49,7 +46,6 @@ class SmsActivateProvider(BaseSMSProvider):
     """Adapter for https://sms-activate.guru."""
 
     name = "sms_activate"
-    supports_rental = True
 
     def __init__(
         self,
@@ -158,110 +154,6 @@ class SmsActivateProvider(BaseSMSProvider):
             {"action": "setStatus", "id": provider_order_id, "status": STATUS_FINISH}
         )
         return text == "ACCESS_ACTIVATION"
-
-    # -- rentals --------------------------------------------------------
-
-    async def get_rental_countries(self) -> list[SmsCountry]:
-        """Countries available for rental.
-
-        ``getRentServicesAndCountries`` returns the country list alongside the
-        service list, so this asks for the shortest rental and keeps only the
-        countries half.
-        """
-        payload = await self._rent_catalogue(country_id=0, hours=4)
-        countries = payload.get("countries") or {}
-
-        result: list[SmsCountry] = []
-        for key, entry in countries.items():
-            # Some responses key by id with a dict body, others by index.
-            country_id = entry.get("id") if isinstance(entry, dict) else None
-            if country_id is None:
-                country_id = key if str(key).lstrip("-").isdigit() else None
-            if country_id is None:
-                continue
-            name = entry.get("name") or entry.get("rus") if isinstance(entry, dict) else None
-            result.append(SmsCountry(id=int(country_id), name=str(name or country_id)))
-
-        result.sort(key=lambda country: country.name)
-        return result
-
-    async def get_rental_services(self, country_id: int, hours: int) -> list[RentalOffer]:
-        """Rentable services for one country and duration, at the provider's rate.
-
-        The provider prices a rental for the whole period, so ``hours`` is part
-        of the query rather than a multiplier applied afterwards.
-        """
-        payload = await self._rent_catalogue(country_id=country_id, hours=hours)
-        services = payload.get("services") or {}
-
-        offers: list[RentalOffer] = []
-        for code, entry in services.items():
-            if not isinstance(entry, dict):
-                continue
-            offers.append(
-                RentalOffer(
-                    code=str(code),
-                    name=str(entry.get("search_name") or entry.get("name") or code),
-                    cost=self._to_minor(entry.get("cost", 0)),
-                    available=_as_int(entry.get("quant")),
-                )
-            )
-
-        offers.sort(key=lambda offer: offer.cost)
-        return offers
-
-    async def _rent_catalogue(self, country_id: int, hours: int) -> dict:
-        """Shared reader for the rental catalogue endpoint."""
-        payload = await self._json(
-            {
-                "action": "getRentServicesAndCountries",
-                "rent_time": hours,
-                "country": country_id,
-            }
-        )
-        if payload.get("status") == "error":
-            raise self._map_error(str(payload.get("message", "rental catalogue unavailable")))
-        return payload
-
-    async def create_rental(self, service_code: str, country_id: int, hours: int) -> Rental:
-        payload = await self._json(
-            {
-                "action": "getRentNumber",
-                "service": service_code,
-                "rent_time": hours,
-                "country": country_id,
-            },
-            retries=0,
-        )
-        if payload.get("status") != "success":
-            raise self._map_error(str(payload.get("message", "rental failed")))
-
-        phone = payload["phone"]
-        return Rental(
-            provider_order_id=str(phone["id"]),
-            phone=str(phone["number"]),
-            cost=self._to_minor(phone.get("cost", 0)),
-            expires_at=datetime.utcnow() + timedelta(hours=hours),
-        )
-
-    async def get_rental_messages(self, provider_order_id: str) -> list[RentalMessage]:
-        payload = await self._json({"action": "getRentStatus", "id": provider_order_id})
-        if payload.get("status") != "success":
-            return []
-        return [
-            RentalMessage(
-                sender=str(item.get("phoneFrom", "")),
-                text=str(item.get("text", "")),
-                received_at=str(item.get("date", "")),
-            )
-            for item in (payload.get("values") or {}).values()
-        ]
-
-    async def cancel_rental(self, provider_order_id: str) -> bool:
-        payload = await self._json(
-            {"action": "setRentStatus", "id": provider_order_id, "status": 2}
-        )
-        return payload.get("status") == "success"
 
     # -- account --------------------------------------------------------
 

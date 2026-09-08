@@ -52,8 +52,12 @@ def services(
     if show_search:
         builder.row(
             InlineKeyboardButton(
+                text=texts.button("show_all", locale),
+                callback_data=Nav(to="services_all").pack(),
+            ),
+            InlineKeyboardButton(
                 text=texts.button("search", locale), callback_data=Nav(to="buy_search").pack()
-            )
+            ),
         )
 
     for chunk in _chunks(list(page.items), GRID_COLUMNS):
@@ -90,8 +94,12 @@ def countries(
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
+            text=texts.button("show_all", locale),
+            callback_data=Nav(to="countries_all").pack(),
+        ),
+        InlineKeyboardButton(
             text=texts.button("search", locale), callback_data=Nav(to="country_search").pack()
-        )
+        ),
     )
     for chunk in _chunks(list(page.items), GRID_COLUMNS):
         builder.row(

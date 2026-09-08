@@ -1,4 +1,4 @@
-"""Polls activations for their SMS, and rentals for new messages.
+"""Polls activations for their SMS.
 
 Also sweeps orders that were charged for but never reached the provider -- the
 state a crash between the wallet debit and the provider call leaves behind.
@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.core.config import Settings
-from app.core.constants import OrderKind, OrderStatus
+from app.core.constants import OrderKind
 from app.core.logging import get_logger
 from app.providers.base import BaseSMSProvider
 from app.services.notifications import NotificationService
@@ -24,7 +24,7 @@ from app.services.workers.base import (
 logger = get_logger(__name__)
 
 class SmsWorker(BaseWorker):
-    """Polls activations for their SMS, and rentals for new messages."""
+    """Polls activations for their SMS."""
 
     name = "sms_worker"
 
@@ -52,8 +52,7 @@ class SmsWorker(BaseWorker):
 
         async with self._session_factory() as session:
             orders = list(await OrderRepository(session).list_open(OrderKind.ACTIVATION))
-            rentals = list(await OrderRepository(session).list_open(OrderKind.RENTAL))
-            if not orders and not rentals:
+            if not orders:
                 return IDLE_INTERVAL
 
             wallet = WalletService(session)
@@ -65,10 +64,6 @@ class SmsWorker(BaseWorker):
                 if await self._sweep_orphan(service, order):
                     continue
                 await self._poll_activation(service, order)
-            for rental in rentals:
-                if await self._sweep_orphan(service, rental):
-                    continue
-                await self._poll_rental(session, rental)
         return None
 
     async def _sweep_orphan(self, service, order) -> bool:
@@ -117,38 +112,4 @@ class SmsWorker(BaseWorker):
             await service.refund_provider_cancelled(order)
             await self._notifications.notify_user(
                 order.user_id, self._render("sms.cancelled", order=order), essential=True
-            )
-
-    async def _poll_rental(self, session, rental) -> None:
-        if rental.expires_at and rental.expires_at < datetime.utcnow():
-            rental.status = OrderStatus.EXPIRED
-            rental.completed_at = datetime.utcnow()
-            await session.commit()
-            return
-        if not rental.provider_order_id:
-            return
-
-        try:
-            messages = await self._provider.get_rental_messages(rental.provider_order_id)
-        except Exception as exc:
-            logger.warning("rental.poll_failed", order_id=rental.id, error=str(exc))
-            return
-
-        if not messages:
-            return
-
-        # Only forward what we have not forwarded before: the stored text is
-        # the running log, so comparing against it dedupes re-delivered SMS.
-        seen = rental.sms_text or ""
-        fresh = [m for m in messages if m.text not in seen]
-        if not fresh:
-            return
-
-        rental.sms_text = "\n".join([seen, *[m.text for m in fresh]]).strip()
-        await session.commit()
-        for message in fresh:
-            await self._notifications.notify_user(
-                rental.user_id,
-                self._render("rental.message", order=rental, message=message),
-                essential=True,
             )
