@@ -4,7 +4,7 @@ Regression guard. aiogram packs an empty string and unpacks it as ``None``, so
 a ``str`` field with an empty default fails validation on the way back in and
 the update is dropped before any handler sees it -- the button silently does
 nothing. This caught exactly that on Check Payment, SMM search, the settings
-toggle, rental pagination and most of the admin panel.
+toggle and most of the admin panel.
 """
 
 import inspect

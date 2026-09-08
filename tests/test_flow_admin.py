@@ -174,7 +174,7 @@ async def test_maintenance_mode_blocks_users_but_not_admins(admin_harness, harne
     assert "Maintenance" not in admin_harness.text
 
 
-# -- rentals ----------------------------------------------------------------
+# -- broadcasts -------------------------------------------------------------
 
 
 async def test_a_broadcast_is_previewed_before_it_is_sent(admin_harness, session_factory):
