@@ -34,6 +34,11 @@ logger = get_logger(__name__)
 
 MAINTENANCE_KEY = "maintenance_mode"
 
+#: Telegram file id of the payment QR an owner uploaded through the bot.
+#: Stored rather than a file path so the QR can be changed from a phone,
+#: with no server access and no redeploy.
+UPI_QR_FILE_ID_KEY = "upi_qr_file_id"
+
 
 def can(role: AdminRole | None, permission: str) -> bool:
     """Server-side permission check. Callback data never decides this."""
@@ -169,6 +174,29 @@ class AdminService:
         require(role, "maintenance")
         await self._settings.set(MAINTENANCE_KEY, "true" if enabled else "false")
         await self._actions.log(admin_id, role, "maintenance", None, str(enabled))
+        await self._session.commit()
+
+    # -- payment QR -----------------------------------------------------
+
+    async def get_qr_file_id(self) -> str | None:
+        """The uploaded QR, if an owner has set one."""
+        return await self._settings.get(UPI_QR_FILE_ID_KEY)
+
+    async def set_qr_file_id(self, admin_id: int, role: AdminRole, file_id: str) -> None:
+        """Replace the payment QR.
+
+        Gated on ``settings`` -- the owner only. This decides where every
+        user's money goes, so it is the most sensitive change in the panel.
+        """
+        require(role, "settings")
+        await self._settings.set(UPI_QR_FILE_ID_KEY, file_id)
+        await self._actions.log(admin_id, role, "payment_qr_set", None, file_id[:32])
+        await self._session.commit()
+
+    async def clear_qr_file_id(self, admin_id: int, role: AdminRole) -> None:
+        require(role, "settings")
+        await self._settings.set(UPI_QR_FILE_ID_KEY, "")
+        await self._actions.log(admin_id, role, "payment_qr_cleared")
         await self._session.commit()
 
     async def audit_log(self, limit: int = 20):

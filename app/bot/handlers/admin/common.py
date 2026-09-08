@@ -50,6 +50,7 @@ def _panel_keyboard(role: AdminRole):
         ("orders", "📦 Orders", "orders"),
         ("payments", "💳 Payments", "payments"),
         ("promo", "🎟 Promo Codes", "promo"),
+        ("settings", "📲 Payment QR", "qr"),
         ("broadcast", "📢 Broadcast", "broadcast"),
         ("logs", "🧾 Audit Log", "logs"),
     ]

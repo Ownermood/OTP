@@ -27,6 +27,7 @@ auditable money, and no business logic inside a callback handler.
 - 💰 Balance adjustments that always write a transaction and an audit row
 - 🎟 Promo creation accepting either `50` (flat) or `10%` (of next deposit)
 - 💵 Deposit requests reviewed from a channel with Approve / Decline
+- 📲 Payment QR uploaded from inside the bot, no redeploy
 - 🚫 Ban/unban, 🎟 promo management, 📢 rate-limited broadcasts
 - 📡 Live provider/database health, 🔧 maintenance mode, 🧾 audit log
 - Role-based access: `owner`, `admin`, `finance`, `support`, `viewer`
@@ -217,6 +218,16 @@ python -m scripts.read_qr assets/qr.png
 
 It prints the `UPI_ID` and `UPI_PAYEE_NAME` lines to paste into `.env`.
 
+#### Adding your QR from the bot (easiest)
+
+`/admin` → **📲 Payment QR** → **Upload QR** → send the image.
+
+Every deposit screen shows it from the next message on. Nothing to copy to a
+server, nothing to redeploy, and you can change it from your phone.
+
+Owner only — this decides where every user's money goes — and both setting and
+removing it are written to the audit log.
+
 #### Using one QR for every deposit
 
 Put your own image in `assets/` and point at it:
@@ -229,6 +240,9 @@ UPI_QR_IMAGE=assets/qr.png
 When `UPI_QR_IMAGE` is set it is what users see — you branded a code and expect
 everyone to get the same one. `UPI_ID` is still worth setting: it appears as
 copyable text beside the QR for anyone who would rather paste than scan.
+
+An upload made in the admin panel overrides this, so the most recent deliberate
+choice is always the live one.
 
 `assets/` is mounted into the container, so swapping the image needs no
 rebuild.
@@ -246,6 +260,7 @@ the test suite to prove they actually scan.
 
 | Risk | Mechanism |
 | --- | --- |
+| Someone redirecting deposits to their own QR | Changing the payment QR needs the `settings` permission — the owner alone — and is audited |
 | The same payment claimed twice | The UTR is stored as the payment's `invoice_id`, so the unique `(provider, invoice_id)` index rejects it — whoever submits it, in any letter case |
 | A stranger tapping Approve in the channel | The reviewer's permission is resolved from `ADMIN_IDS`/`ADMIN_ROLES`, never from the callback |
 | Two reviewers approving at once | Approval runs through the same idempotent settlement as a gateway payment; the balance moves once |

@@ -84,7 +84,9 @@ async def _send_payment_qr(message: Message, context: Context, amount: int) -> N
         payee=settings.payee_name,
     )
 
-    photo = _qr_photo(settings, amount)
+    # An owner can upload a QR from inside the bot; that is the live one.
+    uploaded = await context.admin.get_qr_file_id()
+    photo = uploaded or _qr_photo(settings, amount)
     if photo is None:
         # Configuration guarantees a QR, but never leave the user staring at a
         # screen with nothing to pay to.
@@ -96,10 +98,11 @@ async def _send_payment_qr(message: Message, context: Context, amount: int) -> N
 
 
 def _qr_photo(settings, amount: int):
-    """Your own QR when you supply one, otherwise a generated one.
+    """The configured QR: your own image when you supply one, else generated.
 
-    A static code is the operator's explicit choice, so it wins: they have
-    branded it and expect every user to see the same image.
+    A static code is the operator's explicit choice, so it wins over a
+    generated one: they have branded it and expect every user to see the same
+    image. An upload made through the admin panel wins over both.
     """
     static_qr = settings.qr_image_path
     if static_qr is not None and static_qr.exists():

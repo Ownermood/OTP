@@ -58,3 +58,4 @@ class AdminStates(StatesGroup):
     promo_code = State()
     promo_amount = State()
     promo_limit = State()
+    uploading_qr = State()

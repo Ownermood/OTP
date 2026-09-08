@@ -866,6 +866,44 @@ admin:
     🎟 Code: <code>{code}</code>
     💰 Bonus: <b>{amount}</b>
     🔢 Limit: {limit}
+  qr_none: |
+    📲 <b>PAYMENT QR</b>
+
+    🏦 UPI ID: <code>{upi_id}</code>
+
+    {divider}
+
+    No QR has been uploaded here.
+    Users currently see: <b>{source}</b>
+
+    <i>Upload one and every deposit screen will show it.</i>
+  qr_current: |
+    📲 <b>PAYMENT QR</b>
+
+    🏦 UPI ID: <code>{upi_id}</code>
+
+    {divider}
+
+    This is what users see on every deposit.
+    Source: <b>{source}</b>
+  qr_upload: |
+    📤 <b>UPLOAD PAYMENT QR</b>
+
+    Send the QR as a <b>photo</b>.
+
+    {divider}
+
+    ⚠️ Check it carefully — this is where every user's money will go.
+    Scan it yourself once before you send it.
+  qr_saved: |
+    ✅ <b>PAYMENT QR UPDATED</b>
+
+    🏦 UPI ID: <code>{upi_id}</code>
+
+    {divider}
+
+    Every deposit screen now shows this QR.
+  qr_needs_photo: "📲 Please send the QR as a photo, not a file or text."
   audit: |
     🧾 <b>AUDIT LOG</b>
 
