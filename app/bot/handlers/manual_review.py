@@ -10,16 +10,66 @@ from __future__ import annotations
 from aiogram import F
 from aiogram.exceptions import TelegramAPIError
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, InlineKeyboardButton, Message
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from app.bot.callbacks import ManualCB
-from app.bot.handlers.common import Context, build_context, toast
+from app.bot.handlers.common import Context, build_context, show, toast
 from app.bot.handlers.manual_payments import _service, router
 from app.bot.states import ManualPaymentStates
 from app.core.exceptions import AccessDeniedError
 from app.core.logging import get_logger
+from app.utils.formatting import format_datetime
 
 logger = get_logger(__name__)
+
+@router.callback_query(ManualCB.filter(F.action == "open"))
+async def open_request(query: CallbackQuery, callback_data: ManualCB, **data):
+    """Show one pending request with its proof, and the two decisions.
+
+    Reached from the admin panel when the review channel is not an option.
+    """
+    context = build_context(data)
+    manual = _service(context)
+    if not manual.can_review(query.from_user.id):
+        raise AccessDeniedError("not a payment reviewer")
+
+    payment = await manual.get(callback_data.payment_id)
+    if payment is None:
+        await toast(query, context.text("errors.order_not_found"), alert=True)
+        return
+
+    caption = context.text(
+        "wallet.manual_review",
+        request_id=payment.id,
+        amount=context.money(payment.amount),
+        utr=payment.invoice_id,
+        user_id=payment.user_id,
+        username="—",
+        name="—",
+        balance=context.money(await context.wallet.get_balance(payment.user_id)),
+        submitted_at=format_datetime(payment.created_at),
+    )
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(
+            text="✅ Approve",
+            callback_data=ManualCB(action="approve", payment_id=payment.id).pack(),
+        ),
+        InlineKeyboardButton(
+            text="❌ Decline",
+            callback_data=ManualCB(action="decline", payment_id=payment.id).pack(),
+        ),
+    )
+
+    await query.answer()
+    if payment.proof_file_id and query.message is not None:
+        await query.message.answer_photo(
+            payment.proof_file_id, caption=caption, reply_markup=builder.as_markup()
+        )
+        return
+    await show(query, caption, builder.as_markup(), force_new=True)
+
 
 @router.callback_query(ManualCB.filter(F.action == "approve"))
 async def approve(query: CallbackQuery, callback_data: ManualCB, **data):

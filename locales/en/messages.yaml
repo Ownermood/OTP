@@ -904,6 +904,43 @@ admin:
 
     Every deposit screen now shows this QR.
   qr_needs_photo: "📲 Please send the QR as a photo, not a file or text."
+  pending_deposits: |
+    ⏳ <b>PENDING DEPOSITS</b>
+
+    {count} request(s) awaiting a decision.
+
+    <i>Tap one to see the proof and decide.</i>
+  pending_deposits_none: |
+    ⏳ <b>PENDING DEPOSITS</b>
+
+    Nothing is waiting. Every request has been decided.
+  backup_ready: |
+    💾 <b>DATABASE BACKUP</b>
+
+    <code>{name}</code>
+    {size}
+
+    {divider}
+
+    ⚠️ This file contains every user's balance and order history.
+    Keep it somewhere private.
+  backup_unsupported: |
+    💾 <b>BACKUP</b>
+
+    Built-in backups cover SQLite only.
+
+    {divider}
+
+    You are on another database, which has its own backup tooling —
+    <code>pg_dump</code> for PostgreSQL. Set that up on the server.
+  backup_too_large: |
+    💾 <b>BACKUP TOO LARGE</b>
+
+    The snapshot is {size}, above Telegram's 50 MB limit for bots.
+
+    {divider}
+
+    Copy the database off the server another way.
   audit: |
     🧾 <b>AUDIT LOG</b>
 

@@ -9,6 +9,7 @@ section modules is what registers their handlers on it.
 """
 
 from app.bot.handlers.admin import (  # noqa: F401  -- imported for registration
+    backup,
     broadcast,
     dashboard,
     payment_qr,

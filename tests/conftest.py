@@ -93,7 +93,7 @@ async def harness(session_factory, settings, monkeypatch):
     from aiogram.fsm.storage.memory import MemoryStorage
 
     from app.bot.handlers import build_router
-    from app.bot.setup import _register_middlewares
+    from app.bot.setup import _register_drain, _register_middlewares
     from app.bot.texts import Texts
     from app.core.config import ROOT_DIR
     from app.services.catalog import CatalogService
@@ -149,7 +149,10 @@ async def harness(session_factory, settings, monkeypatch):
     ):
         module.router._parent_router = None
 
+    # The same registration production uses, so the harness cannot drift from
+    # what actually runs.
     _register_middlewares(dispatcher, settings, session_factory)
+    _register_drain(dispatcher, settings)
     dispatcher.include_router(build_router())
 
     driver = BotHarness(bot, dispatcher, mocked, user_id=555001)

@@ -132,6 +132,18 @@ class Settings(BaseSettings):
     database_url: str = "sqlite+aiosqlite:///data/bot.db"
     locale: str = "en"
     locales_dir: str = "locales"
+    # --- Backups --------------------------------------------------------
+    backup_enabled: bool = True
+    #: Hours between automatic backups. The database is small, so daily is
+    #: cheap; shorten it if deposits are frequent.
+    backup_interval_hours: int = 24
+    #: Where scheduled backups are sent. Defaults to the owner's DM. A private
+    #: channel is better: it survives losing the phone.
+    backup_chat_id: int = 0
+
+    #: How long a shutdown waits for in-flight handlers before cancelling them.
+    #: Long enough for a provider call, short enough not to stall a deploy.
+    shutdown_drain_seconds: float = 15.0
     log_level: str = "INFO"
     log_json: bool = False
     http_timeout: float = 20.0

@@ -51,6 +51,7 @@ def _panel_keyboard(role: AdminRole):
         ("payments", "💳 Payments", "payments"),
         ("promo", "🎟 Promo Codes", "promo"),
         ("settings", "📲 Payment QR", "qr"),
+        ("backup", "💾 Backup", "backup"),
         ("broadcast", "📢 Broadcast", "broadcast"),
         ("logs", "🧾 Audit Log", "logs"),
     ]

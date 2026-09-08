@@ -185,3 +185,77 @@ async def test_text_instead_of_a_screenshot_is_named_not_ignored(manual_harness)
 
 
 # -- confirmations before irreversible actions ------------------------------
+
+
+# -- reviewing from the panel when the channel is not an option -------------
+
+
+async def test_pending_deposits_are_visible_in_the_panel(manual_harness):
+    """Regression: a failed channel post left requests invisible in the DB."""
+    h = manual_harness
+    await _submit_manual(h)
+
+    await h.send("/admin")
+    await h.tap("Payments")
+    await h.tap("Pending deposits")
+
+    assert "PENDING DEPOSITS" in h.text
+    assert "1 request" in h.text
+    assert any("402199881122" in b for b in h.buttons())
+
+
+async def test_an_empty_queue_says_so(manual_harness):
+    h = manual_harness
+    await h.send("/start")
+    await h.send("/admin")
+    await h.tap("Payments")
+    await h.tap("Pending deposits")
+
+    assert "Nothing is waiting" in h.text
+
+
+async def test_a_request_can_be_approved_from_the_panel(manual_harness, session_factory):
+    """The channel post is convenience; the panel is the fallback that works."""
+    from app.services.wallet import WalletService
+
+    h = manual_harness
+    await _submit_manual(h)
+
+    await h.send("/admin")
+    await h.tap("Payments")
+    await h.tap("Pending deposits")
+    await h.tap("402199881122")
+
+    assert "DEPOSIT REQUEST" in h.text
+    assert h.screen.buttons() == ["✅ Approve", "❌ Decline"]
+
+    await h.tap("Approve")
+    async with session_factory() as session:
+        assert await WalletService(session).get_balance(h.user_id) == 50_000
+
+
+async def test_an_approved_request_leaves_the_queue(manual_harness):
+    h = manual_harness
+    await _submit_manual(h)
+
+    approve = h.posted_to(REVIEW_CHANNEL)[0].callback_for("Approve")
+    await h.press(approve)
+
+    await h.send("/admin")
+    await h.tap("Payments")
+    await h.tap("Pending deposits")
+
+    assert "Nothing is waiting" in h.text
+
+
+async def test_a_non_reviewer_cannot_open_a_pending_request(manual_harness, settings):
+    from app.bot.callbacks import ManualCB
+
+    h = manual_harness
+    await _submit_manual(h)
+
+    settings.admin_ids = [999999]  # somebody else entirely
+    settings.admin_roles = {}
+    await h.press(ManualCB(action="open", payment_id=1).pack())
+
+    assert "do not have access" in h.text

@@ -30,6 +30,8 @@ auditable money, and no business logic inside a callback handler.
 - 📲 Payment QR uploaded from inside the bot, no redeploy
 - 🚫 Ban/unban, 🎟 promo management, 📢 rate-limited broadcasts
 - 📡 Live provider/database health, 🔧 maintenance mode, 🧾 audit log
+- ⏳ Pending deposits reviewable from the panel, not only the channel
+- 💾 Database backups on demand and on a schedule
 - Role-based access: `owner`, `admin`, `finance`, `support`, `viewer`
 
 ---
@@ -284,6 +286,55 @@ approving.
 CryptoBot and Telegram Stars are implemented and tested but off by default.
 Turn either on in `.env` if you want it; see
 [Payment setup](#payment-setup).
+
+---
+
+## Backups
+
+The database holds every balance. Losing it means being unable to honour a
+single deposit, so backups are on by default.
+
+- **On demand:** `/admin` → **💾 Backup** sends a snapshot to whoever asked.
+  Owner only — the file contains every user's data — and audited.
+- **Scheduled:** a snapshot goes to `BACKUP_CHAT_ID` every
+  `BACKUP_INTERVAL_HOURS`. Leave the chat id empty and it goes to the owner's
+  DM; a private channel is better, since it survives losing the phone.
+
+Snapshots use SQLite's `VACUUM INTO`, so the bot keeps serving while one is
+taken. Copying the file directly would not be safe: with WAL enabled the copy
+can land mid-transaction, and recent writes live in a separate `-wal` file a
+naive copy leaves behind.
+
+If a backup cannot be delivered — wrong chat id, bot removed from the channel —
+admins are told, once per problem rather than on every attempt. A backup nobody
+receives is the same as no backup.
+
+On PostgreSQL the panel says so plainly rather than pretending to cover it; use
+`pg_dump`.
+
+### Restoring
+
+```bash
+docker compose down
+cp bot-backup-2026-09-08_11-14.sqlite data/bot.db
+docker compose up -d
+```
+
+Run `alembic upgrade head` afterwards if the backup predates a schema change.
+
+---
+
+## Shutdown
+
+`SIGTERM` — what `docker compose down`, a restart or a deploy sends — stops
+polling and then waits up to `SHUTDOWN_DRAIN_SECONDS` for handlers that are
+still running, so a deploy landing mid-purchase does not abandon one between
+the wallet debit and the provider call. `stop_grace_period` in
+`docker-compose.yml` is set above that window.
+
+An abandoned purchase is still recoverable — the SMS worker sweeps orders that
+never reached the provider and refunds them — but draining means the user gets
+their number rather than a refund three minutes later.
 
 ---
 

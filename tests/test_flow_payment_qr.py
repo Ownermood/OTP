@@ -220,3 +220,89 @@ async def test_removing_the_qr_is_audited(owner_harness, session_factory):
         actions = await AdminActionRepository(session).recent()
 
     assert any(a.action == "payment_qr_cleared" for a in actions)
+
+
+# -- backups from the panel -------------------------------------------------
+
+
+async def test_the_owner_can_take_a_backup(owner_harness, tmp_path, settings):
+    """The file is sent to the person who asked, and nowhere else."""
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    from app.database.base import Base
+
+    path = tmp_path / "bot.db"
+    url = f"sqlite+aiosqlite:///{path}"
+    engine = create_async_engine(url)
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+
+    h = owner_harness
+    h.dispatcher.workflow_data["engine"] = engine
+    settings.database_url = url
+
+    await h.send("/start")
+    await h.send("/admin")
+    await h.tap("Backup")
+
+    sent = [s for s in h.session.sent if s.method == "SendDocument"]
+    assert len(sent) == 1
+    assert sent[0].payload["chat_id"] == h.user_id
+    assert "DATABASE BACKUP" in sent[0].payload["caption"]
+    assert "every user's balance" in sent[0].payload["caption"]
+
+    await engine.dispose()
+
+
+async def test_taking_a_backup_is_audited(owner_harness, tmp_path, settings, session_factory):
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    from app.database.base import Base
+    from app.database.repositories import AdminActionRepository
+
+    path = tmp_path / "bot.db"
+    url = f"sqlite+aiosqlite:///{path}"
+    engine = create_async_engine(url)
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+
+    h = owner_harness
+    h.dispatcher.workflow_data["engine"] = engine
+    settings.database_url = url
+
+    await h.send("/start")
+    await h.send("/admin")
+    await h.tap("Backup")
+
+    async with session_factory() as session:
+        actions = await AdminActionRepository(session).recent()
+    assert any(a.action == "backup" for a in actions)
+
+    await engine.dispose()
+
+
+async def test_a_non_owner_cannot_take_a_backup(harness, settings):
+    """The backup is every user's data; only the owner may pull it."""
+    from app.bot.callbacks import AdminCB
+    from app.core.constants import AdminRole
+
+    settings.admin_ids = [111, harness.user_id]
+    settings.admin_roles = {harness.user_id: AdminRole.ADMIN}
+
+    await harness.send("/start")
+    await harness.press(AdminCB(action="backup").pack())
+
+    assert "do not have access" in harness.text
+    assert not [s for s in harness.session.sent if s.method == "SendDocument"]
+
+
+async def test_a_non_sqlite_database_says_so_rather_than_failing(owner_harness, settings):
+    settings.database_url = "postgresql+asyncpg://user:pw@db/bot"
+
+    h = owner_harness
+    await h.send("/start")
+    await h.send("/admin")
+    await h.tap("Backup")
+
+    assert "SQLite only" in h.text
+    assert "pg_dump" in h.text

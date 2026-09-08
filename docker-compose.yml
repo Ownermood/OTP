@@ -3,6 +3,9 @@ services:
     build: .
     restart: unless-stopped
     env_file: .env
+    # SIGTERM is handled, and in-flight purchases are drained before exit;
+    # give that longer than the drain window.
+    stop_grace_period: 30s
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs

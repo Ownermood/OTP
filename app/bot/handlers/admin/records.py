@@ -6,11 +6,12 @@ from aiogram import F
 from aiogram.types import CallbackQuery, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from app.bot.callbacks import AdminCB
+from app.bot.callbacks import AdminCB, ManualCB
 from app.bot.handlers.admin.common import _back_button, _guard, router
 from app.bot.handlers.common import build_context, show
 from app.core.constants import OrderStatus
 from app.core.money import format_money
+from app.services.manual_payments import ManualPaymentService
 from app.utils.formatting import order_icon
 
 
@@ -47,6 +48,45 @@ async def list_orders(query: CallbackQuery, callback_data: AdminCB, **data):
     await show(query, f"📦 <b>ORDERS</b>\n\n{body}", builder.as_markup())
 
 
+@router.callback_query(AdminCB.filter(F.action == "pending"))
+async def pending_deposits(query: CallbackQuery, **data):
+    """UPI requests still awaiting a decision.
+
+    The review channel is the usual place these are handled, but a post can
+    fail -- the bot removed from the channel, the channel deleted, permissions
+    changed. Without this screen those requests sit in the database unseen,
+    with users' money in limbo.
+    """
+    context = build_context(data)
+    _guard(context, "payments")
+
+    manual = ManualPaymentService(context.session, context.payments, context.settings)
+    requests = list(await manual.pending())
+
+    builder = InlineKeyboardBuilder()
+    for payment in requests[:10]:
+        builder.row(
+            InlineKeyboardButton(
+                text=(
+                    f"#{payment.id} · "
+                    f"{format_money(payment.amount, context.settings.currency_symbol)} · "
+                    f"{payment.invoice_id}"
+                ),
+                callback_data=ManualCB(action="open", payment_id=payment.id).pack(),
+            )
+        )
+    builder.row(_back_button())
+
+    await show(
+        query,
+        context.text(
+            "admin.pending_deposits" if requests else "admin.pending_deposits_none",
+            count=len(requests),
+        ),
+        builder.as_markup(),
+    )
+
+
 @router.callback_query(AdminCB.filter(F.action == "payments"))
 async def list_payments(query: CallbackQuery, **data):
     context = build_context(data)
@@ -60,6 +100,11 @@ async def list_payments(query: CallbackQuery, **data):
         for p in payments[:15]
     ]
     builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(
+            text="⏳ Pending deposits", callback_data=AdminCB(action="pending").pack()
+        )
+    )
     builder.row(_back_button())
     body = "\n".join(lines) or context.text("common.empty")
     await show(query, f"💳 <b>PAYMENTS</b>\n\n{body}", builder.as_markup())
