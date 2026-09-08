@@ -122,6 +122,32 @@ alembic downgrade -1
 Set `SMS_ACTIVATE_API_TOKEN` and keep the account funded. The bot alerts admins
 when the provider balance drops below `SMS_PROVIDER_LOW_BALANCE_THRESHOLD`.
 
+#### Using a different provider
+
+Many providers clone the SMS-Activate protocol, in which case only the base URL
+changes:
+
+```env
+SMS_PROVIDER=sms_activate
+SMS_ACTIVATE_BASE_URL=https://api.your-provider.com/
+SMS_ACTIVATE_API_TOKEN=your-key
+```
+
+To find out whether yours is one of them, run this where the provider is
+reachable:
+
+```bash
+python -m scripts.probe_sms_provider https://api.your-provider.com YOUR_KEY
+```
+
+It makes read-only calls only — balance and catalogue, never a purchase — and
+reports one of three things: the existing adapter works as-is, the endpoint
+path differs by a line, or the provider speaks something else and needs its own
+adapter. In the last case it prints what that adapter would be written against.
+
+Writing one means implementing eight methods against the provider's API; see
+[Adding a provider](#adding-a-provider). Nothing else in the bot changes.
+
 ### SMM panel setup
 
 ```env
