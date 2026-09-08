@@ -87,6 +87,16 @@ class SmmCB(CallbackData, prefix="smm"):
     page: int = 1
 
 
+class TransferCB(CallbackData, prefix="trf"):
+    """Confirm a balance transfer.
+
+    Its own prefix rather than a shared confirm token: the buy router owns
+    ConfirmCB and would consume a transfer's token before this ever saw it.
+    """
+
+    token: str
+
+
 class ManualCB(CallbackData, prefix="man"):
     """Approve or decline a manual deposit from the review channel.
 

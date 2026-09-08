@@ -39,7 +39,12 @@ class Settlement:
     payment: Payment
     #: False when this was a replay and the balance did not move.
     credited: bool
+    #: The user's balance including any promo bonus paid alongside the deposit.
     balance_after: int
+    #: Percent-promo bonus credited on top of the deposit, if one was armed.
+    promo_bonus: int = 0
+    #: Commission paid to the inviter, if the depositor was referred.
+    referral_commission: int = 0
 
 
 class PaymentService:
@@ -139,11 +144,17 @@ class PaymentService:
         payment.paid_at = datetime.utcnow()
         await self._session.commit()
 
+        bonus = 0
+        commission = 0
         if change.applied:
             # Both payouts are keyed on this payment, so a replayed settlement
             # that somehow reaches here still pays each of them once.
-            await self._referrals.pay_commission(payment.user_id, payment.amount, payment.id)
-            await self._promo.apply_deposit_bonus(payment.user_id, payment.amount, payment.id)
+            commission = await self._referrals.pay_commission(
+                payment.user_id, payment.amount, payment.id
+            )
+            bonus = await self._promo.apply_deposit_bonus(
+                payment.user_id, payment.amount, payment.id
+            )
             await self._session.commit()
 
         logger.info(
@@ -153,7 +164,15 @@ class PaymentService:
             amount=payment.amount,
             credited=change.applied,
         )
-        return Settlement(payment, change.applied, change.balance_after)
+        # Report the balance *after* any promo bonus, not the mid-way figure:
+        # the user would otherwise be told a number that is already wrong.
+        return Settlement(
+            payment,
+            change.applied,
+            change.balance_after + bonus,
+            promo_bonus=bonus,
+            referral_commission=commission,
+        )
 
     async def mark_failed(self, payment: Payment, status: PaymentStatus) -> None:
         payment.status = status
@@ -170,6 +189,10 @@ class PaymentService:
 
     async def list_for_user(self, user_id: int):
         return await self._payments.list_for_user(user_id)
+
+    async def inviter_of(self, user_id: int) -> int | None:
+        """Who invited this user, so an earned commission can be announced."""
+        return await self._referrals.inviter_of(user_id)
 
     async def _balance(self, payment: Payment) -> int:
         return await self._wallet.get_balance(payment.user_id)

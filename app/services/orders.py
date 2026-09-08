@@ -209,23 +209,50 @@ class OrderService:
     # -- lifecycle ------------------------------------------------------
 
     async def cancel(self, order_id: int, user_id: int) -> Order:
-        """Cancel an activation the user owns and refund it, exactly once."""
+        """Cancel an SMS order the user owns and refund it, exactly once.
+
+        The release call is chosen by order kind. Sending a rental id or an SMM
+        panel id to ``cancel_activation`` would release the wrong thing
+        upstream while still refunding the user, so the kind is checked here
+        rather than trusted from whichever keyboard produced the callback.
+        """
         order = await self._orders.get_owned(order_id, user_id)
         if order is None:
             raise OrderNotFoundError(f"order {order_id}")
+        if OrderKind(order.kind) is OrderKind.SMM:
+            # SMM delivery has already started at the panel; there is nothing
+            # to release, and refunding a delivered order is a straight loss.
+            raise ValidationError("SMM orders cannot be cancelled")
         if OrderStatus(order.status).is_final:
             raise DuplicateOperationError("order already closed")
 
         if order.provider_order_id:
             try:
-                await self._provider.cancel_activation(order.provider_order_id)
-            except ProviderError as exc:
+                if OrderKind(order.kind) is OrderKind.RENTAL:
+                    await self._provider.cancel_rental(order.provider_order_id)
+                else:
+                    await self._provider.cancel_activation(order.provider_order_id)
+            except (ProviderError, NotImplementedError) as exc:
                 # The refund still happens: we charged the user, so we own the risk.
                 logger.warning("order.cancel_upstream_failed", order_id=order.id, error=str(exc))
 
-        await self._refund_once(order, OrderStatus.CANCELLED, "activation cancelled")
+        await self._refund_once(order, OrderStatus.CANCELLED, "cancelled by user")
         await self._session.commit()
         return order
+
+    async def fail_orphan(self, order: Order) -> None:
+        """Close out an order that was charged for but never reached the provider.
+
+        A crash between the wallet debit and the provider call leaves an order
+        PENDING with no provider id and no expiry, so nothing else would ever
+        resolve it and the user stays charged. The sweep in the SMS worker
+        hands those here.
+        """
+        if OrderStatus(order.status).is_final or order.provider_order_id:
+            return
+        await self._refund_once(order, OrderStatus.FAILED, "never reached the provider")
+        await self._session.commit()
+        logger.warning("order.orphan_refunded", order_id=order.id, user_id=order.user_id)
 
     async def mark_sms_received(self, order: Order, code: str | None, text: str | None) -> None:
         """Record the SMS and close the order out successfully."""

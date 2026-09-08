@@ -170,3 +170,61 @@ async def test_a_settled_payment_is_never_re_credited(session, payments, provide
     await session.refresh(payment)
     assert payment.status == PaymentStatus.PAID
     assert (await wallet.get_balance(user.id)) == 60_000
+
+
+# -- what the user is told --------------------------------------------------
+
+
+async def test_the_deposit_notice_reports_the_balance_after_a_promo_bonus(
+    session, payments, provider, user, wallet
+):
+    """Regression: the user was told a balance that the promo bonus had moved."""
+    from app.services.promo import PromoService
+
+    promo = PromoService(session, wallet)
+    await promo.create(
+        code="BOOST10",
+        amount=0,
+        percent=10,
+        max_activations=5,
+        expires_at=None,
+        min_deposit=0,
+        created_by=1,
+    )
+    await promo.redeem(user.id, "BOOST10")
+
+    payments._promo = promo  # the same instance the service would build
+    payment = await payments.create_invoice(user.id, provider.name, 50_000)
+    settlement = await payments.settle(provider.name, payment.invoice_id)
+
+    real_balance = await wallet.get_balance(user.id)
+    assert settlement.promo_bonus == 5_000
+    assert settlement.balance_after == real_balance == 65_000
+
+
+async def test_a_settlement_reports_the_commission_it_paid(
+    session, payments, provider, user, wallet, settings
+):
+    """So the inviter can be told they earned, instead of it happening silently."""
+    from app.database.models import User
+    from app.services.referrals import ReferralService
+
+    session.add(User(id=5005, username="inviter", balance=0))
+    await session.commit()
+    referrals = ReferralService(session, wallet, settings)
+    await referrals.link(5005, user.id)
+    await session.commit()
+
+    payment = await payments.create_invoice(user.id, provider.name, 10_000)
+    settlement = await payments.settle(provider.name, payment.invoice_id)
+
+    assert settlement.referral_commission == 1_000
+    assert await payments.inviter_of(user.id) == 5005
+
+
+async def test_no_bonus_reported_when_none_was_paid(payments, provider, user):
+    payment = await payments.create_invoice(user.id, provider.name, 50_000)
+    settlement = await payments.settle(provider.name, payment.invoice_id)
+
+    assert settlement.promo_bonus == 0
+    assert settlement.referral_commission == 0

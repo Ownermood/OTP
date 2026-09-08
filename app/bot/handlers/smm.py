@@ -95,7 +95,13 @@ async def search_services(message: Message, state: FSMContext, **data):
         message,
         context.text("buy.search_results", query=query_text, count=len(matches)),
         keyboards.smm_services(
-            context.texts, context.locale, page, "other", context.settings.currency_symbol
+            context.texts,
+            context.locale,
+            page,
+            # Search spans every platform, so paging and Back belong to the
+            # panel root rather than to any one category.
+            category=None,
+            currency=context.settings.currency_symbol,
         ),
     )
 

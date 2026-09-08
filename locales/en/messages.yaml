@@ -6,7 +6,6 @@
 common:
   divider: "━━━━━━━━━━━━━━"
   loading: "⏳ Loading…"
-  cancelled: "🚫 Cancelled."
   done: "✅ Done."
   empty: "Nothing here yet."
 
@@ -37,13 +36,11 @@ buttons:
   transfer: "💸 Transfer"
   settings: "⚙️ Settings"
   support: "🆘 Contact Support"
-  faq: "📖 FAQ"
   share: "📤 Share Link"
   details: "📦 Details"
   pay: "💳 Pay Now"
   check_payment: "🔄 Check Payment"
   recent: "🕘 Recently Used"
-  popular: "🔥 Popular"
 
 start:
   welcome: |
@@ -63,12 +60,6 @@ start:
     {divider}
 
     What would you like to do?
-
-menu:
-  services: |
-    🛍 <b>SERVICES</b>
-
-    Choose what you need:
 
 buy:
   select_service: |
@@ -158,6 +149,12 @@ sms:
     🚫 <b>ACTIVATION CANCELLED</b>
 
     Order <code>#{order_id}</code> was cancelled by the provider.
+
+    ↩️ <b>{price}</b> has been refunded to your balance.
+  failed: |
+    ❌ <b>ORDER FAILED</b>
+
+    Order <code>#{order_id}</code> could not be completed.
 
     ↩️ <b>{price}</b> has been refunded to your balance.
   cancel_confirm: |
@@ -506,7 +503,6 @@ promo:
     🎟 Code: <code>{code}</code>
     ➕ Bonus: <b>{amount}</b>
     💳 New balance: <b>{balance}</b>
-  invalid: "❌ Invalid or expired promo code."
   armed: |
     🎉 <b>PROMO ACTIVATED</b>
 
@@ -538,6 +534,12 @@ referral:
 
     🔗 <b>Your link:</b>
     <code>{link}</code>
+  earned: |
+    🎁 <b>REFERRAL REWARD</b>
+
+    ➕ <b>{amount}</b> earned from an invited user's deposit.
+
+    <i>Check 🎁 Referral for your totals.</i>
   history: |
     📜 <b>REFERRAL HISTORY</b>
 
@@ -658,12 +660,6 @@ help:
     🔐 <b>PRIVACY POLICY</b>
 
     {privacy}
-  support: |
-    🆘 <b>SUPPORT</b>
-
-    Need help? Our team can assist you.
-
-    ⏱ Average response time: {response_time}
 
 policies:
   refund: |

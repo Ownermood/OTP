@@ -178,13 +178,6 @@ class OrderRepository(BaseRepository):
         )
         return result.scalar_one_or_none()
 
-    async def get_by_provider_id(self, provider: str, provider_order_id: str) -> Order | None:
-        result = await self.session.execute(
-            select(Order).where(
-                Order.provider == provider, Order.provider_order_id == provider_order_id
-            )
-        )
-        return result.scalar_one_or_none()
 
     async def list_for_user(
         self, user_id: int, kind: OrderKind | None = None, limit: int = 200
@@ -306,16 +299,6 @@ class OrderRepository(BaseRepository):
                 break
         return unique
 
-    async def popular_services(self, limit: int = 8) -> Sequence[str]:
-        since = datetime.utcnow() - timedelta(days=30)
-        result = await self.session.execute(
-            select(Order.service_code)
-            .where(Order.created_at >= since, Order.kind == OrderKind.ACTIVATION)
-            .group_by(Order.service_code)
-            .order_by(func.count(Order.id).desc())
-            .limit(limit)
-        )
-        return result.scalars().all()
 
 
 class TransactionRepository(BaseRepository):
@@ -478,15 +461,6 @@ class PaymentRepository(BaseRepository):
             or 0
         )
 
-    async def count_failed_since(self, since: datetime) -> int:
-        return int(
-            await self.session.scalar(
-                select(func.count(Payment.id)).where(
-                    Payment.status == PaymentStatus.FAILED, Payment.created_at >= since
-                )
-            )
-            or 0
-        )
 
 
 class FavoriteRepository(BaseRepository):
@@ -596,11 +570,6 @@ class PromoRepository(BaseRepository):
     async def get(self, promo_id: int) -> PromoCode | None:
         return await self.session.get(PromoCode, promo_id)
 
-    async def list_active(self) -> Sequence[PromoCode]:
-        result = await self.session.execute(
-            select(PromoCode).where(PromoCode.is_active.is_(True)).order_by(PromoCode.created_at.desc())
-        )
-        return result.scalars().all()
 
     async def list_all(self) -> Sequence[PromoCode]:
         result = await self.session.execute(

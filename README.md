@@ -12,7 +12,7 @@ auditable money, and no business logic inside a callback handler.
 - 🛍 Buy a number — service search, country search, live prices and availability
 - ⏳ Rent a number — real per-duration provider rates, preset or custom
 - 📈 SMM panel — Instagram, Telegram, YouTube, TikTok and more, with order tracking
-- 📦 Order history with receipts, plus refresh and cancel on live orders
+- 📦 Order history with receipts, plus refresh and cancel on live SMS orders
 - ⭐ Favourites — saved service+country pairs, re-priced live
 - 💳 Wallet — deposits, filterable transaction history, promo codes, optional transfers
 - 💵 UPI / bank deposits reviewed by a human before any balance moves
@@ -198,6 +198,9 @@ What the flow guarantees:
 Every decision writes an audit row naming the reviewer, the amount and the UTR,
 and the user is messaged either way — a decline carries the reviewer's reason.
 
+Balance transfers and broadcasts are also confirmed before they happen: both
+are irreversible, so neither fires straight off a typed message.
+
 ---
 
 ## Running in production
@@ -284,6 +287,8 @@ adjustment.
 | Deposit-percentage promo paid twice | `promo:<id>:payment:<payment_id>` key, and the promo is disarmed once honoured |
 | Money taken but never credited | Invoices are polled past their expiry for `PAYMENT_GRACE_HOURS`, and an abandoned invoice the gateway later confirms is still settled — `PAID` is the only terminal state |
 | A manual deposit approved twice, or by a stranger | Terminal statuses, server-side reviewer permission, and a unique UTR per payment |
+| A charge with nothing to show for it | An order that never reached the provider — a crash between the debit and the call — is swept and refunded by the SMS worker |
+| A refund on a delivered SMM order | SMM orders have no cancel path; the release call is chosen by order kind, never by the keyboard |
 | Concurrent duplicates racing past a check | Unique index on `transactions.idempotency_key`, applied inside a SAVEPOINT |
 
 Every one of these has a test in `tests/`.

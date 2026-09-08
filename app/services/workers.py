@@ -14,7 +14,7 @@ backs off when there is nothing to do -- controlled polling, not hammering.
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from aiogram import Bot
 from sqlalchemy.ext.asyncio import async_sessionmaker
@@ -30,6 +30,11 @@ logger = get_logger(__name__)
 
 #: When nothing is in flight, sleep this long instead of the tight interval.
 IDLE_INTERVAL = 30
+
+#: How long an order may sit without a provider id before it is treated as
+#: orphaned. Comfortably longer than a provider call, so a purchase in flight
+#: is never swept out from under itself.
+ORPHAN_GRACE_SECONDS = 180
 
 
 class BaseWorker:
@@ -111,10 +116,33 @@ class SmsWorker(BaseWorker):
             )
 
             for order in orders:
+                if await self._sweep_orphan(service, order):
+                    continue
                 await self._poll_activation(service, order)
             for rental in rentals:
+                if await self._sweep_orphan(service, rental):
+                    continue
                 await self._poll_rental(session, rental)
         return None
+
+    async def _sweep_orphan(self, service, order) -> bool:
+        """Refund an order that was charged for but never reached the provider.
+
+        A crash between the wallet debit and the provider call leaves the order
+        with no provider id and no expiry, so no other path would ever resolve
+        it and the user stays charged for nothing. True when handled here.
+        """
+        if order.provider_order_id:
+            return False
+        if order.created_at > datetime.utcnow() - timedelta(seconds=ORPHAN_GRACE_SECONDS):
+            # Still young enough that a purchase may be mid-flight right now.
+            return False
+
+        await service.fail_orphan(order)
+        await self._notifications.notify_user(
+            order.user_id, self._render("sms.failed", order=order), essential=True
+        )
+        return True
 
     async def _poll_activation(self, service, order) -> None:
         if order.expires_at and order.expires_at < datetime.utcnow():
@@ -248,14 +276,37 @@ class PaymentWorker(BaseWorker):
                 continue
             settlement = await payments.settle(name, payment.invoice_id)
             if settlement and settlement.credited:
+                await self._announce_settlement(payments, payment, settlement)
+
+
+    async def _announce_settlement(self, payments, payment, settlement) -> None:
+        """Tell the depositor, and anyone who earned from the deposit."""
+        await self._notifications.notify_user(
+            payment.user_id,
+            self._render(
+                "wallet.success", amount=payment.amount, balance=settlement.balance_after
+            ),
+            essential=True,
+        )
+        if settlement.promo_bonus:
+            await self._notifications.notify_user(
+                payment.user_id,
+                self._render(
+                    "promo.deposit_bonus",
+                    amount=settlement.promo_bonus,
+                    balance=settlement.balance_after,
+                ),
+                essential=True,
+            )
+        if settlement.referral_commission:
+            # The inviter earned money and would otherwise never be told.
+            inviter_id = await payments.inviter_of(payment.user_id)
+            if inviter_id is not None:
                 await self._notifications.notify_user(
-                    payment.user_id,
+                    inviter_id,
                     self._render(
-                        "payment.success",
-                        amount=payment.amount,
-                        balance=settlement.balance_after,
+                        "referral.earned", amount=settlement.referral_commission
                     ),
-                    essential=True,
                 )
 
 

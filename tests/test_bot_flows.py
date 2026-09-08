@@ -925,3 +925,143 @@ async def test_text_instead_of_a_screenshot_is_named_not_ignored(manual_harness)
 
     await h.send("here is my payment, trust me")
     assert "send the screenshot as a photo" in h.text.lower()
+
+
+# -- confirmations before irreversible actions ------------------------------
+
+
+async def test_a_transfer_asks_before_moving_money(harness, session_factory, settings):
+    """Regression: typing an amount used to send the money immediately."""
+    from app.database.models import User
+    from app.services.wallet import WalletService
+
+    settings.transfer_enabled = True
+    await harness.send("/start")
+    await _fund(session_factory, harness.user_id, 50_000)
+
+    async with session_factory() as session:
+        session.add(User(id=606060, username="receiver", balance=0))
+        await session.commit()
+
+    await harness.send("/start")
+    await harness.tap("Balance")
+    await harness.tap("Transfer")
+    await harness.send("@receiver")
+    await harness.send("100")
+
+    # Quoted, not sent.
+    assert "CONFIRM TRANSFER" in harness.text
+    assert "₹100.00" in harness.text
+    async with session_factory() as session:
+        assert await WalletService(session).get_balance(harness.user_id) == 50_000
+
+    await harness.tap("Confirm")
+    screens = [screen.text for screen in harness.session.screens]
+    assert any("TRANSFER SENT" in text for text in screens)
+    # The recipient is told as well.
+    assert any("BALANCE RECEIVED" in text for text in screens)
+    async with session_factory() as session:
+        wallet = WalletService(session)
+        assert await wallet.get_balance(harness.user_id) == 40_000
+        assert await wallet.get_balance(606060) == 10_000
+
+
+async def test_a_confirmed_transfer_cannot_be_sent_twice(harness, session_factory, settings):
+    from app.database.models import User
+    from app.services.wallet import WalletService
+
+    settings.transfer_enabled = True
+    await harness.send("/start")
+    await _fund(session_factory, harness.user_id, 50_000)
+    async with session_factory() as session:
+        session.add(User(id=606061, username="receiver2", balance=0))
+        await session.commit()
+
+    await harness.send("/start")
+    await harness.tap("Balance")
+    await harness.tap("Transfer")
+    await harness.send("@receiver2")
+    await harness.send("100")
+    confirm = harness.screen.callback_for("Confirm")
+
+    await harness.press(confirm)
+    harness.forget_last_tap()
+    await harness.press(confirm)
+
+    async with session_factory() as session:
+        assert await WalletService(session).get_balance(harness.user_id) == 40_000
+
+
+async def test_a_broadcast_is_previewed_before_it_is_sent(admin_harness, session_factory):
+    """Regression: a typed message went to every user with no confirmation."""
+    h = admin_harness
+    await h.send("/start")
+    await h.send("/admin")
+    await h.tap("Broadcast")
+    await h.tap("All users")
+
+    await h.send("<b>Scheduled maintenance tonight</b>")
+
+    assert "CONFIRM BROADCAST" in h.text
+    assert "Scheduled maintenance tonight" in h.text
+    assert "Send to 1" in " ".join(h.buttons())
+    # Nothing delivered yet: the only messages so far are this admin's own screens.
+    assert not any("Scheduled maintenance" in s.text for s in h.session.screens[:-1])
+
+    await h.tap("Send to")
+    assert "BROADCAST FINISHED" in h.text
+    assert "Delivered: <b>1</b>" in h.text
+
+
+async def test_cancelling_a_broadcast_sends_nothing(admin_harness):
+    h = admin_harness
+    await h.send("/start")
+    await h.send("/admin")
+    await h.tap("Broadcast")
+    await h.tap("All users")
+    await h.send("oops wrong text")
+
+    await h.tap("Cancel")
+    assert "ADMIN PANEL" in h.text
+
+
+# -- SMM orders are not cancellable -----------------------------------------
+
+
+async def test_an_smm_order_offers_no_cancel_button(harness, session_factory):
+    """It is already being delivered; refunding it would be a straight loss."""
+    h = harness
+    await h.send("/start")
+    await _fund(session_factory, h.user_id, 200_000)
+    await h.tap("SMM Panel")
+    await h.tap("Instagram")
+    await h.tap("Instagram Followers")
+    await h.send("https://instagram.com/example")
+    await h.send("500")
+    await h.tap("Confirm")
+
+    await h.send("/start")
+    await h.tap("Orders")
+    await h.tap("SMM")
+    await h.tap("#1")
+
+    buttons = " ".join(h.buttons())
+    assert "Refresh" in buttons
+    assert "Cancel" not in buttons
+
+
+async def test_an_activation_still_offers_cancel(harness, session_factory):
+    h = harness
+    await h.send("/start")
+    await _fund(session_factory, h.user_id, 10_000)
+    await h.tap("Buy Number")
+    await h.tap("WhatsApp")
+    await h.tap("India")
+    await h.tap("Confirm")
+
+    await h.send("/start")
+    await h.tap("Orders")
+    await h.tap("SMS Activations")
+    await h.tap("#1")
+
+    assert "Cancel" in " ".join(h.buttons())

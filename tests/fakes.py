@@ -31,6 +31,7 @@ class FakeSmsProvider(BaseSMSProvider):
         self.cost = cost
         self.created = 0
         self.cancelled: list[str] = []
+        self.rentals_cancelled: list[str] = []
         self.finished: list[str] = []
         self.fail_next = False
         self.status = ActivationStatus(state="waiting")
@@ -86,6 +87,10 @@ class FakeSmsProvider(BaseSMSProvider):
             cost=self.cost,
             expires_at=datetime.utcnow() + timedelta(hours=hours),
         )
+
+    async def cancel_rental(self, provider_order_id: str) -> bool:
+        self.rentals_cancelled.append(provider_order_id)
+        return True
 
     async def get_balance(self) -> int:
         return 500_000

@@ -229,14 +229,111 @@ async def test_rental_country_lookup(provider, pricing, settings):
     assert await catalog.find_rental_country(999) is None
 
 
-async def test_rental_service_lookup_is_scoped_to_country_and_duration(
-    provider, pricing, settings
+# -- cancellation routes to the right upstream call -------------------------
+
+
+async def test_cancelling_an_activation_releases_the_activation(orders, user, provider):
+    result = await _buy(orders, user.id)
+    await orders.cancel(result.order.id, user.id)
+
+    assert provider.cancelled == ["prov-1"]
+    assert provider.rentals_cancelled == []
+
+
+async def test_cancelling_a_rental_releases_the_rental_not_an_activation(
+    orders, user, provider
 ):
-    from app.services.catalog import CatalogService
+    """Regression: a rental id sent to cancel_activation releases the wrong thing."""
+    result = await orders.purchase_rental(
+        user_id=user.id,
+        service_code="full",
+        service_name="Full rent",
+        country_id=22,
+        country_name="India",
+        hours=24,
+        quoted_price=2_000,
+    )
 
-    catalog = CatalogService(provider, pricing, settings)
-    found = await catalog.find_rental_service(22, 24, "wa")
+    await orders.cancel(result.order.id, user.id)
 
-    assert found is not None
-    assert found.price == 52_800
-    assert await catalog.find_rental_service(22, 24, "nope") is None
+    assert provider.rentals_cancelled == ["rent-1"]
+    assert provider.cancelled == []
+
+
+async def test_an_smm_order_cannot_be_cancelled_through_the_sms_service(
+    session, orders, wallet, settings, zero_fee_pricing, user, provider
+):
+    """Regression: this refunded a delivering order and poked the SMS provider."""
+    from app.core.exceptions import ValidationError
+    from app.services.smm import SmmService
+    from tests.fakes import FakeSmmProvider
+
+    settings.smm_markup_percent = 0
+    smm = SmmService(session, FakeSmmProvider(), zero_fee_pricing, wallet, settings)
+    purchase = await smm.create_order(user.id, "101", "https://x.test/a", 100, 1_000)
+    balance_before = await wallet.get_balance(user.id)
+
+    with pytest.raises(ValidationError):
+        await orders.cancel(purchase.order.id, user.id)
+
+    assert provider.cancelled == []
+    assert await wallet.get_balance(user.id) == balance_before
+
+
+# -- orders charged for but never sent upstream -----------------------------
+
+
+async def _charged_but_unsent(session, wallet, user_id: int, price: int = 1_100):
+    """Exactly the state a crash between the debit and the provider call leaves."""
+    from app.core.constants import OrderKind, OrderStatus, TransactionType
+    from app.database.repositories import OrderRepository
+
+    order = await OrderRepository(session).create(
+        user_id=user_id,
+        kind=OrderKind.ACTIVATION,
+        status=OrderStatus.PENDING,
+        provider="fake_sms",
+        service_code="wa",
+        service_name="WhatsApp",
+        country_id=22,
+        country_name="India",
+        price=price,
+    )
+    await wallet.debit(
+        user_id, price, TransactionType.PURCHASE, f"purchase:order:{order.id}"
+    )
+    await session.commit()
+    return order
+
+
+async def test_an_order_that_never_reached_the_provider_is_refunded(
+    session, orders, wallet, user
+):
+    """A crash between the debit and the provider call must not keep the money."""
+    order = await _charged_but_unsent(session, wallet, user.id)
+    assert await wallet.get_balance(user.id) == 8_900
+
+    await orders.fail_orphan(order)
+
+    assert order.status == OrderStatus.FAILED
+    assert await wallet.get_balance(user.id) == 10_000
+
+
+async def test_an_orphan_is_refunded_only_once(session, orders, wallet, user):
+    order = await _charged_but_unsent(session, wallet, user.id)
+
+    await orders.fail_orphan(order)
+    await orders.fail_orphan(order)
+
+    assert await wallet.get_balance(user.id) == 10_000
+
+
+async def test_a_real_order_is_never_treated_as_an_orphan(orders, user, wallet):
+    """fail_orphan must refuse anything that did reach the provider."""
+    result = await _buy(orders, user.id)
+    balance = await wallet.get_balance(user.id)
+
+    await orders.fail_orphan(result.order)
+
+    assert result.order.status == OrderStatus.PROCESSING
+    assert await wallet.get_balance(user.id) == balance

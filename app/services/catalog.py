@@ -127,17 +127,6 @@ class CatalogService:
         offers = await self._provider.get_rental_services(country_id, hours)
         return [PricedRental(offer, self._pricing.quote(offer.cost).total) for offer in offers]
 
-    async def find_rental_service(
-        self, country_id: int, hours: int, service_code: str
-    ) -> PricedRental | None:
-        return next(
-            (
-                priced
-                for priced in await self.rental_services(country_id, hours)
-                if priced.offer.code == service_code
-            ),
-            None,
-        )
 
     def invalidate(self) -> None:
         """Drop every cached catalogue. Used by the admin 'refresh' action."""

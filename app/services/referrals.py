@@ -84,6 +84,9 @@ class ReferralService:
             )
         return commission if change.applied else 0
 
+    async def inviter_of(self, user_id: int) -> int | None:
+        return await self._referrals.get_inviter(user_id)
+
     async def stats(self, user_id: int) -> ReferralStats:
         user = await self._users.get(user_id)
         return ReferralStats(

@@ -12,7 +12,7 @@ from aiogram.types import (
 )
 
 from app.bot import keyboards
-from app.bot.callbacks import Nav, PaymentCB, WalletCB
+from app.bot.callbacks import Nav, PaymentCB, TransferCB, WalletCB
 from app.bot.handlers.common import Context, build_context, show, toast
 from app.bot.states import PaymentStates, PromoStates, TransferStates
 from app.core.constants import PaymentStatus, TransactionType
@@ -334,19 +334,51 @@ async def enter_transfer_user(message: Message, state: FSMContext, **data):
 
 
 @router.message(TransferStates.entering_amount)
-async def do_transfer(message: Message, state: FSMContext, **data):
+async def confirm_transfer(message: Message, state: FSMContext, **data):
+    """Quote the transfer. Money moves only on the confirmation below."""
     context = build_context(data)
     amount = parse_amount(message.text or "")
     if amount is None:
         raise ValidationError("unparseable amount")
 
-    username = (await state.get_data()).get("recipient", "")
-    await state.clear()
-    recipient = await context.users.transfer(message.from_user.id, username, amount)
-    balance = await context.wallet.get_balance(message.from_user.id)
+    stored = await state.get_data()
+    username = stored.get("recipient", "")
+    if not username:
+        await state.clear()
+        raise ValidationError("transfer expired")
 
+    # Single-use token, so a double-tapped confirm cannot send twice.
+    token = context.tokens.issue(
+        message.from_user.id, kind="transfer", username=username, amount=amount
+    )
+    await state.clear()
     await show(
         message,
+        context.text(
+            "wallet.transfer_confirm", username=username, amount=context.money(amount)
+        ),
+        keyboards.confirm_or_cancel(
+            context.texts, context.locale, TransferCB(token=token).pack(), "wallet"
+        ),
+    )
+
+
+@router.callback_query(TransferCB.filter())
+async def do_transfer(query: CallbackQuery, callback_data: TransferCB, **data):
+    """Perform a confirmed transfer. The token is single-use, so one tap counts."""
+    context = build_context(data)
+    payload = context.tokens.consume(callback_data.token, query.from_user.id)
+    if payload is None:
+        await toast(query, context.text("errors.duplicate_operation"), alert=True)
+        return
+
+    username = payload["username"]
+    amount = payload["amount"]
+    recipient = await context.users.transfer(query.from_user.id, username, amount)
+    balance = await context.wallet.get_balance(query.from_user.id)
+
+    await show(
+        query,
         context.text(
             "wallet.transfer_done",
             amount=context.money(amount),

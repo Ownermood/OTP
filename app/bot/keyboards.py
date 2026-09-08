@@ -732,7 +732,7 @@ def smm_categories(
 
 
 def smm_services(
-    texts: Texts, locale: str | None, page: Page, category: str, currency: str
+    texts: Texts, locale: str | None, page: Page, category: str | None, currency: str
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     for service in page.items:
@@ -745,11 +745,12 @@ def smm_services(
                 callback_data=SmmCB(action="service", value=service.service_id).pack(),
             )
         )
-    nav = _nav_row(
-        texts, page, lambda p: SmmCB(action="category", value=category, page=p).pack(), locale
-    )
-    if len(nav) > 1:
-        builder.row(*nav)
+    if category is not None:
+        nav = _nav_row(
+            texts, page, lambda p: SmmCB(action="category", value=category, page=p).pack(), locale
+        )
+        if len(nav) > 1:
+            builder.row(*nav)
     builder.row(
         InlineKeyboardButton(
             text=texts.button("back", locale), callback_data=Nav(to="smm").pack()
@@ -779,21 +780,30 @@ def smm_order(texts: Texts, locale: str | None, order_id: int) -> InlineKeyboard
 def order_detail(
     texts: Texts, locale: str | None, order, back_kind: str
 ) -> InlineKeyboardMarkup:
-    """Controls for one order; cancel only shows while the order is still open."""
-    from app.core.constants import OrderStatus
+    """Controls for one order.
+
+    Cancel shows only while an SMS order is still open. SMM orders are already
+    being delivered by the panel, so there is nothing to cancel and refunding
+    one would be a straight loss.
+    """
+    from app.core.constants import OrderKind, OrderStatus
 
     builder = InlineKeyboardBuilder()
     if not OrderStatus(order.status).is_final:
-        builder.row(
+        controls = [
             InlineKeyboardButton(
                 text=texts.button("refresh", locale),
                 callback_data=OrderCB(action="refresh", order_id=order.id).pack(),
-            ),
-            InlineKeyboardButton(
-                text=texts.button("cancel", locale),
-                callback_data=OrderCB(action="cancel", order_id=order.id).pack(),
-            ),
-        )
+            )
+        ]
+        if OrderKind(order.kind) is not OrderKind.SMM:
+            controls.append(
+                InlineKeyboardButton(
+                    text=texts.button("cancel", locale),
+                    callback_data=OrderCB(action="cancel", order_id=order.id).pack(),
+                )
+            )
+        builder.row(*controls)
     builder.row(
         InlineKeyboardButton(
             text=texts.button("back", locale),

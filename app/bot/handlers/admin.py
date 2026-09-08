@@ -16,6 +16,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from app.bot.callbacks import AdminCB, Nav
 from app.bot.handlers.common import Context, build_context, show, toast
 from app.bot.states import AdminStates
+from app.bot.texts import Safe
 from app.core.constants import AdminRole, OrderStatus
 from app.core.exceptions import AccessDeniedError, ValidationError
 from app.core.logging import get_logger
@@ -581,21 +582,58 @@ async def broadcast_prompt(query: CallbackQuery, callback_data: AdminCB, state: 
 
 
 @router.message(AdminStates.broadcast_text)
-async def broadcast_send(message: Message, state: FSMContext, **data):
-    """Send immediately. The notification service handles Telegram's rate limits."""
+async def broadcast_preview(message: Message, state: FSMContext, **data):
+    """Show exactly what will go out, and to how many people, before it does.
+
+    A broadcast cannot be recalled, so it is never sent straight off a typed
+    message.
+    """
+    context = build_context(data)
+    _guard(context, "broadcast")
+
+    stored = await state.get_data()
+    recipients = [int(user_id) for user_id in stored.get("recipients", [])]
+    await state.update_data(broadcast_body=message.html_text)
+
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(
+            text=f"✅ Send to {len(recipients)}",
+            callback_data=AdminCB(action="broadcast_send").pack(),
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(text="❌ Cancel", callback_data=AdminCB(action="panel").pack())
+    )
+    await show(
+        message,
+        context.text(
+            "admin.broadcast_confirm", count=len(recipients), preview=Safe(message.html_text)
+        ),
+        builder.as_markup(),
+    )
+
+
+@router.callback_query(AdminCB.filter(F.action == "broadcast_send"))
+async def broadcast_send(query: CallbackQuery, state: FSMContext, **data):
+    """Send the previewed broadcast. Rate limiting lives in the notifier."""
     context = build_context(data)
     role = _guard(context, "broadcast")
 
     stored = await state.get_data()
     await state.clear()
     recipients = [int(user_id) for user_id in stored.get("recipients", [])]
+    body = stored.get("broadcast_body", "")
+    if not body or not recipients:
+        await toast(query, context.text("errors.expired_action"), alert=True)
+        return
 
-    delivered, failed = await data["notifications"].broadcast(recipients, message.html_text)
+    delivered, failed = await data["notifications"].broadcast(recipients, body)
     await context.admin.log(
-        message.from_user.id, role, "broadcast", stored.get("audience"), f"{delivered} delivered"
+        query.from_user.id, role, "broadcast", stored.get("audience"), f"{delivered} delivered"
     )
     await show(
-        message,
+        query,
         context.text("admin.broadcast_done", delivered=delivered, failed=failed),
         _back_only(),
     )
