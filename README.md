@@ -94,6 +94,7 @@ The settings that shape the business:
 | `PAYMENT_GRACE_HOURS` | How long past expiry an unreported invoice is still checked |
 | `MANUAL_PAYMENT_ENABLED` | UPI deposits reviewed by a human (on by default) |
 | `UPI_ID` | Your VPA; the QR is generated from it with the amount filled in |
+| `UPI_QR_IMAGE` | Your own QR image, used instead of a generated one |
 | `MANUAL_PAYMENT_CHANNEL_ID` | Channel where deposit requests are posted for review |
 | `ADMIN_ROLES` | Per-admin roles, e.g. `123:finance,456:support` |
 
@@ -200,9 +201,32 @@ all open it with the amount already filled in. That closes the most common
 reason a deposit gets declined — the payer sending a different sum from the one
 they asked the bot for.
 
-Set `UPI_QR_IMAGE` instead if you would rather use your own printed QR. A static
-code carries no amount, so the payer types it themselves and the mismatch is
-back; prefer `UPI_ID` unless you have a reason not to.
+#### Finding your UPI id
+
+It is the `name@bank` handle your payment app shows on its profile or "receive
+money" screen — for example `9876543210@paytm` or `yourshop@okaxis`.
+
+If you have a QR image but not the handle, read it out of the image:
+
+```bash
+python -m scripts.read_qr assets/qr.png
+```
+
+It prints the `UPI_ID` and `UPI_PAYEE_NAME` lines to paste into `.env`.
+
+#### Using your own QR instead
+
+Put the image in `assets/` and point at it:
+
+```env
+UPI_ID=
+UPI_QR_IMAGE=assets/qr.png
+```
+
+`assets/` is mounted into the container, so swapping the image does not need a
+rebuild. The caption then states the amount in words, because a static code
+cannot carry one — which is the mismatch `UPI_ID` exists to avoid. Prefer
+`UPI_ID` unless you have a reason not to.
 
 `UPI_ID` is validated at startup, and the generated codes are decoded back in
 the test suite to prove they actually scan.

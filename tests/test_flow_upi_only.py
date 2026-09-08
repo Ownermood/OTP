@@ -142,3 +142,82 @@ async def test_upi_without_an_id_or_a_qr_is_refused(monkeypatch):
 
     with pytest.raises(Exception, match="UPI_ID"):
         Settings()
+
+
+# -- using your own QR image instead of a generated one ---------------------
+
+
+@pytest.fixture
+def static_qr(tmp_path, upi_harness, settings):
+    """An operator who supplies their own QR rather than a UPI id."""
+    from decimal import Decimal
+
+    from app.utils.qr import build_upi_link, render_qr
+
+    image = tmp_path / "my-qr.png"
+    image.write_bytes(render_qr(build_upi_link("myshop@okaxis", "My Shop", Decimal("1"))))
+
+    settings.upi_id = ""
+    settings.upi_qr_image = str(image)
+    return upi_harness
+
+
+async def test_a_static_qr_is_sent_when_no_upi_id_is_set(static_qr):
+    h = static_qr
+    await h.send("/start")
+    await h.tap("Balance")
+    await h.tap("Add Balance")
+    await h.tap("UPI / QR")
+    await h.send("500")
+
+    qr = h.session.sent[-1]
+    assert qr.method == "SendPhoto"
+    assert "SCAN TO PAY" in qr.text
+    # A static code carries no amount, so the caption has to state it plainly.
+    assert "exactly ₹500.00" in qr.text
+
+
+async def test_a_static_qr_deposit_still_completes(static_qr, session_factory):
+    from app.services.wallet import WalletService
+
+    h = static_qr
+    await h.send("/start")
+    await h.tap("Balance")
+    await h.tap("Add Balance")
+    await h.tap("UPI / QR")
+    await h.send("500")
+    await h.send("402199881122")
+    await h.send_photo("proof")
+
+    assert "AWAITING APPROVAL" in h.text
+    await h.press(h.posted_to(REVIEW_CHANNEL)[0].callback_for("Approve"))
+
+    async with session_factory() as session:
+        assert await WalletService(session).get_balance(h.user_id) == 50_000
+
+
+async def test_a_missing_qr_file_does_not_strand_the_user(upi_harness, settings):
+    """A path that points at nothing must still let the deposit continue."""
+    settings.upi_id = ""
+    settings.upi_qr_image = "/nonexistent/qr.png"
+
+    h = upi_harness
+    await h.send("/start")
+    await h.tap("Balance")
+    await h.tap("Add Balance")
+    await h.tap("UPI / QR")
+    await h.send("500")
+
+    # Falls back to asking for the reference rather than sending nothing.
+    assert "TRANSACTION REFERENCE" in h.text
+
+
+async def test_a_relative_qr_path_resolves_against_the_project(monkeypatch):
+    from app.core.config import ROOT_DIR, Settings
+
+    monkeypatch.setenv("MANUAL_PAYMENT_ENABLED", "true")
+    monkeypatch.setenv("MANUAL_PAYMENT_CHANNEL_ID", "-1001234567890")
+    monkeypatch.setenv("UPI_ID", "")
+    monkeypatch.setenv("UPI_QR_IMAGE", "assets/qr.png")
+
+    assert Settings().qr_image_path == ROOT_DIR / "assets" / "qr.png"

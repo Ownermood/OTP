@@ -1,0 +1,4 @@
+# Your own QR is yours, not the repository's.
+*.png
+*.jpg
+*.jpeg

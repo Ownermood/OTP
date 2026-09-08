@@ -7,6 +7,8 @@ services:
       - ./data:/app/data
       - ./logs:/app/logs
       - ./locales:/app/locales:ro
+      # Your own QR image, if UPI_QR_IMAGE points at one.
+      - ./assets:/app/assets:ro
     # Uncomment together with the db service below to run on Postgres.
     # depends_on:
     #   db:
