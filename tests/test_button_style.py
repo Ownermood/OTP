@@ -142,8 +142,8 @@ def test_buttons_render_without_configured_icons(texts):
 def test_icons_parse_from_the_environment(monkeypatch):
     from app.core.config import Settings
 
-    monkeypatch.setenv("BUTTON_ICONS", "buy:5350513667437440642, wallet:5352640560718949874")
-    assert Settings().button_icons == {
+    monkeypatch.setenv("CUSTOM_EMOJI", "buy:5350513667437440642, wallet:5352640560718949874")
+    assert Settings().custom_emoji == {
         "buy": "5350513667437440642",
         "wallet": "5352640560718949874",
     }
@@ -152,8 +152,8 @@ def test_icons_parse_from_the_environment(monkeypatch):
 def test_a_malformed_icon_setting_is_refused_at_startup(monkeypatch):
     from app.core.config import Settings
 
-    monkeypatch.setenv("BUTTON_ICONS", "buy")
-    with pytest.raises(Exception, match="BUTTON_ICONS"):
+    monkeypatch.setenv("CUSTOM_EMOJI", "buy")
+    with pytest.raises(Exception, match="CUSTOM_EMOJI"):
         Settings()
 
 
@@ -161,6 +161,76 @@ def test_a_non_numeric_emoji_id_is_refused(monkeypatch):
     """Telegram ids are numeric; a pasted emoji character would silently fail."""
     from app.core.config import Settings
 
-    monkeypatch.setenv("BUTTON_ICONS", "buy:🛍")
+    monkeypatch.setenv("CUSTOM_EMOJI", "buy:🛍")
     with pytest.raises(Exception, match="custom emoji id"):
         Settings()
+
+
+# -- custom emoji in message text ------------------------------------------
+
+
+def test_a_marker_becomes_a_real_tag_when_configured():
+    texts = Texts(ROOT_DIR / "locales", "en", {"buy": "5350513667437440642"})
+
+    rendered = texts.expand_emoji('<tg-emoji id="buy">🛍</tg-emoji> Buy')
+
+    assert rendered == '<tg-emoji emoji-id="5350513667437440642">🛍</tg-emoji> Buy'
+
+
+def test_a_marker_falls_back_to_the_plain_character(texts):
+    """A bot with no custom emoji configured must still read correctly."""
+    assert texts.expand_emoji('<tg-emoji id="buy">🛍</tg-emoji> Buy') == "🛍 Buy"
+
+
+def test_an_unconfigured_name_falls_back_too():
+    texts = Texts(ROOT_DIR / "locales", "en", {"buy": "5350513667437440642"})
+
+    assert texts.expand_emoji('<tg-emoji id="other">❓</tg-emoji>') == "❓"
+
+
+def test_several_markers_in_one_message_are_all_expanded():
+    texts = Texts(ROOT_DIR / "locales", "en", {"a": "111", "b": "222"})
+
+    rendered = texts.expand_emoji('<tg-emoji id="a">1</tg-emoji> and <tg-emoji id="b">2</tg-emoji>')
+
+    assert rendered == (
+        '<tg-emoji emoji-id="111">1</tg-emoji> and <tg-emoji emoji-id="222">2</tg-emoji>'
+    )
+
+
+def test_text_without_markers_is_untouched(texts):
+    assert texts.expand_emoji("plain <b>text</b>") == "plain <b>text</b>"
+
+
+def test_the_welcome_screen_expands_its_markers():
+    """End to end through get(), not just the helper."""
+    texts = Texts(ROOT_DIR / "locales", "en", {"welcome": "5350513667437440642"})
+
+    rendered = texts.get("start.welcome", service_name="Shop", smm_line="")
+
+    assert '<tg-emoji emoji-id="5350513667437440642">⚡️</tg-emoji>' in rendered
+
+
+def test_the_welcome_screen_reads_fine_without_them(texts):
+    rendered = texts.get("start.welcome", service_name="Shop", smm_line="")
+
+    assert "tg-emoji" not in rendered
+    assert "⚡️" in rendered
+
+
+def test_no_locale_string_leaves_a_raw_marker_behind(texts):
+    """Every marker in every locale file must expand or fall back, never leak."""
+    import yaml
+
+    def walk(node):
+        if isinstance(node, dict):
+            for value in node.values():
+                yield from walk(value)
+        elif isinstance(node, str):
+            yield node
+
+    with open(ROOT_DIR / "locales" / "en" / "messages.yaml", encoding="utf-8") as handle:
+        catalogue = yaml.safe_load(handle)
+
+    for raw in walk(catalogue):
+        assert 'id="' not in texts.expand_emoji(raw), f"marker survived: {raw[:60]}"

@@ -43,12 +43,15 @@ class Settings(BaseSettings):
     admin_roles: Annotated[dict[int, AdminRole], NoDecode] = Field(default_factory=dict)
 
     # --- Branding / business -------------------------------------------
-    #: Optional custom (premium) emoji for named buttons, e.g.
-    #: ``buy:5350513667437440642,wallet:5352640560718949874``. Telegram accepts
-    #: these from a bot that owns a Fragment username, or from any bot whose
-    #: owner has Telegram Premium when the message goes to a private, group or
-    #: supergroup chat. Buttons render normally without them.
-    button_icons: Annotated[dict[str, str], NoDecode] = Field(default_factory=dict)
+    #: Custom (premium) emoji, mapping a name to a Telegram emoji id, e.g.
+    #: ``buy:5350513667437440642,wallet:5352640560718949874``. Names are used
+    #: both on buttons and inside locale text via ``<tg-emoji id="buy">``.
+    #:
+    #: Telegram accepts these from a bot that owns a Fragment username, or from
+    #: any bot whose owner has Telegram Premium, in private, group and
+    #: supergroup chats. Everything renders normally without them, falling back
+    #: to the plain character.
+    custom_emoji: Annotated[dict[str, str], NoDecode] = Field(default_factory=dict)
     service_name: str = "SMS Marketplace"
     currency_symbol: str = "₹"
     currency_code: str = "INR"
@@ -177,18 +180,18 @@ class Settings(BaseSettings):
             roles[int(raw_id)] = AdminRole(raw_role.strip().lower())
         return roles
 
-    @field_validator("button_icons", mode="before")
+    @field_validator("custom_emoji", mode="before")
     @classmethod
-    def _parse_button_icons(cls, value: object) -> object:
+    def _parse_custom_emoji(cls, value: object) -> object:
         if not isinstance(value, str):
             return value
         icons: dict[str, str] = {}
         for part in _split_csv(value):
             if ":" not in part:
-                raise ValueError("BUTTON_ICONS must look like 'buy:5350513667437440642,...'")
+                raise ValueError("CUSTOM_EMOJI must look like 'buy:5350513667437440642,...'")
             name, _, emoji_id = part.partition(":")
             if not emoji_id.strip().isdigit():
-                raise ValueError(f"BUTTON_ICONS: {emoji_id!r} is not a custom emoji id")
+                raise ValueError(f"CUSTOM_EMOJI: {emoji_id!r} is not a custom emoji id")
             icons[name.strip()] = emoji_id.strip()
         return icons
 

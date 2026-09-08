@@ -11,6 +11,7 @@ are passed through :class:`Safe`.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +25,15 @@ logger = get_logger(__name__)
 
 class Safe(str):
     """Marks a value as already-safe HTML, exempt from escaping."""
+
+
+#: A custom-emoji placeholder in a locale file:
+#: ``<tg-emoji id="buy">🛍</tg-emoji>``. The id is a *name* configured in
+#: CUSTOM_EMOJI, not a Telegram id, so the same locale file works for every
+#: operator. The tag's contents are the fallback shown to anyone whose client
+#: will not render the custom emoji, and are what is left behind when no id is
+#: configured at all.
+EMOJI_MARKER = re.compile(r'<tg-emoji id="([a-z_]+)">(.*?)</tg-emoji>', re.S)
 
 
 class Texts:
@@ -64,7 +74,24 @@ class Texts:
         if template is None:
             logger.warning("texts.missing_key", key=key, locale=locale)
             return key
-        return self._format(template, values)
+        return self.expand_emoji(self._format(template, values))
+
+    def expand_emoji(self, text: str) -> str:
+        """Turn locale emoji placeholders into real custom-emoji tags.
+
+        Configured names become ``<tg-emoji emoji-id="...">`` for Telegram to
+        render; unconfigured ones collapse to the plain fallback character, so
+        a bot with no custom emoji set up still reads correctly.
+        """
+
+        def replace(match: re.Match[str]) -> str:
+            name, fallback = match.group(1), match.group(2)
+            emoji_id = self._icons.get(name)
+            if not emoji_id:
+                return fallback
+            return f'<tg-emoji emoji-id="{emoji_id}">{fallback}</tg-emoji>'
+
+        return EMOJI_MARKER.sub(replace, text)
 
     def button(self, name: str, locale: str | None = None, **values: Any) -> str:
         return self.get(f"buttons.{name}", locale, **values)

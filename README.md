@@ -552,17 +552,37 @@ This needs aiogram 3.31+; older versions silently drop the field.
 
 ### Custom (premium) emoji
 
-Buttons can carry a custom emoji before their label:
+Map a name to a Telegram emoji id once, then use that name in both places:
 
 ```env
-BUTTON_ICONS=buy:5350513667437440642,wallet:5352640560718949874
+CUSTOM_EMOJI=buy:5350513667437440642,wallet:5352640560718949874,welcome:5368324170671202286
 ```
 
-Telegram accepts these from a bot that owns a Fragment username, or from any
-bot whose owner has Telegram Premium when the message goes to a private, group
-or supergroup chat. Buttons render normally without them, so this is entirely
-optional. Ids are validated at startup — a pasted emoji character rather than
-an id is refused rather than silently ignored.
+**On buttons** — `icon_custom_emoji_id` is filled in automatically for any
+button whose name is configured.
+
+**In message text** — put a marker in the locale file:
+
+```yaml
+welcome: |
+  <tg-emoji id="welcome">⚡️</tg-emoji> <b>WELCOME TO {service_name}</b>
+```
+
+The `id` is the *name* from `CUSTOM_EMOJI`, not a Telegram id, so the same
+locale file works for every operator. The character inside the tag is the
+fallback: it is what anyone whose client will not render the custom emoji sees,
+and what is left behind entirely when no id is configured. A test walks every
+string in every locale file to prove no marker can leak through unexpanded.
+
+Telegram accepts custom emoji from a bot that owns a Fragment username, or from
+any bot whose owner has Telegram Premium, in private, group and supergroup
+chats. The bot itself does not need Premium.
+
+**Finding an id:** send the emoji to your bot from a Premium account and read
+`custom_emoji_id` off the message entity, or copy one from a public pack.
+
+Ids are validated at startup, so pasting the emoji character instead of its id
+is refused rather than silently ignored.
 
 ## Troubleshooting
 

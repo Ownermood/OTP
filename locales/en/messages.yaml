@@ -45,9 +45,9 @@ buttons:
 
 start:
   welcome: |
-    ⚡️ <b>WELCOME TO {service_name}</b>
+    <tg-emoji id="welcome">⚡️</tg-emoji> <b>WELCOME TO {service_name}</b>
 
-    📱 Virtual Numbers & SMS Verification
+    <tg-emoji id="buy">📱</tg-emoji> Virtual Numbers & SMS Verification
     {smm_line}
     {divider}
 
@@ -114,7 +114,7 @@ buy:
 
     Ready to continue?
   purchased: |
-    ✅ <b>NUMBER PURCHASED</b>
+    <tg-emoji id="success">✅</tg-emoji> <b>NUMBER PURCHASED</b>
 
     📱 <b>Number:</b>
     <code>{phone}</code>
@@ -331,7 +331,7 @@ wallet:
 
     <i>Send the amount and I will show you the QR.</i>
   manual_qr: |
-    💳 <b>UPI DEPOSIT</b>
+    <tg-emoji id="wallet">💳</tg-emoji> <b>UPI DEPOSIT</b>
 
     💰 Amount: <b>{amount}</b>
     🏦 UPI ID: <code>{upi_id}</code>
