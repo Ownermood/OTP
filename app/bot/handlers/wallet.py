@@ -27,7 +27,11 @@ router = Router(name="wallet")
 logger = get_logger(__name__)
 
 #: Display names for the payment methods, keyed by provider name.
-METHOD_LABELS = {"cryptobot": "🩵 Crypto", "telegram_stars": "⭐ Telegram Stars"}
+METHOD_LABELS = {
+    "cryptobot": "🩵 Crypto",
+    "telegram_stars": "⭐ Telegram Stars",
+    "manual": "💵 UPI / Bank Transfer",
+}
 
 #: History filter -> transaction types.
 HISTORY_FILTERS = {
@@ -70,6 +74,9 @@ async def choose_method(query: CallbackQuery, **data):
     methods = {
         name: METHOD_LABELS.get(name, name.title()) for name in context.payments.available
     }
+    if context.settings.manual_payment_enabled:
+        # Reviewed by a human rather than a gateway, so it has no provider entry.
+        methods["manual"] = METHOD_LABELS["manual"]
     await show(
         query,
         context.text("wallet.select_method"),
@@ -77,7 +84,10 @@ async def choose_method(query: CallbackQuery, **data):
     )
 
 
-@router.callback_query(PaymentCB.filter(F.action == "method"))
+# Explicitly not "manual": that method has no gateway and is handled in
+# app/bot/handlers/manual_payments.py. Stated here so the two do not depend on
+# router registration order.
+@router.callback_query(PaymentCB.filter((F.action == "method") & (F.provider != "manual")))
 async def prompt_amount(query: CallbackQuery, callback_data: PaymentCB, state: FSMContext, **data):
     context = build_context(data)
     context.payments.provider(callback_data.provider)  # validates it is enabled

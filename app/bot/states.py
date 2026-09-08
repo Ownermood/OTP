@@ -24,6 +24,13 @@ class PaymentStates(StatesGroup):
     entering_amount = State()
 
 
+class ManualPaymentStates(StatesGroup):
+    entering_amount = State()
+    entering_utr = State()
+    entering_proof = State()
+    declining = State()
+
+
 class PromoStates(StatesGroup):
     entering_code = State()
 

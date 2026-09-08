@@ -6,7 +6,17 @@ owns the shared confirm callback that the rental and SMM flows delegate into.
 
 from aiogram import Router
 
-from app.bot.handlers import admin, buy, orders, profile, rental, smm, start, wallet
+from app.bot.handlers import (
+    admin,
+    buy,
+    manual_payments,
+    orders,
+    profile,
+    rental,
+    smm,
+    start,
+    wallet,
+)
 
 
 def build_router() -> Router:
@@ -18,6 +28,7 @@ def build_router() -> Router:
         rental.router,
         orders.router,
         wallet.router,
+        manual_payments.router,
         smm.router,
         profile.router,
     )

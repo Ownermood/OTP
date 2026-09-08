@@ -15,6 +15,7 @@ auditable money, and no business logic inside a callback handler.
 - 📦 Order history with receipts, plus refresh and cancel on live orders
 - ⭐ Favourites — saved service+country pairs, re-priced live
 - 💳 Wallet — deposits, filterable transaction history, promo codes, optional transfers
+- 💵 UPI / bank deposits reviewed by a human before any balance moves
 - 🎟 Promo codes — a flat bonus, or a percentage credited on the next deposit
 - 🎁 Referral programme with commission on invitees' deposits
 - 👤 Profile with lifetime statistics, notification and language settings
@@ -25,6 +26,7 @@ auditable money, and no business logic inside a callback handler.
 - 🔍 One search box across users, orders, provider order ids, payments and phone numbers
 - 💰 Balance adjustments that always write a transaction and an audit row
 - 🎟 Promo creation accepting either `50` (flat) or `10%` (of next deposit)
+- 💵 Deposit requests reviewed from a channel with Approve / Decline
 - 🚫 Ban/unban, 🎟 promo management, 📢 rate-limited broadcasts
 - 📡 Live provider/database health, 🔧 maintenance mode, 🧾 audit log
 - Role-based access: `owner`, `admin`, `finance`, `support`, `viewer`
@@ -86,6 +88,8 @@ The settings that shape the business:
 | `REFERRAL_PERCENT` | Commission paid to an inviter on each deposit |
 | `MIN_DEPOSIT` / `MAX_DEPOSIT` | Deposit bounds |
 | `PAYMENT_GRACE_HOURS` | How long past expiry an unreported invoice is still checked |
+| `MANUAL_PAYMENT_ENABLED` | UPI / bank deposits reviewed by a human |
+| `MANUAL_PAYMENT_CHANNEL_ID` | Channel where deposit requests are posted for review |
 | `ADMIN_ROLES` | Per-admin roles, e.g. `123:finance,456:support` |
 
 ### Database
@@ -137,6 +141,9 @@ the menu.
 
 ### Payment setup
 
+**Manual (UPI / bank)** — see [Manual deposits](#manual-deposits-upi--bank-transfer)
+below. No gateway account needed; a human approves each request.
+
 **Telegram Stars** — set `TELEGRAM_STARS_ENABLED=true` and the Stars-per-unit
 rate. Checkout happens inside Telegram; no API key is required.
 
@@ -149,6 +156,47 @@ CRYPTOBOT_API_TOKEN=12345:AAxxxx
 CRYPTOBOT_ASSET=USDT
 CRYPTOBOT_RATE=90
 ```
+
+---
+
+## Manual deposits (UPI / bank transfer)
+
+For payments made outside the bot. The user pays, then submits the amount, the
+transaction reference (UTR) and a screenshot; the request is posted to a review
+channel with Approve and Decline buttons. **No balance moves until a reviewer
+approves it.**
+
+```env
+MANUAL_PAYMENT_ENABLED=true
+MANUAL_PAYMENT_CHANNEL_ID=-1001234567890
+MANUAL_PAYMENT_MAX_PENDING=3
+```
+
+Setup:
+
+1. Create a private channel and add the bot as an administrator with permission
+   to post.
+2. Put its id in `MANUAL_PAYMENT_CHANNEL_ID` (it starts with `-100`).
+3. Reviewers must be listed in `ADMIN_IDS`, or given a role in `ADMIN_ROLES`
+   that carries the `balance` permission — `owner`, `admin` or `finance`.
+   Approving creates money, so `support` and `viewer` can read the payment
+   list but cannot credit from it.
+4. Put your own UPI id and bank details in `locales/en/messages.yaml` under
+   `wallet.manual_details`.
+
+What the flow guarantees:
+
+| Risk | Mechanism |
+| --- | --- |
+| The same payment claimed twice | The UTR is stored as the payment's `invoice_id`, so the unique `(provider, invoice_id)` index rejects it — whoever submits it, in any letter case |
+| A stranger tapping Approve in the channel | The reviewer's permission is resolved from `ADMIN_IDS`/`ADMIN_ROLES`, never from the callback |
+| Two reviewers approving at once | Approval runs through the same idempotent settlement as a gateway payment; the balance moves once |
+| A decision being reversed later | `PAID` and `FAILED` are terminal — an approved request cannot then be declined, or the reverse |
+| A user flooding the queue | `MANUAL_PAYMENT_MAX_PENDING` open requests per user |
+| A request going stale | Manual requests are never auto-expired; they wait for a human |
+
+Every decision writes an audit row naming the reviewer, the amount and the UTR,
+and the user is messaged either way — a decline carries the reviewer's reason.
 
 ---
 
@@ -235,6 +283,7 @@ adjustment.
 | Promo redeemed twice | Unique `(promo_id, user_id)` plus a `promo:<id>:<user>` key |
 | Deposit-percentage promo paid twice | `promo:<id>:payment:<payment_id>` key, and the promo is disarmed once honoured |
 | Money taken but never credited | Invoices are polled past their expiry for `PAYMENT_GRACE_HOURS`, and an abandoned invoice the gateway later confirms is still settled — `PAID` is the only terminal state |
+| A manual deposit approved twice, or by a stranger | Terminal statuses, server-side reviewer permission, and a unique UTR per payment |
 | Concurrent duplicates racing past a check | Unique index on `transactions.idempotency_key`, applied inside a SAVEPOINT |
 
 Every one of these has a test in `tests/`.

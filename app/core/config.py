@@ -88,6 +88,14 @@ class Settings(BaseSettings):
     telegram_stars_rate: Decimal = Decimal("2.15")
     telegram_stars_max: int = 2500
 
+    # --- Manual (UPI / bank transfer) deposits --------------------------
+    manual_payment_enabled: bool = False
+    #: Channel where requests are posted for review. The bot must be an admin
+    #: there, and reviewers must be listed in ADMIN_IDS / ADMIN_ROLES.
+    manual_payment_channel_id: int = 0
+    #: How many un-reviewed requests one user may have open at a time.
+    manual_payment_max_pending: int = 3
+
     payment_timeout_minutes: int = 10
     #: How long past its expiry an unreported invoice is still polled, so a
     #: payment made during a restart is not written off with the money taken.
@@ -168,7 +176,13 @@ class Settings(BaseSettings):
             raise ValueError("MIN_RENTAL_HOURS cannot exceed MAX_RENTAL_HOURS")
         if self.min_deposit > self.max_deposit:
             raise ValueError("MIN_DEPOSIT cannot exceed MAX_DEPOSIT")
-        if not any((self.cryptobot_enabled, self.telegram_stars_enabled)):
+        if self.manual_payment_enabled and not self.manual_payment_channel_id:
+            raise ValueError(
+                "MANUAL_PAYMENT_CHANNEL_ID is required when MANUAL_PAYMENT_ENABLED=true"
+            )
+        if not any(
+            (self.cryptobot_enabled, self.telegram_stars_enabled, self.manual_payment_enabled)
+        ):
             raise ValueError("Enable at least one payment provider")
         return self
 

@@ -20,6 +20,7 @@ from aiogram.types import (
     Chat,
     InlineKeyboardMarkup,
     Message,
+    PhotoSize,
     Update,
 )
 from aiogram.types import (
@@ -68,7 +69,7 @@ class MockedSession(BaseSession):
         data = method.model_dump(exclude_none=True)
         record = Sent(
             method=name,
-            text=str(data.get("text", "")),
+            text=str(data.get("text") or data.get("caption") or ""),
             markup=getattr(method, "reply_markup", None),
             payload=data,
         )
@@ -78,7 +79,7 @@ class MockedSession(BaseSession):
             return TgUser(
                 id=BOT_ID, is_bot=True, first_name="Test Bot", username=BOT_USERNAME
             )
-        if name in ("SendMessage", "EditMessageText", "SendInvoice"):
+        if name in ("SendMessage", "EditMessageText", "SendInvoice", "SendPhoto"):
             self._message_id += 1
             return Message(
                 message_id=self._message_id,
@@ -178,6 +179,37 @@ class BotHarness:
             self.bot, Update(update_id=self._update_id, message=message)
         )
         return self.screen
+
+    async def send_photo(self, file_id: str = "proof-file-id") -> Sent | None:
+        """Deliver a photo from the user, as a payment screenshot would arrive."""
+        self.session.clear()
+        self._update_id += 1
+        self._message_id += 1
+        message = Message(
+            message_id=self._message_id,
+            date=datetime.now(),
+            chat=Chat(id=self.user_id, type="private"),
+            from_user=self._user(),
+            photo=[
+                PhotoSize(
+                    file_id=f"{file_id}-small",
+                    file_unique_id="u1",
+                    width=90,
+                    height=160,
+                ),
+                PhotoSize(
+                    file_id=file_id, file_unique_id="u2", width=720, height=1280
+                ),
+            ],
+        )
+        await self.dispatcher.feed_update(
+            self.bot, Update(update_id=self._update_id, message=message)
+        )
+        return self.session.screens[-1] if self.session.screens else None
+
+    def posted_to(self, chat_id: int) -> list[Sent]:
+        """Everything the bot sent to a specific chat -- the review channel."""
+        return [s for s in self.session.sent if s.payload.get("chat_id") == chat_id]
 
     async def tap(self, label_fragment: str) -> Sent | None:
         """Press the first button whose label contains ``label_fragment``."""

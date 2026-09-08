@@ -1,0 +1,294 @@
+"""Manual deposits: user submission, and review from the channel.
+
+The user pays by UPI or bank transfer, then sends the amount, the transaction
+reference and a screenshot. The request goes to the review channel, and the
+balance moves only when a reviewer taps Approve.
+"""
+
+from __future__ import annotations
+
+from aiogram import F, Router
+from aiogram.exceptions import TelegramAPIError
+from aiogram.fsm.context import FSMContext
+from aiogram.types import CallbackQuery, InlineKeyboardButton, Message
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+
+from app.bot import keyboards
+from app.bot.callbacks import ManualCB, PaymentCB
+from app.bot.handlers.common import Context, build_context, show, toast
+from app.bot.states import ManualPaymentStates
+from app.bot.texts import Safe
+from app.core.exceptions import AccessDeniedError, ValidationError
+from app.core.logging import get_logger
+from app.core.money import parse_amount, to_minor
+from app.services.manual_payments import PROVIDER, ManualPaymentService, normalise_utr
+from app.utils.formatting import format_datetime, truncate
+
+router = Router(name="manual_payments")
+logger = get_logger(__name__)
+
+
+def _service(context: Context) -> ManualPaymentService:
+    return ManualPaymentService(context.session, context.payments, context.settings)
+
+
+# -- user submission --------------------------------------------------------
+
+
+@router.callback_query(PaymentCB.filter((F.action == "method") & (F.provider == PROVIDER)))
+async def start_manual_deposit(query: CallbackQuery, state: FSMContext, **data):
+    """Show the operator's payment details and ask for an amount."""
+    context = build_context(data)
+    manual = _service(context)
+    if not manual.enabled:
+        await toast(query, context.text("errors.invalid_input"), alert=True)
+        return
+
+    await state.set_state(ManualPaymentStates.entering_amount)
+    await show(
+        query,
+        context.text(
+            "wallet.manual_start",
+            details=Safe(context.text("wallet.manual_details")),
+            minimum=context.money(to_minor(context.settings.min_deposit)),
+            maximum=context.money(to_minor(context.settings.max_deposit)),
+        ),
+        keyboards.back_home(context.texts, context.locale, back_to="wallet"),
+    )
+
+
+@router.message(ManualPaymentStates.entering_amount)
+async def enter_amount(message: Message, state: FSMContext, **data):
+    context = build_context(data)
+    amount = parse_amount(message.text or "")
+    if amount is None:
+        raise ValidationError("unparseable amount")
+    context.payments.validate_amount(amount)
+
+    await state.set_state(ManualPaymentStates.entering_utr)
+    await state.update_data(manual_amount=amount)
+    await show(
+        message,
+        context.text("wallet.manual_utr", amount=context.money(amount)),
+        keyboards.back_home(context.texts, context.locale, back_to="wallet"),
+    )
+
+
+@router.message(ManualPaymentStates.entering_utr)
+async def enter_utr(message: Message, state: FSMContext, **data):
+    context = build_context(data)
+    utr = normalise_utr(message.text or "")
+
+    await state.set_state(ManualPaymentStates.entering_proof)
+    await state.update_data(manual_utr=utr)
+    await show(
+        message,
+        context.text("wallet.manual_proof", utr=utr),
+        keyboards.back_home(context.texts, context.locale, back_to="wallet"),
+    )
+
+
+@router.message(ManualPaymentStates.entering_proof, F.photo)
+async def submit_request(message: Message, state: FSMContext, **data):
+    """Record the request and post it for review."""
+    context = build_context(data)
+    manual = _service(context)
+
+    stored = await state.get_data()
+    amount = int(stored.get("manual_amount", 0))
+    utr = str(stored.get("manual_utr", ""))
+    if not amount or not utr:
+        await state.clear()
+        raise ValidationError("submission expired")
+
+    # Highest resolution the user sent, so a reviewer can actually read it.
+    file_id = message.photo[-1].file_id
+    await state.clear()
+
+    payment = await manual.submit(message.from_user.id, amount, utr, file_id)
+    await _post_for_review(message, context, manual, payment, data["notifications"])
+
+    await show(
+        message,
+        context.text(
+            "wallet.manual_submitted",
+            request_id=payment.id,
+            amount=context.money(payment.amount),
+            utr=utr,
+        ),
+        keyboards.back_home(context.texts, context.locale, back_to="wallet"),
+    )
+
+
+@router.message(ManualPaymentStates.entering_proof)
+async def proof_must_be_a_photo(message: Message, **data):
+    """A document or text here is a mistake worth naming, not a silent failure."""
+    context = build_context(data)
+    await message.answer(context.text("wallet.manual_proof_required"))
+
+
+async def _post_for_review(
+    message: Message, context: Context, manual: ManualPaymentService, payment, notifications
+) -> None:
+    """Send the screenshot and details to the review channel."""
+    user = message.from_user
+    caption = context.text(
+        "wallet.manual_review",
+        request_id=payment.id,
+        amount=context.money(payment.amount),
+        utr=payment.invoice_id,
+        user_id=user.id,
+        username=f"@{user.username}" if user.username else "—",
+        name=truncate(user.full_name or "—", 40),
+        balance=context.money(context.user.balance),
+        submitted_at=format_datetime(payment.created_at),
+    )
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(
+            text="✅ Approve",
+            callback_data=ManualCB(action="approve", payment_id=payment.id).pack(),
+        ),
+        InlineKeyboardButton(
+            text="❌ Decline",
+            callback_data=ManualCB(action="decline", payment_id=payment.id).pack(),
+        ),
+    )
+
+    try:
+        posted = await message.bot.send_photo(
+            chat_id=context.settings.manual_payment_channel_id,
+            photo=payment.proof_file_id,
+            caption=caption,
+            reply_markup=builder.as_markup(),
+        )
+        await manual.set_review_message(payment, posted.message_id)
+    except TelegramAPIError as exc:
+        # The request is saved either way, so it is never lost -- but a channel
+        # nobody can post to means nobody is reviewing, which admins must hear
+        # about directly.
+        logger.error(
+            "manual_payment.review_post_failed",
+            payment_id=payment.id,
+            channel=context.settings.manual_payment_channel_id,
+            error=str(exc),
+        )
+        await notifications.notify_admins(
+            context.text("wallet.manual_post_failed", request_id=payment.id, error=str(exc)[:120])
+        )
+
+
+# -- review -----------------------------------------------------------------
+
+
+@router.callback_query(ManualCB.filter(F.action == "approve"))
+async def approve(query: CallbackQuery, callback_data: ManualCB, **data):
+    context = build_context(data)
+    manual = _service(context)
+
+    decision = await manual.approve(callback_data.payment_id, query.from_user.id)
+    if not decision.applied:
+        await toast(query, context.text("wallet.manual_already_reviewed"), alert=True)
+        await _close_review(query, context, decision, reviewer=query.from_user)
+        return
+
+    await _close_review(query, context, decision, reviewer=query.from_user)
+    await data["notifications"].notify_user(
+        decision.payment.user_id,
+        context.text(
+            "wallet.manual_approved",
+            request_id=decision.payment.id,
+            amount=context.money(decision.payment.amount),
+            balance=context.money(decision.balance_after),
+        ),
+        essential=True,
+    )
+
+
+@router.callback_query(ManualCB.filter(F.action == "decline"))
+async def prompt_decline(query: CallbackQuery, callback_data: ManualCB, state: FSMContext, **data):
+    """Ask for a reason, so the user is told something useful."""
+    context = build_context(data)
+    manual = _service(context)
+    if not manual.can_review(query.from_user.id):
+        raise AccessDeniedError("not a payment reviewer")
+
+    await state.set_state(ManualPaymentStates.declining)
+    await state.update_data(decline_payment_id=callback_data.payment_id)
+    await query.answer()
+    await query.bot.send_message(
+        query.from_user.id,
+        context.text("wallet.manual_decline_reason", request_id=callback_data.payment_id),
+    )
+
+
+@router.message(ManualPaymentStates.declining)
+async def do_decline(message: Message, state: FSMContext, **data):
+    context = build_context(data)
+    manual = _service(context)
+
+    stored = await state.get_data()
+    await state.clear()
+    payment_id = int(stored.get("decline_payment_id", 0))
+    reason = (message.text or "").strip()
+
+    decision = await manual.decline(payment_id, message.from_user.id, reason)
+    if not decision.applied:
+        await message.answer(context.text("wallet.manual_already_reviewed"))
+        return
+
+    await _edit_review_post(message.bot, context, decision, message.from_user)
+    await message.answer(
+        context.text("wallet.manual_decline_done", request_id=payment_id, reason=reason)
+    )
+    await data["notifications"].notify_user(
+        decision.payment.user_id,
+        context.text(
+            "wallet.manual_declined",
+            request_id=decision.payment.id,
+            amount=context.money(decision.payment.amount),
+            reason=reason or "—",
+        ),
+        essential=True,
+    )
+
+
+async def _close_review(query: CallbackQuery, context: Context, decision, reviewer) -> None:
+    """Rewrite the channel post so the outcome and reviewer are on the record."""
+    verdict = context.text(
+        "wallet.manual_verdict_approved" if decision.approved else "wallet.manual_verdict_declined",
+        reviewer=f"@{reviewer.username}" if reviewer.username else str(reviewer.id),
+        request_id=decision.payment.id,
+    )
+    try:
+        if query.message is not None:
+            await query.message.edit_caption(
+                caption=f"{query.message.caption}\n\n{verdict}", reply_markup=None
+            )
+    except TelegramAPIError as exc:
+        logger.debug("manual_payment.caption_edit_failed", error=str(exc))
+
+
+async def _edit_review_post(bot, context: Context, decision, reviewer) -> None:
+    """Same, for a decision made over DM rather than on the post itself."""
+    payment = decision.payment
+    if not payment.review_message_id:
+        return
+    verdict = context.text(
+        "wallet.manual_verdict_declined",
+        reviewer=f"@{reviewer.username}" if reviewer.username else str(reviewer.id),
+        request_id=payment.id,
+    )
+    try:
+        await bot.edit_message_reply_markup(
+            chat_id=context.settings.manual_payment_channel_id,
+            message_id=payment.review_message_id,
+            reply_markup=None,
+        )
+        await bot.send_message(
+            chat_id=context.settings.manual_payment_channel_id,
+            text=verdict,
+            reply_to_message_id=payment.review_message_id,
+        )
+    except TelegramAPIError as exc:
+        logger.debug("manual_payment.review_edit_failed", error=str(exc))

@@ -408,6 +408,16 @@ class PaymentRepository(BaseRepository):
         )
         return result.scalars().all()
 
+    async def count_pending_for_user(self, provider: str, user_id: int) -> int:
+        result = await self.session.execute(
+            select(func.count(Payment.id)).where(
+                Payment.provider == provider,
+                Payment.user_id == user_id,
+                Payment.status == PaymentStatus.PENDING,
+            )
+        )
+        return int(result.scalar_one())
+
     async def expire_stale(self, grace_hours: int) -> int:
         """Abandon invoices the provider has not reported for ``grace_hours``.
 
@@ -418,7 +428,12 @@ class PaymentRepository(BaseRepository):
         cutoff = datetime.utcnow() - timedelta(hours=grace_hours)
         result = await self.session.execute(
             update(Payment)
-            .where(Payment.status == PaymentStatus.PENDING, Payment.expires_at < cutoff)
+            .where(
+                Payment.status == PaymentStatus.PENDING,
+                Payment.expires_at < cutoff,
+                # Manually reviewed requests wait for a human, not a clock.
+                Payment.provider != "manual",
+            )
             .values(status=PaymentStatus.EXPIRED)
         )
         return int(result.rowcount or 0)

@@ -370,6 +370,100 @@ wallet:
     💳 New balance: <b>{balance}</b>
 
     📝 {reason}
+  manual_details: |
+    <b>UPI:</b> <code>yourname@upi</code>
+    <b>Bank:</b> Your Bank · A/C 000000000000 · IFSC ABCD0123456
+    <b>Name:</b> Your Business Name
+  manual_start: |
+    💵 <b>UPI / BANK TRANSFER</b>
+
+    Send the money to:
+
+    {details}
+
+    {divider}
+
+    Minimum: {minimum}
+    Maximum: {maximum}
+
+    <i>Pay first, then send the amount you paid:</i>
+  manual_utr: |
+    💵 <b>TRANSACTION REFERENCE</b>
+
+    💰 Amount: <b>{amount}</b>
+
+    {divider}
+
+    Send the <b>UTR / reference number</b> from your payment app:
+
+    <i>It is 6–32 letters and digits. Each reference can only be used once.</i>
+  manual_proof: |
+    📸 <b>PAYMENT SCREENSHOT</b>
+
+    🔖 Reference: <code>{utr}</code>
+
+    {divider}
+
+    Now send a <b>screenshot</b> of the payment.
+
+    <i>The amount and reference must be readable in the image.</i>
+  manual_proof_required: "📸 Please send the screenshot as a photo."
+  manual_submitted: |
+    ⏳ <b>AWAITING APPROVAL</b>
+
+    🆔 Request: <code>#{request_id}</code>
+    💰 Amount: <b>{amount}</b>
+    🔖 Reference: <code>{utr}</code>
+
+    {divider}
+
+    Your payment is being reviewed. Your balance is credited as soon as it is
+    approved, and you will get a message either way.
+  manual_review: |
+    💵 <b>DEPOSIT REQUEST</b> <code>#{request_id}</code>
+
+    💰 Amount: <b>{amount}</b>
+    🔖 UTR: <code>{utr}</code>
+
+    👤 {name} ({username})
+    🆔 <code>{user_id}</code>
+    💳 Current balance: {balance}
+    📅 {submitted_at}
+  manual_verdict_approved: "✅ <b>APPROVED</b> — request #{request_id} by {reviewer}"
+  manual_verdict_declined: "❌ <b>DECLINED</b> — request #{request_id} by {reviewer}"
+  manual_already_reviewed: "⚠️ This request has already been reviewed."
+  manual_decline_reason: |
+    ❌ <b>DECLINE REQUEST #{request_id}</b>
+
+    Send a short reason. The user will see it.
+
+    <i>Example: amount does not match, or screenshot unreadable</i>
+  manual_decline_done: "❌ Request #{request_id} declined — {reason}"
+  manual_approved: |
+    ✅ <b>PAYMENT APPROVED</b>
+
+    🆔 Request: <code>#{request_id}</code>
+    ➕ Added: <b>{amount}</b>
+    💳 New balance: <b>{balance}</b>
+  manual_declined: |
+    ❌ <b>PAYMENT DECLINED</b>
+
+    🆔 Request: <code>#{request_id}</code>
+    💰 Amount: {amount}
+
+    {divider}
+
+    📝 Reason: {reason}
+
+    <i>If you believe this is a mistake, contact support with your reference number.</i>
+  manual_post_failed: |
+    🚨 <b>REVIEW CHANNEL UNREACHABLE</b>
+
+    Request <code>#{request_id}</code> was saved but could not be posted.
+
+    <i>{error}</i>
+
+    Check that the bot is an admin in the review channel.
   transfer_user: |
     💸 <b>TRANSFER BALANCE</b>
 

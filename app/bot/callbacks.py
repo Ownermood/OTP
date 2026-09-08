@@ -87,6 +87,17 @@ class SmmCB(CallbackData, prefix="smm"):
     page: int = 1
 
 
+class ManualCB(CallbackData, prefix="man"):
+    """Approve or decline a manual deposit from the review channel.
+
+    Carries only the request id. Whether the tapper may decide it is resolved
+    from the configured admin roles, never from this payload.
+    """
+
+    action: str
+    payment_id: int
+
+
 class HelpCB(CallbackData, prefix="hlp"):
     topic: str
 

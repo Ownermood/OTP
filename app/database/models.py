@@ -180,6 +180,15 @@ class Payment(Base, IntPK, TimestampMixin):
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
     paid_at: Mapped[datetime | None] = mapped_column(DateTime)
 
+    # --- manual (UPI / bank) deposits ---
+    #: Telegram file id of the payment screenshot the user submitted.
+    proof_file_id: Mapped[str | None] = mapped_column(String(256))
+    #: Message id of the review post, so the decision can be written back to it.
+    review_message_id: Mapped[int | None] = mapped_column(Integer)
+    reviewed_by: Mapped[int | None] = mapped_column(TelegramId)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime)
+    review_note: Mapped[str | None] = mapped_column(String(256))
+
 
 class Favorite(Base, IntPK, TimestampMixin):
     """A saved service+country combination."""

@@ -130,9 +130,21 @@ async def harness(session_factory, settings, monkeypatch):
     # Handler routers are module-level singletons: built once in production,
     # but every test builds its own dispatcher. Detach them first so they can
     # be re-attached to this one.
-    from app.bot.handlers import admin, buy, orders, profile, rental, smm, start, wallet
+    from app.bot.handlers import (
+        admin,
+        buy,
+        manual_payments,
+        orders,
+        profile,
+        rental,
+        smm,
+        start,
+        wallet,
+    )
 
-    for module in (admin, start, buy, rental, orders, wallet, smm, profile):
+    for module in (
+        admin, start, buy, rental, orders, wallet, manual_payments, smm, profile
+    ):
         module.router._parent_router = None
 
     _register_middlewares(dispatcher, settings, session_factory)
