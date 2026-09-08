@@ -60,6 +60,10 @@ class TemporaSmsProvider(SmsActivateProvider):
 
     # -- catalogue ------------------------------------------------------
 
+    async def warm(self) -> int | None:
+        catalogue = await self._load()
+        return len({code for offers in catalogue.values() for code in offers})
+
     async def get_services(self) -> list[SmsService]:
         catalogue = await self._load()
         codes = {code for offers in catalogue.values() for code in offers}

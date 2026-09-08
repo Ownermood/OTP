@@ -8,6 +8,7 @@ off when there is nothing to do -- controlled polling, not hammering.
 
 from app.services.workers.backup import BackupWorker
 from app.services.workers.base import IDLE_INTERVAL, ORPHAN_GRACE_SECONDS, BaseWorker
+from app.services.workers.catalogue import CatalogueWorker
 from app.services.workers.health import HealthWorker
 from app.services.workers.payments import PaymentWorker
 from app.services.workers.smm import SmmWorker
@@ -18,6 +19,7 @@ __all__ = [
     "ORPHAN_GRACE_SECONDS",
     "BackupWorker",
     "BaseWorker",
+    "CatalogueWorker",
     "HealthWorker",
     "PaymentWorker",
     "SmmWorker",

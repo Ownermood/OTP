@@ -130,6 +130,15 @@ class BaseSMSProvider(BaseProvider):
     provider. See ``app/providers/sms_activate.py`` for a worked example.
     """
 
+    async def warm(self) -> int | None:
+        """Pre-build any cached catalogue. ``None`` when there is none to warm.
+
+        Providers that answer catalogue calls directly need do nothing; those
+        that assemble a cache override this so the cost is paid in the
+        background rather than inside a user's button press.
+        """
+        return None
+
     @abstractmethod
     async def get_services(self) -> list[SmsService]:
         """Full service catalogue. Cached by the service layer."""

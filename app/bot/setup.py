@@ -35,6 +35,7 @@ from app.services.notifications import NotificationService
 from app.services.pricing import PricingService
 from app.services.workers import (
     BackupWorker,
+    CatalogueWorker,
     HealthWorker,
     PaymentWorker,
     SmmWorker,
@@ -203,6 +204,7 @@ def _build_workers(app: Application, texts: Texts) -> list:
             app.session_factory, app.payment_providers, app.notifications, settings, render
         ),
         HealthWorker(app.sms_provider, app.notifications, settings, app.bot),
+        CatalogueWorker(app.sms_provider),
     ]
     if app.smm_provider is not None:
         workers.append(

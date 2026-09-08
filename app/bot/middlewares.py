@@ -21,6 +21,7 @@ from aiogram.types import CallbackQuery, Message, TelegramObject
 from aiogram.types import User as TgUser
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.bot.ack import acknowledge
 from app.core.config import Settings
 from app.core.exceptions import BotError, MaintenanceError
 from app.core.logging import get_logger
@@ -168,7 +169,9 @@ class ErrorMiddleware(BaseMiddleware):
             if "message is not modified" not in str(exc):
                 logger.warning("telegram.bad_request", error=str(exc))
             if isinstance(event, CallbackQuery):
-                await event.answer()
+                # The recovery must not raise the very error it is recovering
+                # from: the query that expired mid-handler is still expired.
+                await acknowledge(event)
         except Exception:
             logger.error(
                 "handler.crashed",

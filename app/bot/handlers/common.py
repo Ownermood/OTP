@@ -14,8 +14,10 @@ from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.bot.ack import acknowledge
 from app.bot.texts import Texts
 from app.core.config import Settings
+from app.core.logging import get_logger
 from app.core.money import format_money
 from app.services.admin import AdminService
 from app.services.catalog import CatalogService
@@ -27,6 +29,8 @@ from app.services.referrals import ReferralService
 from app.services.smm import SmmService
 from app.services.users import UserService
 from app.services.wallet import WalletService
+
+logger = get_logger(__name__)
 
 
 @dataclass(slots=True)
@@ -110,7 +114,7 @@ async def show(
     (too old to edit, or the content is identical).
     """
     if isinstance(event, CallbackQuery):
-        await event.answer()
+        await acknowledge(event)
         if event.message is None:
             return
         if not force_new:
@@ -128,6 +132,7 @@ async def show(
 async def toast(event: Message | CallbackQuery, text: str, alert: bool = False) -> None:
     """A brief acknowledgement that does not replace the current screen."""
     if isinstance(event, CallbackQuery):
-        await event.answer(text, show_alert=alert)
+        await acknowledge(event, text, alert)
     else:
         await event.answer(text)
+
