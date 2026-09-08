@@ -15,7 +15,7 @@ auditable money, and no business logic inside a callback handler.
 - 📦 Order history with receipts, plus refresh and cancel on live SMS orders
 - ⭐ Favourites — saved service+country pairs, re-priced live
 - 💳 Wallet — deposits, filterable transaction history, promo codes, optional transfers
-- 💵 UPI / bank deposits reviewed by a human before any balance moves
+- 📲 UPI deposits with a scannable QR, reviewed by a human before any balance moves
 - 🎟 Promo codes — a flat bonus, or a percentage credited on the next deposit
 - 🎁 Referral programme with commission on invitees' deposits
 - 👤 Profile with lifetime statistics, notification and language settings
@@ -38,7 +38,8 @@ auditable money, and no business logic inside a callback handler.
 - Python 3.11+
 - A Telegram bot token from [@BotFather](https://t.me/BotFather)
 - An SMS provider API key (SMS-Activate out of the box)
-- At least one payment method (Telegram Stars needs no API key)
+- A UPI id and a private Telegram channel for reviewing deposits — no payment
+  gateway account is needed
 
 ---
 
@@ -73,7 +74,10 @@ Minimum viable configuration:
 BOT_TOKEN=123456:ABC-your-token
 ADMIN_IDS=123456789
 SMS_ACTIVATE_API_TOKEN=your-provider-key
-TELEGRAM_STARS_ENABLED=true
+
+MANUAL_PAYMENT_ENABLED=true
+UPI_ID=yourshop@okaxis
+MANUAL_PAYMENT_CHANNEL_ID=-1001234567890
 ```
 
 The settings that shape the business:
@@ -88,7 +92,8 @@ The settings that shape the business:
 | `REFERRAL_PERCENT` | Commission paid to an inviter on each deposit |
 | `MIN_DEPOSIT` / `MAX_DEPOSIT` | Deposit bounds |
 | `PAYMENT_GRACE_HOURS` | How long past expiry an unreported invoice is still checked |
-| `MANUAL_PAYMENT_ENABLED` | UPI / bank deposits reviewed by a human |
+| `MANUAL_PAYMENT_ENABLED` | UPI deposits reviewed by a human (on by default) |
+| `UPI_ID` | Your VPA; the QR is generated from it with the amount filled in |
 | `MANUAL_PAYMENT_CHANNEL_ID` | Channel where deposit requests are posted for review |
 | `ADMIN_ROLES` | Per-admin roles, e.g. `123:finance,456:support` |
 
@@ -141,13 +146,15 @@ the menu.
 
 ### Payment setup
 
-**Manual (UPI / bank)** — see [Manual deposits](#manual-deposits-upi--bank-transfer)
-below. No gateway account needed; a human approves each request.
+**UPI (default)** — see [UPI deposits](#upi-deposits) below. No gateway
+account needed; the bot generates a QR and a human approves each request.
 
-**Telegram Stars** — set `TELEGRAM_STARS_ENABLED=true` and the Stars-per-unit
-rate. Checkout happens inside Telegram; no API key is required.
+**Telegram Stars** (off by default) — set `TELEGRAM_STARS_ENABLED=true` and the
+Stars-per-unit rate. Checkout happens inside Telegram; no API key is required.
 
-**CryptoBot** — get a token from [@CryptoBot](https://t.me/CryptoBot) → Crypto
+**CryptoBot** (off by default) — note that `CRYPTOBOT_RATE` is a fixed rate,
+not a live market one, so it needs updating as the asset moves. Get a token
+from [@CryptoBot](https://t.me/CryptoBot) → Crypto
 Pay → Create App:
 
 ```env
@@ -159,15 +166,19 @@ CRYPTOBOT_RATE=90
 
 ---
 
-## Manual deposits (UPI / bank transfer)
+## UPI deposits
 
-For payments made outside the bot. The user pays, then submits the amount, the
-transaction reference (UTR) and a screenshot; the request is posted to a review
-channel with Approve and Decline buttons. **No balance moves until a reviewer
-approves it.**
+The primary deposit method, and the one `.env.example` ships enabled.
+
+The user enters an amount, the bot replies with a **QR containing that exact
+amount**, and after paying they send the UTR and a screenshot. The request goes
+to a review channel with Approve and Decline buttons. **No balance moves until
+a reviewer approves it.**
 
 ```env
 MANUAL_PAYMENT_ENABLED=true
+UPI_ID=yourshop@okaxis
+UPI_PAYEE_NAME=Your Shop
 MANUAL_PAYMENT_CHANNEL_ID=-1001234567890
 MANUAL_PAYMENT_MAX_PENDING=3
 ```
@@ -181,10 +192,22 @@ Setup:
    that carries the `balance` permission — `owner`, `admin` or `finance`.
    Approving creates money, so `support` and `viewer` can read the payment
    list but cannot credit from it.
-4. Put your own UPI id and bank details in `locales/en/messages.yaml` under
-   `wallet.manual_details`.
 
-What the flow guarantees:
+### The QR
+
+Generated per request as a `upi://pay` link, so GPay, PhonePe, Paytm and BHIM
+all open it with the amount already filled in. That closes the most common
+reason a deposit gets declined — the payer sending a different sum from the one
+they asked the bot for.
+
+Set `UPI_QR_IMAGE` instead if you would rather use your own printed QR. A static
+code carries no amount, so the payer types it themselves and the mismatch is
+back; prefer `UPI_ID` unless you have a reason not to.
+
+`UPI_ID` is validated at startup, and the generated codes are decoded back in
+the test suite to prove they actually scan.
+
+### What the flow guarantees
 
 | Risk | Mechanism |
 | --- | --- |
@@ -193,13 +216,24 @@ What the flow guarantees:
 | Two reviewers approving at once | Approval runs through the same idempotent settlement as a gateway payment; the balance moves once |
 | A decision being reversed later | `PAID` and `FAILED` are terminal — an approved request cannot then be declined, or the reverse |
 | A user flooding the queue | `MANUAL_PAYMENT_MAX_PENDING` open requests per user |
-| A request going stale | Manual requests are never auto-expired; they wait for a human |
+| A request going stale | UPI requests are never auto-expired; they wait for a human |
 
 Every decision writes an audit row naming the reviewer, the amount and the UTR,
 and the user is messaged either way — a decline carries the reviewer's reason.
 
 Balance transfers and broadcasts are also confirmed before they happen: both
 are irreversible, so neither fires straight off a typed message.
+
+**What this cannot check** is whether a UTR is genuine. A fabricated screenshot
+with a reference nobody has used before will not be caught as a duplicate — the
+reviewer's own bank or UPI app is the last check. Verify the UTR there before
+approving.
+
+### Other methods
+
+CryptoBot and Telegram Stars are implemented and tested but off by default.
+Turn either on in `.env` if you want it; see
+[Payment setup](#payment-setup).
 
 ---
 

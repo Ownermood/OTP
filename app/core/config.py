@@ -18,6 +18,7 @@ from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 from app.core.constants import AdminRole
 from app.core.exceptions import ConfigurationError
+from app.utils.qr import is_valid_vpa
 
 VERSION = "3.0.0"
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
@@ -88,8 +89,17 @@ class Settings(BaseSettings):
     telegram_stars_rate: Decimal = Decimal("2.15")
     telegram_stars_max: int = 2500
 
-    # --- Manual (UPI / bank transfer) deposits --------------------------
+    # --- UPI deposits, reviewed by a human ------------------------------
+    #: Off by default so the field defaults alone are always a valid config;
+    #: .env.example turns it on, since UPI is the intended primary method.
     manual_payment_enabled: bool = False
+    #: Your UPI id (VPA). The bot builds a QR with the amount pre-filled from it.
+    upi_id: str = ""
+    #: Name shown in the payer's app. Defaults to SERVICE_NAME.
+    upi_payee_name: str = ""
+    #: Optional path to your own QR image, used instead of a generated one.
+    #: A static QR carries no amount, so the generated one is preferred.
+    upi_qr_image: str = ""
     #: Channel where requests are posted for review. The bot must be an admin
     #: there, and reviewers must be listed in ADMIN_IDS / ADMIN_ROLES.
     manual_payment_channel_id: int = 0
@@ -176,10 +186,17 @@ class Settings(BaseSettings):
             raise ValueError("MIN_RENTAL_HOURS cannot exceed MAX_RENTAL_HOURS")
         if self.min_deposit > self.max_deposit:
             raise ValueError("MIN_DEPOSIT cannot exceed MAX_DEPOSIT")
-        if self.manual_payment_enabled and not self.manual_payment_channel_id:
-            raise ValueError(
-                "MANUAL_PAYMENT_CHANNEL_ID is required when MANUAL_PAYMENT_ENABLED=true"
-            )
+        if self.manual_payment_enabled:
+            if not self.manual_payment_channel_id:
+                raise ValueError(
+                    "MANUAL_PAYMENT_CHANNEL_ID is required when MANUAL_PAYMENT_ENABLED=true"
+                )
+            if not (self.upi_id or self.upi_qr_image):
+                raise ValueError(
+                    "Set UPI_ID (recommended) or UPI_QR_IMAGE when MANUAL_PAYMENT_ENABLED=true"
+                )
+            if self.upi_id and not is_valid_vpa(self.upi_id):
+                raise ValueError(f"UPI_ID does not look like a VPA: {self.upi_id}")
         if not any(
             (self.cryptobot_enabled, self.telegram_stars_enabled, self.manual_payment_enabled)
         ):
@@ -199,6 +216,19 @@ class Settings(BaseSettings):
     @property
     def locales_path(self) -> Path:
         path = Path(self.locales_dir)
+        return path if path.is_absolute() else ROOT_DIR / path
+
+    @property
+    def payee_name(self) -> str:
+        """Name the payer sees in their UPI app."""
+        return self.upi_payee_name or self.service_name
+
+    @property
+    def qr_image_path(self) -> Path | None:
+        """A static QR to use instead of a generated one, if configured."""
+        if not self.upi_qr_image:
+            return None
+        path = Path(self.upi_qr_image)
         return path if path.is_absolute() else ROOT_DIR / path
 
     @property

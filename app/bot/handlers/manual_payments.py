@@ -11,19 +11,25 @@ from __future__ import annotations
 from aiogram import F, Router
 from aiogram.exceptions import TelegramAPIError
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, InlineKeyboardButton, Message
+from aiogram.types import (
+    BufferedInputFile,
+    CallbackQuery,
+    FSInputFile,
+    InlineKeyboardButton,
+    Message,
+)
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from app.bot import keyboards
 from app.bot.callbacks import ManualCB, PaymentCB
 from app.bot.handlers.common import Context, build_context, show, toast
 from app.bot.states import ManualPaymentStates
-from app.bot.texts import Safe
 from app.core.exceptions import ValidationError
 from app.core.logging import get_logger
-from app.core.money import parse_amount, to_minor
+from app.core.money import parse_amount, to_major, to_minor
 from app.services.manual_payments import PROVIDER, ManualPaymentService, normalise_utr
 from app.utils.formatting import format_datetime, truncate
+from app.utils.qr import build_upi_link, render_qr
 
 router = Router(name="manual_payments")
 logger = get_logger(__name__)
@@ -46,7 +52,6 @@ async def start_manual_deposit(query: CallbackQuery, state: FSMContext, **data):
         query,
         context.text(
             "wallet.manual_start",
-            details=Safe(context.text("wallet.manual_details")),
             minimum=context.money(to_minor(context.settings.min_deposit)),
             maximum=context.money(to_minor(context.settings.max_deposit)),
         ),
@@ -56,6 +61,7 @@ async def start_manual_deposit(query: CallbackQuery, state: FSMContext, **data):
 
 @router.message(ManualPaymentStates.entering_amount)
 async def enter_amount(message: Message, state: FSMContext, **data):
+    """Accept the amount, then hand over a QR that already contains it."""
     context = build_context(data)
     amount = parse_amount(message.text or "")
     if amount is None:
@@ -64,11 +70,48 @@ async def enter_amount(message: Message, state: FSMContext, **data):
 
     await state.set_state(ManualPaymentStates.entering_utr)
     await state.update_data(manual_amount=amount)
-    await show(
-        message,
-        context.text("wallet.manual_utr", amount=context.money(amount)),
-        keyboards.back_home(context.texts, context.locale, back_to="wallet"),
+    await _send_payment_qr(message, context, amount)
+
+
+async def _send_payment_qr(message: Message, context: Context, amount: int) -> None:
+    """Send the QR for this exact amount, or the operator's static one."""
+    settings = context.settings
+    caption = context.text(
+        "wallet.manual_qr",
+        amount=context.money(amount),
+        upi_id=settings.upi_id or "—",
+        payee=settings.payee_name,
     )
+    keyboard = keyboards.back_home(context.texts, context.locale, back_to="wallet")
+
+    static_qr = settings.qr_image_path
+    if settings.upi_id:
+        # Generated: the amount travels inside the code, so the payer's app
+        # opens pre-filled and cannot drift from what they told the bot.
+        link = build_upi_link(
+            settings.upi_id,
+            settings.payee_name,
+            to_major(amount),
+            note=f"{settings.service_name} top-up",
+        )
+        photo = BufferedInputFile(render_qr(link), filename="upi-qr.png")
+    elif static_qr is not None and static_qr.exists():
+        photo = FSInputFile(static_qr)
+        caption = context.text(
+            "wallet.manual_qr_static", amount=context.money(amount), payee=settings.payee_name
+        )
+    else:
+        # Configuration guarantees one of the two, but never leave the user
+        # staring at nothing if that ever changes.
+        logger.error("manual_payment.no_qr_configured")
+        await show(
+            message,
+            context.text("wallet.manual_utr", amount=context.money(amount)),
+            keyboard,
+        )
+        return
+
+    await message.answer_photo(photo, caption=caption, reply_markup=keyboard)
 
 
 @router.message(ManualPaymentStates.entering_utr)

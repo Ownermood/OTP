@@ -19,7 +19,7 @@ async def _submit_manual(h, amount="500", utr="402199881122") -> str:
     await h.send("/start")
     await h.tap("Balance")
     await h.tap("Add Balance")
-    await h.tap("UPI / Bank")
+    await h.tap("UPI / QR")
     await h.send(amount)
     await h.send(utr)
     await h.send_photo("screenshot-1")
@@ -35,13 +35,17 @@ async def test_manual_deposit_reaches_the_review_channel(manual_harness):
     await h.tap("Balance")
     await h.tap("Add Balance")
 
-    assert "UPI / Bank Transfer" in " ".join(h.buttons())
-    await h.tap("UPI / Bank")
-    assert "UPI / BANK TRANSFER" in h.text
-    assert "yourname@upi" in h.text  # the operator's editable details
+    assert "UPI / QR" in " ".join(h.buttons())
+    await h.tap("UPI / QR")
+    assert "ADD BALANCE — UPI" in h.text
 
     await h.send("500")
-    assert "TRANSACTION REFERENCE" in h.text
+    # The QR arrives as a photo, with the amount already inside the code.
+    qr = h.session.sent[-1]
+    assert qr.method == "SendPhoto"
+    assert "SCAN TO PAY" in qr.text
+    assert "shop@okaxis" in qr.text
+    assert "₹500.00" in qr.text
 
     await h.send("4021-9988-1122")
     assert "PAYMENT SCREENSHOT" in h.text
@@ -137,7 +141,7 @@ async def test_a_reused_reference_is_rejected_at_submission(manual_harness):
     await h.send("/start")
     await h.tap("Balance")
     await h.tap("Add Balance")
-    await h.tap("UPI / Bank")
+    await h.tap("UPI / QR")
     await h.send("500")
     await h.send("402199881122")  # the same payment, claimed again
     await h.send_photo("screenshot-1")
@@ -151,7 +155,7 @@ async def test_a_bad_reference_is_rejected_before_the_screenshot(manual_harness)
     await h.send("/start")
     await h.tap("Balance")
     await h.tap("Add Balance")
-    await h.tap("UPI / Bank")
+    await h.tap("UPI / QR")
     await h.send("500")
     await h.send("123")  # too short to be a real reference
 
@@ -163,7 +167,7 @@ async def test_text_instead_of_a_screenshot_is_named_not_ignored(manual_harness)
     await h.send("/start")
     await h.tap("Balance")
     await h.tap("Add Balance")
-    await h.tap("UPI / Bank")
+    await h.tap("UPI / QR")
     await h.send("500")
     await h.send("402199881122")
 

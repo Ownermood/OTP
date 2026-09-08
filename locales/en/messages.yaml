@@ -367,33 +367,52 @@ wallet:
     💳 New balance: <b>{balance}</b>
 
     📝 {reason}
-  manual_details: |
-    <b>UPI:</b> <code>yourname@upi</code>
-    <b>Bank:</b> Your Bank · A/C 000000000000 · IFSC ABCD0123456
-    <b>Name:</b> Your Business Name
   manual_start: |
-    💵 <b>UPI / BANK TRANSFER</b>
-
-    Send the money to:
-
-    {details}
+    💵 <b>ADD BALANCE — UPI</b>
 
     {divider}
+
+    How much do you want to add?
 
     Minimum: {minimum}
     Maximum: {maximum}
 
-    <i>Pay first, then send the amount you paid:</i>
+    <i>Send the amount and I will give you a QR to scan.</i>
+  manual_qr: |
+    📲 <b>SCAN TO PAY</b>
+
+    💰 Amount: <b>{amount}</b>
+    🏦 UPI ID: <code>{upi_id}</code>
+    👤 Payee: {payee}
+
+    {divider}
+
+    Scan the QR with any UPI app — GPay, PhonePe, Paytm, BHIM.
+    The amount is already filled in, so <b>do not change it</b>.
+
+    <i>Once paid, send me the UTR / reference number from your app.</i>
+  manual_qr_static: |
+    📲 <b>SCAN TO PAY</b>
+
+    💰 Amount: <b>{amount}</b>
+    👤 Payee: {payee}
+
+    {divider}
+
+    Scan the QR with any UPI app and pay <b>exactly {amount}</b>.
+
+    <i>Once paid, send me the UTR / reference number from your app.</i>
   manual_utr: |
-    💵 <b>TRANSACTION REFERENCE</b>
+    🔖 <b>TRANSACTION REFERENCE</b>
 
     💰 Amount: <b>{amount}</b>
 
     {divider}
 
-    Send the <b>UTR / reference number</b> from your payment app:
+    Send the <b>UTR / reference number</b> from your payment app.
 
-    <i>It is 6–32 letters and digits. Each reference can only be used once.</i>
+    <i>It is 6–32 letters and digits, shown as "UTR", "Transaction ID" or
+    "Reference no". Each one can only be used once.</i>
   manual_proof: |
     📸 <b>PAYMENT SCREENSHOT</b>
 

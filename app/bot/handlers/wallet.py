@@ -28,7 +28,7 @@ logger = get_logger(__name__)
 METHOD_LABELS = {
     "cryptobot": "🩵 Crypto",
     "telegram_stars": "⭐ Telegram Stars",
-    "manual": "💵 UPI / Bank Transfer",
+    "manual": "📲 UPI / QR",
 }
 
 #: History filter -> transaction types.

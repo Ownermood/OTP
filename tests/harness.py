@@ -104,9 +104,13 @@ class MockedSession(BaseSession):
         assert screens, "the bot sent nothing"
         return screens[-1]
 
+    #: Calls that put something on the user's screen. Photos count: a QR code
+    #: with a caption is a screen, not a side effect.
+    SCREEN_METHODS = ("SendMessage", "EditMessageText", "SendPhoto")
+
     @property
     def screens(self) -> list[Sent]:
-        return [s for s in self.sent if s.method in ("SendMessage", "EditMessageText")]
+        return [s for s in self.sent if s.method in self.SCREEN_METHODS]
 
     @property
     def alerts(self) -> list[str]:

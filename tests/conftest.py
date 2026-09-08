@@ -26,6 +26,8 @@ os.environ.update(
     SERVICE_FEE_PERCENT="10",
     SMM_ENABLED="false",
     RATE_LIMIT_PER_SECOND="1000",
+    UPI_ID="shop@okaxis",
+    UPI_PAYEE_NAME="Test Shop",
 )
 
 from app.core.config import Settings  # noqa: E402
