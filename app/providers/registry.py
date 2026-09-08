@@ -13,19 +13,25 @@ from app.providers.cryptobot import CryptoBotProvider
 from app.providers.smm import GenericSmmProvider
 from app.providers.sms_activate import SmsActivateProvider
 from app.providers.telegram_stars import TelegramStarsProvider
+from app.providers.temporasms import TemporaSmsProvider
 
 
 def build_sms_provider(settings: Settings) -> BaseSMSProvider:
     """Instantiate the SMS provider named by ``SMS_PROVIDER``."""
-    if settings.sms_provider == "sms_activate":
-        return SmsActivateProvider(
-            api_key=settings.sms_activate_api_token,
-            base_url=settings.sms_activate_base_url,
-            currency_rate=settings.provider_currency_rate,
-            timeout=settings.http_timeout,
-            retries=settings.http_retries,
-        )
-    raise ConfigurationError(f"Unknown SMS_PROVIDER: {settings.sms_provider}")
+    adapters: dict[str, type[BaseSMSProvider]] = {
+        SmsActivateProvider.name: SmsActivateProvider,
+        TemporaSmsProvider.name: TemporaSmsProvider,
+    }
+    adapter = adapters.get(settings.sms_provider)
+    if adapter is None:
+        raise ConfigurationError(f"Unknown SMS_PROVIDER: {settings.sms_provider}")
+    return adapter(
+        api_key=settings.sms_activate_api_token,
+        base_url=settings.sms_activate_base_url,
+        currency_rate=settings.provider_currency_rate,
+        timeout=settings.http_timeout,
+        retries=settings.http_retries,
+    )
 
 
 def build_payment_providers(settings: Settings) -> dict[str, BasePaymentProvider]:

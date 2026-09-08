@@ -37,6 +37,9 @@ API_PATH = "stubs/handler_api.php"
 NO_NUMBERS_ERRORS = frozenset({"NO_NUMBERS", "NO_BALANCE_FORWARD_OPERATOR", "OPERATORS_NOT_FOUND"})
 AUTH_ERRORS = frozenset({"BAD_KEY", "ERROR_SQL", "BANNED"})
 
+#: How long a purchased number stays valid when the provider states no deadline.
+ACTIVATION_MINUTES = 20
+
 #: setStatus codes.
 STATUS_CANCEL = 8
 STATUS_FINISH = 6
@@ -126,8 +129,12 @@ class SmsActivateProvider(BaseSMSProvider):
             provider_order_id=provider_order_id,
             phone=phone,
             cost=await self._safe_price(service_code, country_id),
-            expires_at=datetime.utcnow() + timedelta(minutes=20),
+            expires_at=self._default_expiry(),
         )
+
+    def _default_expiry(self) -> datetime:
+        """How long a fresh number is worth waiting on when the provider is silent."""
+        return datetime.utcnow() + timedelta(minutes=ACTIVATION_MINUTES)
 
     async def get_activation_status(self, provider_order_id: str) -> ActivationStatus:
         text = await self._text({"action": "getStatus", "id": provider_order_id})

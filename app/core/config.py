@@ -70,6 +70,7 @@ class Settings(BaseSettings):
     provider_currency_rate: Decimal = Decimal("1")
 
     # --- SMS provider ---------------------------------------------------
+    #: ``sms_activate`` or ``temporasms`` -- see ``app/providers/registry.py``.
     sms_provider: str = "sms_activate"
     sms_activate_api_token: str = ""
     sms_activate_base_url: str = "https://api.sms-activate.guru/"
@@ -210,8 +211,10 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _check_dependent_settings(self) -> Settings:
-        if self.sms_provider == "sms_activate" and not self.sms_activate_api_token:
-            raise ValueError("SMS_ACTIVATE_API_TOKEN is required when SMS_PROVIDER=sms_activate")
+        if not self.sms_activate_api_token:
+            raise ValueError(
+                f"SMS_ACTIVATE_API_TOKEN is required when SMS_PROVIDER={self.sms_provider}"
+            )
         if self.cryptobot_enabled and not self.cryptobot_api_token:
             raise ValueError("CRYPTOBOT_API_TOKEN is required when CRYPTOBOT_ENABLED=true")
         if self.smm_enabled and not (self.smm_api_url and self.smm_api_key):

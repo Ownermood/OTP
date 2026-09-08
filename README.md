@@ -133,6 +133,30 @@ SMS_ACTIVATE_BASE_URL=https://api.your-provider.com/
 SMS_ACTIVATE_API_TOKEN=your-key
 ```
 
+#### TemporaSMS
+
+`api.temporasms.com` speaks the protocol at the usual path but differs enough
+to need its own adapter, selected with `SMS_PROVIDER=temporasms`:
+
+```env
+SMS_PROVIDER=temporasms
+SMS_ACTIVATE_BASE_URL=https://api.temporasms.com/
+SMS_ACTIVATE_API_TOKEN=your-key
+# Its prices are quoted in USD, so convert them to yours.
+PROVIDER_CURRENCY_RATE=88
+```
+
+Three differences are worth knowing about, because they show up in the UI:
+
+- Every catalogue call needs an `operator`; the adapter reads the first one
+  from `getOperators` and sends it automatically.
+- There is no endpoint that lists services, so the catalogue is built from
+  `getPrices` and cached for five minutes rather than queried per button press.
+- Services arrive as bare codes (`ttf`, `obi`). Known codes are labelled from
+  `app/providers/service_names.py`; anything missing is shown as the uppercased
+  code. Once you learn which code is which product, add it to that map — a
+  guessed name beside a real phone number is worse than an unfamiliar one.
+
 To find out whether yours is one of them, run this where the provider is
 reachable:
 
