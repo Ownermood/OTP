@@ -104,3 +104,109 @@ async def test_a_user_can_only_be_invited_once(session, wallet, settings, user):
 )
 def test_start_payload_parsing(payload, expected):
     assert ReferralService.parse_start_payload(payload) == expected
+
+
+# -- percent-of-deposit promos ---------------------------------------------
+
+
+async def test_percent_promo_is_armed_not_paid_immediately(promo, user, wallet):
+    """There is nothing to take a percentage of until a deposit arrives."""
+    await _make_promo(promo, code="BOOST10", amount=0, percent=10)
+
+    redemption = await promo.redeem(user.id, "BOOST10")
+
+    assert redemption.deferred is True
+    assert redemption.percent == 10
+    assert (await wallet.get_balance(user.id)) == 10_000  # unchanged
+
+
+async def test_percent_promo_pays_on_the_next_deposit(session, promo, user, wallet):
+    await _make_promo(promo, code="BOOST10", amount=0, percent=10)
+    await promo.redeem(user.id, "BOOST10")
+
+    bonus = await promo.apply_deposit_bonus(user.id, deposit=50_000, payment_id=1)
+    await session.commit()
+
+    assert bonus == 5_000
+    assert (await wallet.get_balance(user.id)) == 15_000
+
+
+async def test_deposit_bonus_is_paid_once_per_payment(session, promo, user, wallet):
+    """A replayed settlement must not pay the bonus twice."""
+    await _make_promo(promo, code="BOOST10", amount=0, percent=10)
+    await promo.redeem(user.id, "BOOST10")
+
+    first = await promo.apply_deposit_bonus(user.id, 50_000, payment_id=1)
+    second = await promo.apply_deposit_bonus(user.id, 50_000, payment_id=1)
+    await session.commit()
+
+    assert first == 5_000
+    assert second == 0
+    assert (await wallet.get_balance(user.id)) == 15_000
+
+
+async def test_promo_is_disarmed_after_it_pays(session, promo, user, wallet):
+    """A second, later deposit must not earn the bonus again."""
+    await _make_promo(promo, code="BOOST10", amount=0, percent=10)
+    await promo.redeem(user.id, "BOOST10")
+
+    await promo.apply_deposit_bonus(user.id, 50_000, payment_id=1)
+    await session.commit()
+    later = await promo.apply_deposit_bonus(user.id, 50_000, payment_id=2)
+    await session.commit()
+
+    assert later == 0
+    assert (await wallet.get_balance(user.id)) == 15_000
+
+
+async def test_deposit_below_the_minimum_leaves_the_promo_armed(session, promo, user, wallet):
+    await _make_promo(promo, code="BIG20", amount=0, percent=20, min_deposit=10_000)
+    await promo.redeem(user.id, "BIG20")
+
+    small = await promo.apply_deposit_bonus(user.id, 5_000, payment_id=1)
+    await session.commit()
+    assert small == 0
+
+    # Still armed, so a qualifying deposit later still earns it.
+    big = await promo.apply_deposit_bonus(user.id, 20_000, payment_id=2)
+    await session.commit()
+    assert big == 4_000
+
+
+async def test_deposit_bonus_is_a_no_op_without_a_promo(session, promo, user, wallet):
+    assert await promo.apply_deposit_bonus(user.id, 50_000, payment_id=1) == 0
+    assert (await wallet.get_balance(user.id)) == 10_000
+
+
+async def test_a_promo_needs_an_amount_or_a_percentage(promo):
+    with pytest.raises(PromoError):
+        await _make_promo(promo, code="EMPTY", amount=0, percent=0)
+
+
+async def test_percent_promo_pays_through_a_real_settlement(
+    session, user, wallet, settings, promo
+):
+    """End to end: redeem a percent code, then deposit, and see both credits."""
+    from app.services.payments import PaymentService
+    from app.services.referrals import ReferralService
+    from tests.fakes import FakePaymentProvider
+
+    provider = FakePaymentProvider()
+    payments = PaymentService(
+        session,
+        {provider.name: provider},
+        wallet,
+        ReferralService(session, wallet, settings),
+        settings,
+        promo,
+    )
+
+    await _make_promo(promo, code="BOOST10", amount=0, percent=10)
+    await promo.redeem(user.id, "BOOST10")
+
+    payment = await payments.create_invoice(user.id, provider.name, 50_000)
+    await payments.settle(provider.name, payment.invoice_id)
+    await payments.settle(provider.name, payment.invoice_id)  # replay
+
+    # 100.00 start + 500.00 deposit + 50.00 bonus.
+    assert (await wallet.get_balance(user.id)) == 65_000

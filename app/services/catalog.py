@@ -11,7 +11,7 @@ from dataclasses import dataclass
 
 from app.core.config import Settings
 from app.core.logging import get_logger
-from app.providers.base import BaseSMSProvider, SmsCountry, SmsService
+from app.providers.base import BaseSMSProvider, RentalOffer, SmsCountry, SmsService
 from app.services.pricing import PricingService
 from app.utils.cache import TTLCache
 
@@ -26,6 +26,14 @@ class PricedCountry:
     price: int
 
 
+@dataclass(frozen=True, slots=True)
+class PricedRental:
+    """A rentable service with the user-facing price for the chosen duration."""
+
+    offer: RentalOffer
+    price: int
+
+
 class CatalogService:
     """Cached, searchable view of what the SMS provider offers."""
 
@@ -36,6 +44,7 @@ class CatalogService:
         self._pricing = pricing
         self._services = TTLCache(provider.get_services, settings.cache_ttl_seconds)
         self._countries: dict[str, TTLCache[list[SmsCountry]]] = {}
+        self._rental_countries: TTLCache[list[SmsCountry]] | None = None
         self._ttl = settings.cache_ttl_seconds
 
     async def services(self) -> list[SmsService]:
@@ -90,8 +99,50 @@ class CatalogService:
             (p for p in await self.countries(service_code) if p.country.id == country_id), None
         )
 
+    # -- rentals --------------------------------------------------------
+
+    async def rental_countries(self) -> list[SmsCountry]:
+        """Countries that offer rentals, cached like the activation catalogue."""
+        if self._rental_countries is None:
+            self._rental_countries = TTLCache(self._provider.get_rental_countries, self._ttl)
+        return await self._rental_countries.get()
+
+    async def search_rental_countries(self, query: str) -> list[SmsCountry]:
+        needle = query.lower()
+        return [
+            country
+            for country in await self.rental_countries()
+            if needle in country.name.lower() or needle == str(country.id)
+        ]
+
+    async def find_rental_country(self, country_id: int) -> SmsCountry | None:
+        return next((c for c in await self.rental_countries() if c.id == country_id), None)
+
+    async def rental_services(self, country_id: int, hours: int) -> list[PricedRental]:
+        """Rentable services for a country and duration, priced for the user.
+
+        Not cached: the provider prices per duration, and a stale rental quote
+        is exactly the kind of thing the purchase path refuses to charge on.
+        """
+        offers = await self._provider.get_rental_services(country_id, hours)
+        return [PricedRental(offer, self._pricing.quote(offer.cost).total) for offer in offers]
+
+    async def find_rental_service(
+        self, country_id: int, hours: int, service_code: str
+    ) -> PricedRental | None:
+        return next(
+            (
+                priced
+                for priced in await self.rental_services(country_id, hours)
+                if priced.offer.code == service_code
+            ),
+            None,
+        )
+
     def invalidate(self) -> None:
         """Drop every cached catalogue. Used by the admin 'refresh' action."""
         self._services.invalidate()
         for cache in self._countries.values():
             cache.invalidate()
+        if self._rental_countries is not None:
+            self._rental_countries.invalidate()

@@ -82,35 +82,38 @@ class UserRepository(BaseRepository):
         result = await self.session.execute(statement)
         return result.scalar_one_or_none()
 
-    async def set_balance(self, user_id: int, balance: int) -> None:
-        await self.session.execute(update(User).where(User.id == user_id).values(balance=balance))
-
     async def add_spent(self, user_id: int, amount: int) -> None:
-        await self.session.execute(
-            update(User).where(User.id == user_id).values(total_spent=User.total_spent + amount)
-        )
+        await self._mutate(user_id, total_spent=lambda user: user.total_spent + amount)
 
     async def add_referral_earned(self, user_id: int, amount: int) -> None:
-        await self.session.execute(
-            update(User)
-            .where(User.id == user_id)
-            .values(referral_earned=User.referral_earned + amount)
-        )
+        await self._mutate(user_id, referral_earned=lambda user: user.referral_earned + amount)
 
     async def set_banned(self, user_id: int, banned: bool, reason: str | None = None) -> None:
-        await self.session.execute(
-            update(User).where(User.id == user_id).values(is_banned=banned, ban_reason=reason)
-        )
+        await self._mutate(user_id, is_banned=banned, ban_reason=reason)
 
     async def set_language(self, user_id: int, language: str) -> None:
-        await self.session.execute(
-            update(User).where(User.id == user_id).values(language=language)
-        )
+        await self._mutate(user_id, language=language)
+
+    async def set_pending_promo(self, user_id: int, promo_id: int | None) -> None:
+        await self._mutate(user_id, pending_promo_id=promo_id)
 
     async def set_notifications(self, user_id: int, enabled: bool) -> None:
-        await self.session.execute(
-            update(User).where(User.id == user_id).values(notifications_enabled=enabled)
-        )
+        await self._mutate(user_id, notifications_enabled=enabled)
+
+    async def _mutate(self, user_id: int, **changes) -> None:
+        """Apply field changes through the ORM object.
+
+        A bare UPDATE statement would leave an already-loaded instance in this
+        session holding the old value, so a caller that re-reads the user in
+        the same request would see stale data. Callables receive the user and
+        return the new value, which is how the counters increment.
+        """
+        user = await self.get(user_id)
+        if user is None:
+            return
+        for field, value in changes.items():
+            setattr(user, field, value(user) if callable(value) else value)
+        await self.session.flush()
 
     async def search(self, query: str, limit: int = 10) -> Sequence[User]:
         """Admin search by numeric id or (partial) username."""
@@ -595,6 +598,14 @@ class PromoRepository(BaseRepository):
         )
         await self.session.flush()
         return usage
+
+    async def settle_usage(self, promo_id: int, user_id: int, amount: int) -> None:
+        """Fill in the amount of a usage that was recorded before it was known."""
+        await self.session.execute(
+            update(PromoUsage)
+            .where(PromoUsage.promo_id == promo_id, PromoUsage.user_id == user_id)
+            .values(amount=amount)
+        )
 
     async def has_used(self, promo_id: int, user_id: int) -> bool:
         result = await self.session.execute(

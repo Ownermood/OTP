@@ -25,6 +25,7 @@ from app.core.money import to_minor
 from app.database.models import Payment
 from app.database.repositories import PaymentRepository
 from app.providers.base import BasePaymentProvider
+from app.services.promo import PromoService
 from app.services.referrals import ReferralService
 from app.services.wallet import WalletService
 
@@ -49,11 +50,13 @@ class PaymentService:
         wallet: WalletService,
         referrals: ReferralService,
         settings: Settings,
+        promo: PromoService | None = None,
     ) -> None:
         self._session = session
         self._providers = providers
         self._wallet = wallet
         self._referrals = referrals
+        self._promo = promo or PromoService(session, wallet)
         self._settings = settings
         self._payments = PaymentRepository(session)
 
@@ -127,7 +130,10 @@ class PaymentService:
         await self._session.commit()
 
         if change.applied:
+            # Both payouts are keyed on this payment, so a replayed settlement
+            # that somehow reaches here still pays each of them once.
             await self._referrals.pay_commission(payment.user_id, payment.amount, payment.id)
+            await self._promo.apply_deposit_bonus(payment.user_id, payment.amount, payment.id)
             await self._session.commit()
 
         logger.info(

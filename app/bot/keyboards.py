@@ -22,7 +22,7 @@ from app.bot.callbacks import (
     OrderCB,
     OrdersListCB,
     PaymentCB,
-    RentalCB,
+    RentCB,
     ServiceCB,
     SettingsCB,
     SmmCB,
@@ -288,8 +288,40 @@ def cancel_confirm(texts: Texts, locale: str | None, order_id: int) -> InlineKey
     return builder.as_markup()
 
 
+def rental_countries(
+    texts: Texts, locale: str | None, page: Page
+) -> InlineKeyboardMarkup:
+    """Country picker for rentals. Prices are not known until a duration is set."""
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(
+            text=texts.button("search", locale),
+            callback_data=RentCB(action="search").pack(),
+        )
+    )
+    for chunk in _chunks(list(page.items), GRID_COLUMNS):
+        builder.row(
+            *[
+                InlineKeyboardButton(
+                    text=truncate(country.name, 20),
+                    callback_data=RentCB(action="country", value=str(country.id)).pack(),
+                )
+                for country in chunk
+            ]
+        )
+    nav = _nav_row(texts, page, lambda p: RentCB(action="list", page=p).pack(), locale)
+    if len(nav) > 1:
+        builder.row(*nav)
+    builder.row(
+        InlineKeyboardButton(
+            text=texts.button("home", locale), callback_data=Nav(to="home").pack()
+        )
+    )
+    return builder.as_markup()
+
+
 def rental_durations(
-    texts: Texts, locale: str | None, token: str, minimum: int, maximum: int
+    texts: Texts, locale: str | None, country_id: int, minimum: int, maximum: int
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     presets = [h for h in RENTAL_PRESET_HOURS if minimum <= h <= maximum]
@@ -298,19 +330,67 @@ def rental_durations(
             *[
                 InlineKeyboardButton(
                     text=(f"{h}h" if h < 24 else f"{h // 24}d"),
-                    callback_data=RentalCB(token=token, hours=h).pack(),
+                    callback_data=RentCB(
+                        action="hours", value=f"{country_id}:{h}"
+                    ).pack(),
                 )
                 for h in chunk
             ]
         )
     builder.row(
         InlineKeyboardButton(
-            text="⚙️ Custom", callback_data=RentalCB(token=token, hours=0).pack()
+            text="⚙️ Custom",
+            callback_data=RentCB(action="custom", value=str(country_id)).pack(),
         )
     )
     builder.row(
         InlineKeyboardButton(
             text=texts.button("back", locale), callback_data=Nav(to="rent").pack()
+        ),
+        InlineKeyboardButton(
+            text=texts.button("home", locale), callback_data=Nav(to="home").pack()
+        ),
+    )
+    return builder.as_markup()
+
+
+def rental_services(
+    texts: Texts,
+    locale: str | None,
+    page: Page,
+    tokens: dict[str, str],
+    country_id: int,
+    hours: int,
+    currency: str,
+) -> InlineKeyboardMarkup:
+    """Rentable services at their real price for the chosen duration."""
+    builder = InlineKeyboardBuilder()
+    for priced in page.items:
+        token = tokens.get(priced.offer.code)
+        if token is None:
+            continue
+        builder.row(
+            InlineKeyboardButton(
+                text=(
+                    f"{availability_icon(priced.offer.available)} "
+                    f"{truncate(priced.offer.name, 22)} · "
+                    f"{format_money(priced.price, currency)}"
+                ),
+                callback_data=RentCB(action="quote", value=token).pack(),
+            )
+        )
+    nav = _nav_row(
+        texts,
+        page,
+        lambda p: RentCB(action="hours", value=f"{country_id}:{hours}", page=p).pack(),
+        locale,
+    )
+    if len(nav) > 1:
+        builder.row(*nav)
+    builder.row(
+        InlineKeyboardButton(
+            text=texts.button("back", locale),
+            callback_data=RentCB(action="country", value=str(country_id)).pack(),
         ),
         InlineKeyboardButton(
             text=texts.button("home", locale), callback_data=Nav(to="home").pack()

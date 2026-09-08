@@ -176,6 +176,13 @@ sms:
     💳 New balance: <b>{balance}</b>
 
 rental:
+  select_service: |
+    ⏳ <b>SELECT SERVICE</b>
+
+    🌍 Country: {country}
+    ⏱ Duration: {duration}
+
+    Prices below are for the full rental period:
   select_duration: |
     ⏱ <b>SELECT DURATION</b>
 
@@ -392,6 +399,20 @@ promo:
     ➕ Bonus: <b>{amount}</b>
     💳 New balance: <b>{balance}</b>
   invalid: "❌ Invalid or expired promo code."
+  armed: |
+    🎉 <b>PROMO ACTIVATED</b>
+
+    🎟 Code: <code>{code}</code>
+    📈 Bonus: <b>{percent}%</b> of your next deposit
+
+    {divider}
+
+    <i>Add balance and the bonus is credited automatically.</i>
+  deposit_bonus: |
+    🎁 <b>PROMO BONUS</b>
+
+    ➕ {amount} added on top of your deposit.
+    💳 New balance: <b>{balance}</b>
 
 referral:
   main: |
@@ -711,7 +732,9 @@ admin:
 
     Code: <code>{code}</code>
 
-    Send the bonus amount:
+    Send the bonus — a flat amount, or a percentage of the next deposit:
+
+    <i>Examples: 50  or  10%</i>
   promo_create_limit: |
     🎟 <b>CREATE PROMO</b>
 

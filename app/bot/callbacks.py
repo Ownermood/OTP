@@ -64,11 +64,16 @@ class PaymentCB(CallbackData, prefix="pay"):
     payment_id: int = 0
 
 
-class RentalCB(CallbackData, prefix="rnt"):
-    """Choose a rental duration. ``hours=0`` opens the custom-duration prompt."""
+class RentCB(CallbackData, prefix="rnt"):
+    """Rental navigation.
 
-    token: str
-    hours: int = 0
+    ``country`` picks a country, ``hours`` a duration (``0`` opens the custom
+    prompt), and ``quote`` carries a server-side token, never a price.
+    """
+
+    action: str
+    value: str = ""
+    page: int = 1
 
 
 class SmmCB(CallbackData, prefix="smm"):

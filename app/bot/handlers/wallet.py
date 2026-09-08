@@ -274,16 +274,19 @@ async def redeem_promo(message: Message, state: FSMContext, **data):
     code = parse_promo_code(message.text or "")
     await state.clear()
     redemption = await context.promo.redeem(message.from_user.id, code)
-    await show(
-        message,
-        context.text(
+
+    if redemption.deferred:
+        # A percent promo pays out against the next deposit, not right now.
+        text = context.text("promo.armed", code=redemption.code, percent=redemption.percent)
+    else:
+        text = context.text(
             "promo.success",
             code=redemption.code,
             amount=context.money(redemption.amount),
             balance=context.money(redemption.balance_after),
-        ),
-        keyboards.back_home(context.texts, context.locale, back_to="wallet"),
-    )
+        )
+
+    await show(message, text, keyboards.back_home(context.texts, context.locale, back_to="wallet"))
 
 
 # -- transfers --------------------------------------------------------------

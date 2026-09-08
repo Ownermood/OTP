@@ -54,6 +54,8 @@ class User(Base, TimestampMixin):
     is_banned: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     ban_reason: Mapped[str | None] = mapped_column(String(256))
     notifications_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    #: A redeemed percent promo waiting for the user's next qualifying deposit.
+    pending_promo_id: Mapped[int | None] = mapped_column(Integer)
     last_seen_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, nullable=False, index=True
     )

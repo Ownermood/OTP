@@ -441,8 +441,12 @@ async def promo_list(query: CallbackQuery, **data):
 
     lines = [
         f"🎟 <code>{p.code}</code> — "
-        f"{format_money(p.amount, context.settings.currency_symbol)} · "
-        f"{p.used_count}/{p.max_activations} used"
+        + (
+            f"{p.percent}% of deposit"
+            if p.percent
+            else format_money(p.amount, context.settings.currency_symbol)
+        )
+        + f" · {p.used_count}/{p.max_activations} used"
         for p in promos[:15]
     ]
     body = "\n".join(lines) or context.text("common.empty")
@@ -473,22 +477,27 @@ async def promo_code(message: Message, state: FSMContext, **data):
 
 @router.message(AdminStates.promo_amount)
 async def promo_amount(message: Message, state: FSMContext, **data):
+    """Accept either a flat bonus (``50``) or a deposit percentage (``10%``)."""
     context = build_context(data)
     _guard(context, "promo")
-    amount = parse_amount(message.text or "")
-    if amount is None:
-        raise ValidationError("unparseable amount")
+
+    raw = (message.text or "").strip()
+    if raw.endswith("%"):
+        percent = parse_positive_int(raw.rstrip("%"), minimum=1, maximum=100)
+        amount, label = 0, f"{percent}% of next deposit"
+    else:
+        percent = 0
+        amount = parse_amount(raw)
+        if amount is None:
+            raise ValidationError("unparseable amount")
+        label = format_money(amount, context.settings.currency_symbol)
 
     stored = await state.get_data()
     await state.set_state(AdminStates.promo_limit)
-    await state.update_data(promo_amount=amount)
+    await state.update_data(promo_amount=amount, promo_percent=percent)
     await show(
         message,
-        context.text(
-            "admin.promo_create_limit",
-            code=stored["promo_code"],
-            amount=format_money(amount, context.settings.currency_symbol),
-        ),
+        context.text("admin.promo_create_limit", code=stored["promo_code"], amount=label),
         _back_only(),
     )
 
@@ -501,9 +510,11 @@ async def promo_limit(message: Message, state: FSMContext, **data):
 
     stored = await state.get_data()
     await state.clear()
+    percent = int(stored.get("promo_percent", 0))
     promo = await context.promo.create(
         code=stored["promo_code"],
         amount=int(stored["promo_amount"]),
+        percent=percent,
         max_activations=limit,
         expires_at=None,
         min_deposit=0,
@@ -515,7 +526,11 @@ async def promo_limit(message: Message, state: FSMContext, **data):
         context.text(
             "admin.promo_created",
             code=promo.code,
-            amount=format_money(promo.amount, context.settings.currency_symbol),
+            amount=(
+                f"{promo.percent}% of next deposit"
+                if promo.percent
+                else format_money(promo.amount, context.settings.currency_symbol)
+            ),
             limit=promo.max_activations,
         ),
         _back_only(),

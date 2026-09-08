@@ -190,3 +190,53 @@ async def test_rental_duration_is_validated(orders, user, settings):
             hours=settings.max_rental_hours + 1,
             quoted_price=1_000,
         )
+
+
+# -- rental catalogue -------------------------------------------------------
+
+
+async def test_rental_price_comes_from_the_provider_not_a_multiplier(
+    session, provider, pricing, wallet, settings
+):
+    """The provider quotes the whole period; we must not scale an hourly rate."""
+    from app.services.catalog import CatalogService
+
+    catalog = CatalogService(provider, pricing, settings)
+
+    four_hours = await catalog.rental_services(country_id=22, hours=4)
+    one_day = await catalog.rental_services(country_id=22, hours=24)
+
+    # Provider cost 1000/hour for "full"; +10% configured fee.
+    assert four_hours[0].offer.code == "full"
+    assert four_hours[0].price == 4_400
+    assert one_day[0].price == 26_400
+
+
+async def test_rental_services_are_sorted_cheapest_first(
+    provider, pricing, settings
+):
+    from app.services.catalog import CatalogService
+
+    offers = await CatalogService(provider, pricing, settings).rental_services(22, 4)
+    assert [o.offer.code for o in offers] == ["full", "wa"]
+
+
+async def test_rental_country_lookup(provider, pricing, settings):
+    from app.services.catalog import CatalogService
+
+    catalog = CatalogService(provider, pricing, settings)
+    assert (await catalog.find_rental_country(22)).name == "India"
+    assert await catalog.find_rental_country(999) is None
+
+
+async def test_rental_service_lookup_is_scoped_to_country_and_duration(
+    provider, pricing, settings
+):
+    from app.services.catalog import CatalogService
+
+    catalog = CatalogService(provider, pricing, settings)
+    found = await catalog.find_rental_service(22, 24, "wa")
+
+    assert found is not None
+    assert found.price == 52_800
+    assert await catalog.find_rental_service(22, 24, "nope") is None

@@ -16,6 +16,7 @@ class BuyStates(StatesGroup):
 
 
 class RentalStates(StatesGroup):
+    searching_country = State()
     entering_hours = State()
 
 

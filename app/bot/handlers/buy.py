@@ -159,25 +159,6 @@ async def confirm_purchase(
 
     await state.update_data(quote_token=callback_data.token)
 
-    # The rental flow reuses this picker; it needs a duration before a quote.
-    if (await state.get_data()).get("mode") == "rental":
-        await show(
-            query,
-            context.text(
-                "rental.select_duration",
-                country=payload["country_name"],
-                service=payload["service_name"],
-            ),
-            keyboards.rental_durations(
-                context.texts,
-                context.locale,
-                callback_data.token,
-                context.settings.min_rental_hours,
-                context.settings.max_rental_hours,
-            ),
-        )
-        return
-
     balance = context.user.balance
     price = payload["price"]
     await show(

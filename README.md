@@ -10,11 +10,12 @@ auditable money, and no business logic inside a callback handler.
 
 **Users**
 - 🛍 Buy a number — service search, country search, live prices and availability
-- ⏳ Rent a number — preset or custom durations
+- ⏳ Rent a number — real per-duration provider rates, preset or custom
 - 📈 SMM panel — Instagram, Telegram, YouTube, TikTok and more, with order tracking
 - 📦 Order history with receipts, plus refresh and cancel on live orders
 - ⭐ Favourites — saved service+country pairs, re-priced live
 - 💳 Wallet — deposits, filterable transaction history, promo codes, optional transfers
+- 🎟 Promo codes — a flat bonus, or a percentage credited on the next deposit
 - 🎁 Referral programme with commission on invitees' deposits
 - 👤 Profile with lifetime statistics, notification and language settings
 - ℹ️ Help centre with FAQ, refund policy, terms and privacy — all editable text
@@ -23,6 +24,7 @@ auditable money, and no business logic inside a callback handler.
 - 📊 Dashboard: users, orders, revenue, deposits, refunds, conversion, top services
 - 🔍 One search box across users, orders, provider order ids, payments and phone numbers
 - 💰 Balance adjustments that always write a transaction and an audit row
+- 🎟 Promo creation accepting either `50` (flat) or `10%` (of next deposit)
 - 🚫 Ban/unban, 🎟 promo management, 📢 rate-limited broadcasts
 - 📡 Live provider/database health, 🔧 maintenance mode, 🧾 audit log
 - Role-based access: `owner`, `admin`, `finance`, `support`, `viewer`
@@ -80,6 +82,7 @@ The settings that shape the business:
 | `MIN_PRICE` / `MAX_PRICE` | Clamp the final user-facing price (0 = unset) |
 | `PROVIDER_CURRENCY_RATE` | Multiplier from provider currency to yours |
 | `SMS_POLL_INTERVAL` / `SMS_TIMEOUT` | Polling cadence and refund deadline |
+| `SMM_MARKUP_PERCENT` | Markup on SMM panel rates |
 | `REFERRAL_PERCENT` | Commission paid to an inviter on each deposit |
 | `MIN_DEPOSIT` / `MAX_DEPOSIT` | Deposit bounds |
 | `ADMIN_ROLES` | Per-admin roles, e.g. `123:finance,456:support` |
@@ -113,6 +116,17 @@ SMM_API_URL=https://your-panel.com/api/v2
 SMM_API_KEY=your-panel-key
 SMM_MARKUP_PERCENT=20
 ```
+
+Then verify the panel actually answers before going live:
+
+```bash
+python -m scripts.check_providers --smm
+```
+
+It makes read-only calls — no orders, no money — and prints the panel balance,
+how many services it returned, how they bucket into platform tabs, and a sample
+price at your markup. Run it without a flag to check the SMS and payment
+providers too.
 
 The bundled adapter speaks the Perfect-Panel API dialect (`action=services`,
 `add`, `status`, `balance`) that most SMM panels implement, so pointing
@@ -218,6 +232,7 @@ adjustment.
 | Refund issued twice | `orders.refunded_at` plus a `refund:order:<id>` key |
 | Referral commission paid twice | `referral:payment:<id>` key |
 | Promo redeemed twice | Unique `(promo_id, user_id)` plus a `promo:<id>:<user>` key |
+| Deposit-percentage promo paid twice | `promo:<id>:payment:<payment_id>` key, and the promo is disarmed once honoured |
 | Concurrent duplicates racing past a check | Unique index on `transactions.idempotency_key`, applied inside a SAVEPOINT |
 
 Every one of these has a test in `tests/`.
@@ -290,6 +305,13 @@ rendering and configuration validation.
 
 ---
 
+## Rentals
+
+Providers price a rental for a whole (country, duration) pair rather than per
+hour, so the flow asks for the country and the duration first and only then
+shows services with their real prices for that period. `MIN_RENTAL_HOURS` and
+`MAX_RENTAL_HOURS` bound both the preset buttons and custom input.
+
 ## Troubleshooting
 
 | Symptom | Cause and fix |
@@ -301,6 +323,8 @@ rendering and configuration validation.
 | "Price changed" on confirm | The provider raised the price mid-session — re-confirm at the new price |
 | Users report "Maintenance" | Maintenance mode is on — toggle it in 📡 Status |
 | `no such table` | Migrations were not run: `alembic upgrade head` |
+| SMM menu shows one "Other" tab | The panel's category names are unfamiliar; `scripts/check_providers.py --smm` warns about this. Extend `SMM_CATEGORY_KEYWORDS` in `app/core/constants.py` |
+| SMM orders rejected | Run the check script — usually a wrong `SMM_API_URL` (it must be the API endpoint, often ending `/api/v2`) or a revoked key |
 
 ---
 

@@ -13,6 +13,7 @@ from app.providers.base import (
     BaseSMSProvider,
     Invoice,
     Rental,
+    RentalOffer,
     SmmOrderStatus,
     SmmService,
     SmsCountry,
@@ -64,6 +65,16 @@ class FakeSmsProvider(BaseSMSProvider):
     async def finish_activation(self, provider_order_id: str) -> bool:
         self.finished.append(provider_order_id)
         return True
+
+    async def get_rental_countries(self):
+        return [SmsCountry(id=22, name="India"), SmsCountry(id=0, name="Russia")]
+
+    async def get_rental_services(self, country_id: int, hours: int):
+        # Real providers price the whole period, so the cost scales with hours.
+        return [
+            RentalOffer(code="full", name="Full rent", cost=self.cost * hours, available=5),
+            RentalOffer(code="wa", name="WhatsApp", cost=self.cost * hours * 2, available=2),
+        ]
 
     async def create_rental(self, service_code: str, country_id: int, hours: int) -> Rental:
         if self.fail_next:

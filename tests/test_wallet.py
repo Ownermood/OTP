@@ -127,3 +127,20 @@ async def test_referral_credit_tracks_lifetime_earnings(session, wallet, user):
 
     assert user.referral_earned == 400
     assert user.balance == 10_400
+
+
+async def test_user_field_writes_are_visible_to_a_later_read(session, user):
+    """Regression: a bare UPDATE left an already-loaded user holding old data."""
+    from app.database.repositories import UserRepository
+
+    users = UserRepository(session)
+    await users.set_banned(user.id, True, "spam")
+    await users.set_notifications(user.id, False)
+    await users.set_pending_promo(user.id, 7)
+
+    # Same session, same identity-mapped instance the admin screen would re-read.
+    reread = await users.get(user.id)
+    assert reread.is_banned is True
+    assert reread.ban_reason == "spam"
+    assert reread.notifications_enabled is False
+    assert reread.pending_promo_id == 7
