@@ -132,3 +132,21 @@ def test_secrets_are_masked_for_logs():
 
     assert mask_secret("abcdefghijklmnop") == "abcd…mnop"
     assert "secret" not in mask_secret("secret")
+
+
+def test_the_shipped_example_env_file_is_loadable(monkeypatch):
+    """.env.example must parse as-is, or a first run fails on our own defaults.
+
+    Its optional ids ship blank; the required values come from the environment
+    exactly as an operator would supply them.
+    """
+    # The one blank the example expects an operator to fill; BACKUP_CHAT_ID
+    # beside it is genuinely optional and must survive being left empty.
+    monkeypatch.setenv("MANUAL_PAYMENT_CHANNEL_ID", "-1001234567890")
+    Settings.model_config["env_file"] = ".env.example"
+    try:
+        settings = Settings()
+    finally:
+        Settings.model_config["env_file"] = "tests/.env-that-does-not-exist"
+    assert settings.backup_chat_id == 0
+    assert settings.min_deposit == 100

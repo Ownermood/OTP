@@ -210,6 +210,19 @@ class Settings(BaseSettings):
             raise ValueError(f"PARSE_MODE must be one of {sorted(allowed)}")
         return value
 
+    @field_validator("manual_payment_channel_id", "backup_chat_id", mode="before")
+    @classmethod
+    def _blank_id_means_unset(cls, value: object) -> object:
+        """An optional id left empty in .env arrives as "", not as absent.
+
+        Without this, shipping ``BACKUP_CHAT_ID=`` in .env.example makes the
+        example file unusable: the blank fails int parsing before any default
+        applies.
+        """
+        if isinstance(value, str) and not value.strip():
+            return 0
+        return value
+
     @field_validator("support_username")
     @classmethod
     def _strip_at(cls, value: str) -> str:
