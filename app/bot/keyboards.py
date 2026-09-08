@@ -331,7 +331,7 @@ def rental_durations(
                 InlineKeyboardButton(
                     text=(f"{h}h" if h < 24 else f"{h // 24}d"),
                     callback_data=RentCB(
-                        action="hours", value=f"{country_id}:{h}"
+                        action="hours", value=f"{country_id}_{h}"
                     ).pack(),
                 )
                 for h in chunk
@@ -382,7 +382,7 @@ def rental_services(
     nav = _nav_row(
         texts,
         page,
-        lambda p: RentCB(action="hours", value=f"{country_id}:{hours}", page=p).pack(),
+        lambda p: RentCB(action="hours", value=f"{country_id}_{hours}", page=p).pack(),
         locale,
     )
     if len(nav) > 1:
@@ -616,7 +616,7 @@ def transactions_filters(texts: Texts, locale: str | None, page: Page) -> Inline
         builder.row(
             *[
                 InlineKeyboardButton(
-                    text=label, callback_data=WalletCB(action=f"history:{key}").pack()
+                    text=label, callback_data=WalletCB(action=f"history_{key}").pack()
                 )
                 for key, label in chunk
             ]

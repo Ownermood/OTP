@@ -227,7 +227,7 @@ async def _payment_settled(query: CallbackQuery, context: Context, amount: int) 
 @router.callback_query(WalletCB.filter(F.action.startswith("history")))
 async def history(query: CallbackQuery, callback_data: WalletCB, **data):
     context = build_context(data)
-    _, _, filter_key = callback_data.action.partition(":")
+    _, _, filter_key = callback_data.action.partition("_")
     types = HISTORY_FILTERS.get(filter_key or "all")
     transactions = await context.users.transactions(query.from_user.id, types)
 

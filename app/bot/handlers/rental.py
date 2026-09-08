@@ -149,7 +149,7 @@ async def list_services(query: CallbackQuery, callback_data: RentCB, **data):
     context = build_context(data)
     _require_enabled(context)
 
-    raw_country, _, raw_hours = callback_data.value.partition(":")
+    raw_country, _, raw_hours = callback_data.value.partition("_")
     await _render_services(
         query, context, int(raw_country), int(raw_hours), page=callback_data.page
     )

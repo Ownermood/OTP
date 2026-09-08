@@ -25,6 +25,7 @@ os.environ.update(
     DATABASE_URL="sqlite+aiosqlite:///:memory:",
     SERVICE_FEE_PERCENT="10",
     SMM_ENABLED="false",
+    RATE_LIMIT_PER_SECOND="1000",
 )
 
 from app.core.config import Settings  # noqa: E402
@@ -80,3 +81,68 @@ def zero_fee_pricing(settings) -> PricingService:
     settings.service_fee_percent = Decimal("0")
     settings.service_fee_fixed = Decimal("0")
     return PricingService(settings)
+
+
+@pytest_asyncio.fixture
+async def harness(session_factory, settings, monkeypatch):
+    """A running bot, wired exactly as production wires it, with fake providers."""
+    from aiogram import Bot, Dispatcher
+    from aiogram.client.default import DefaultBotProperties
+    from aiogram.fsm.storage.memory import MemoryStorage
+
+    from app.bot.handlers import build_router
+    from app.bot.setup import _register_middlewares
+    from app.bot.texts import Texts
+    from app.core.config import ROOT_DIR
+    from app.services.catalog import CatalogService
+    from app.services.notifications import NotificationService
+    from app.utils.tokens import TokenStore
+    from tests.fakes import FakePaymentProvider, FakeSmmProvider, FakeSmsProvider
+    from tests.harness import BotHarness, MockedSession
+
+    mocked = MockedSession()
+    bot = Bot(
+        token="424242:TEST-TOKEN-FOR-HARNESS-ONLY",
+        session=mocked,
+        default=DefaultBotProperties(parse_mode="HTML"),
+    )
+    dispatcher = Dispatcher(storage=MemoryStorage())
+
+    sms_provider = FakeSmsProvider(cost=1_000)
+    payment_provider = FakePaymentProvider()
+    smm_provider = FakeSmmProvider()
+    pricing = PricingService(settings)
+
+    dispatcher.workflow_data.update(
+        settings=settings,
+        texts=Texts(ROOT_DIR / "locales", settings.locale),
+        pricing=pricing,
+        catalog=CatalogService(sms_provider, pricing, settings),
+        engine=None,
+        session_factory=session_factory,
+        sms_provider=sms_provider,
+        payment_providers={payment_provider.name: payment_provider},
+        smm_provider=smm_provider,
+        smm_cache=None,
+        notifications=NotificationService(bot, session_factory, settings.admin_ids),
+        tokens=TokenStore(),
+    )
+    # Handler routers are module-level singletons: built once in production,
+    # but every test builds its own dispatcher. Detach them first so they can
+    # be re-attached to this one.
+    from app.bot.handlers import admin, buy, orders, profile, rental, smm, start, wallet
+
+    for module in (admin, start, buy, rental, orders, wallet, smm, profile):
+        module.router._parent_router = None
+
+    _register_middlewares(dispatcher, settings, session_factory)
+    dispatcher.include_router(build_router())
+
+    driver = BotHarness(bot, dispatcher, mocked, user_id=555001)
+    # Exposed so tests can steer the fakes mid-flow.
+    driver.sms = sms_provider
+    driver.payments = payment_provider
+    driver.smm = smm_provider
+    yield driver
+
+    await bot.session.close()

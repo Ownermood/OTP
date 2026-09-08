@@ -356,6 +356,20 @@ wallet:
     📜 <b>TRANSACTION HISTORY</b>
 
     No transactions yet.
+  admin_credit: |
+    🛠 <b>BALANCE UPDATED</b>
+
+    ➕ <b>{amount}</b> was added to your balance by an administrator.
+    💳 New balance: <b>{balance}</b>
+
+    📝 {reason}
+  admin_debit: |
+    🛠 <b>BALANCE UPDATED</b>
+
+    ➖ <b>{amount}</b> was deducted from your balance by an administrator.
+    💳 New balance: <b>{balance}</b>
+
+    📝 {reason}
   transfer_user: |
     💸 <b>TRANSFER BALANCE</b>
 

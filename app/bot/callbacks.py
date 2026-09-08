@@ -3,6 +3,11 @@
 Callback payloads stay short and carry **no** authoritative values -- no price,
 no user id, no balance. Anything that decides money is looked up server-side
 from the token store or the database. See :mod:`app.utils.tokens`.
+
+Optional string fields are declared ``str | None = None``, never ``str = ""``.
+aiogram packs an empty string and unpacks it back as ``None``, so a ``str``
+field with an empty default fails validation on the way in and the callback is
+dropped without reaching a handler -- a button that silently does nothing.
 """
 
 from __future__ import annotations
@@ -60,7 +65,7 @@ class WalletCB(CallbackData, prefix="wal"):
 
 class PaymentCB(CallbackData, prefix="pay"):
     action: str
-    provider: str = ""
+    provider: str | None = None
     payment_id: int = 0
 
 
@@ -72,13 +77,13 @@ class RentCB(CallbackData, prefix="rnt"):
     """
 
     action: str
-    value: str = ""
+    value: str | None = None
     page: int = 1
 
 
 class SmmCB(CallbackData, prefix="smm"):
     action: str
-    value: str = ""
+    value: str | None = None
     page: int = 1
 
 
@@ -88,14 +93,14 @@ class HelpCB(CallbackData, prefix="hlp"):
 
 class SettingsCB(CallbackData, prefix="set"):
     action: str
-    value: str = ""
+    value: str | None = None
 
 
 class AdminCB(CallbackData, prefix="adm"):
     """Admin navigation. Permission is checked from configured roles, never here."""
 
     action: str
-    value: str = ""
+    value: str | None = None
     page: int = 1
 
 

@@ -250,7 +250,7 @@ async def user_detail(query: CallbackQuery, callback_data: AdminCB, **data):
             InlineKeyboardButton(
                 text=("✅ Unban" if user.is_banned else "🚫 Ban"),
                 callback_data=AdminCB(
-                    action="ban", value=f"{user.id}:{'0' if user.is_banned else '1'}"
+                    action="unban" if user.is_banned else "ban", value=str(user.id)
                 ).pack(),
             )
         )
@@ -349,25 +349,30 @@ async def apply_balance(message: Message, state: FSMContext, **data):
         ),
         _back_only(),
     )
+    # An adjustment is not a payment: telling the user "PAYMENT RECEIVED" would
+    # be wrong for a credit and nonsense for a deduction.
     await data["notifications"].notify_user(
         user_id,
         context.text(
-            "wallet.success",
-            amount=format_money(amount, context.settings.currency_symbol),
+            "wallet.admin_credit" if amount > 0 else "wallet.admin_debit",
+            amount=format_money(abs(amount), context.settings.currency_symbol),
             balance=format_money(balance, context.settings.currency_symbol),
+            reason=reason,
         ),
         essential=True,
     )
 
 
-@router.callback_query(AdminCB.filter(F.action == "ban"))
+@router.callback_query(AdminCB.filter(F.action.in_({"ban", "unban"})))
 async def toggle_ban(query: CallbackQuery, callback_data: AdminCB, **data):
     context = build_context(data)
     role = _guard(context, "ban")
-    raw_id, _, flag = callback_data.value.partition(":")
-    await context.admin.set_banned(query.from_user.id, role, int(raw_id), flag == "1")
+    user_id = callback_data.value
+    await context.admin.set_banned(
+        query.from_user.id, role, int(user_id), callback_data.action == "ban"
+    )
     await toast(query, context.text("common.done"))
-    await user_detail(query, AdminCB(action="user", value=raw_id), **data)
+    await user_detail(query, AdminCB(action="user", value=user_id), **data)
 
 
 # -- orders / payments ------------------------------------------------------
