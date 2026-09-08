@@ -390,25 +390,35 @@ class PaymentRepository(BaseRepository):
         )
         return result.scalar_one_or_none()
 
-    async def list_pending(self, provider: str) -> Sequence[Payment]:
-        """Pending, not-yet-expired invoices for the payment poller."""
+    async def list_pending(self, provider: str, limit: int = 200) -> Sequence[Payment]:
+        """Invoices the poller still has to resolve.
+
+        Deliberately *not* filtered on ``expires_at``. A user can pay in the
+        last seconds before an invoice lapses, and if the bot is restarting at
+        that moment the payment would otherwise be written off unchecked while
+        the gateway has already taken the money. Invoices are only abandoned
+        once :meth:`expire_stale` has given the provider a long grace window to
+        report them.
+        """
         result = await self.session.execute(
-            select(Payment).where(
-                Payment.provider == provider,
-                Payment.status == PaymentStatus.PENDING,
-                Payment.expires_at >= datetime.utcnow(),
-            )
+            select(Payment)
+            .where(Payment.provider == provider, Payment.status == PaymentStatus.PENDING)
+            .order_by(Payment.created_at.desc())
+            .limit(limit)
         )
         return result.scalars().all()
 
-    async def expire_stale(self) -> int:
-        """Mark timed-out invoices expired. Returns how many were closed."""
+    async def expire_stale(self, grace_hours: int) -> int:
+        """Abandon invoices the provider has not reported for ``grace_hours``.
+
+        The grace period is measured past the invoice's own expiry, so a
+        payment that landed late -- or while the bot was down -- still gets
+        polled and credited before we stop asking about it.
+        """
+        cutoff = datetime.utcnow() - timedelta(hours=grace_hours)
         result = await self.session.execute(
             update(Payment)
-            .where(
-                Payment.status == PaymentStatus.PENDING,
-                Payment.expires_at < datetime.utcnow(),
-            )
+            .where(Payment.status == PaymentStatus.PENDING, Payment.expires_at < cutoff)
             .values(status=PaymentStatus.EXPIRED)
         )
         return int(result.rowcount or 0)

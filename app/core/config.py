@@ -89,6 +89,9 @@ class Settings(BaseSettings):
     telegram_stars_max: int = 2500
 
     payment_timeout_minutes: int = 10
+    #: How long past its expiry an unreported invoice is still polled, so a
+    #: payment made during a restart is not written off with the money taken.
+    payment_grace_hours: int = 24
     min_deposit: Decimal = Decimal("50")
     max_deposit: Decimal = Decimal("50000")
 

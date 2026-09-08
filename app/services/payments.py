@@ -112,10 +112,20 @@ class PaymentService:
             logger.warning("payment.unknown_invoice", provider=provider_name, invoice=invoice_id)
             return None
 
-        if payment.status != PaymentStatus.PENDING:
-            # Already settled (or expired/failed). A replayed callback lands here.
+        # EXPIRED is settleable: we may have stopped waiting, but if the gateway
+        # now says the money arrived, keeping it uncredited is the worse error.
+        # PAID and REFUNDED are terminal -- that is where a replay stops.
+        if payment.status not in (PaymentStatus.PENDING, PaymentStatus.EXPIRED):
             logger.info("payment.replay_ignored", payment_id=payment.id, status=payment.status)
             return Settlement(payment, credited=False, balance_after=await self._balance(payment))
+
+        if payment.status == PaymentStatus.EXPIRED:
+            logger.warning(
+                "payment.late_settlement",
+                payment_id=payment.id,
+                user_id=payment.user_id,
+                amount=payment.amount,
+            )
 
         change = await self._wallet.credit(
             payment.user_id,
@@ -153,7 +163,7 @@ class PaymentService:
         return await self._payments.list_pending(provider_name)
 
     async def expire_stale(self) -> int:
-        closed = await self._payments.expire_stale()
+        closed = await self._payments.expire_stale(self._settings.payment_grace_hours)
         if closed:
             await self._session.commit()
         return closed

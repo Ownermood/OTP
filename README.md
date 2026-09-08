@@ -85,6 +85,7 @@ The settings that shape the business:
 | `SMM_MARKUP_PERCENT` | Markup on SMM panel rates |
 | `REFERRAL_PERCENT` | Commission paid to an inviter on each deposit |
 | `MIN_DEPOSIT` / `MAX_DEPOSIT` | Deposit bounds |
+| `PAYMENT_GRACE_HOURS` | How long past expiry an unreported invoice is still checked |
 | `ADMIN_ROLES` | Per-admin roles, e.g. `123:finance,456:support` |
 
 ### Database
@@ -233,6 +234,7 @@ adjustment.
 | Referral commission paid twice | `referral:payment:<id>` key |
 | Promo redeemed twice | Unique `(promo_id, user_id)` plus a `promo:<id>:<user>` key |
 | Deposit-percentage promo paid twice | `promo:<id>:payment:<payment_id>` key, and the promo is disarmed once honoured |
+| Money taken but never credited | Invoices are polled past their expiry for `PAYMENT_GRACE_HOURS`, and an abandoned invoice the gateway later confirms is still settled — `PAID` is the only terminal state |
 | Concurrent duplicates racing past a check | Unique index on `transactions.idempotency_key`, applied inside a SAVEPOINT |
 
 Every one of these has a test in `tests/`.
@@ -319,7 +321,7 @@ shows services with their real prices for that period. `MIN_RENTAL_HOURS` and
 | Exits with a configuration error | The message names the key — fix it in `.env` |
 | `startup.sms_provider_failed` | Wrong API key, or the provider is unreachable |
 | No SMS arrives | Check 📡 Status in the admin panel; a timed-out activation refunds automatically |
-| Payments do not credit | Confirm the provider is enabled; check 💳 Payments in the admin panel for the invoice status |
+| Payments do not credit | Confirm the provider is enabled; check 💳 Payments in the admin panel for the invoice status. An invoice paid late, or while the bot was down, is still polled for `PAYMENT_GRACE_HOURS` and credited when the gateway reports it |
 | "Price changed" on confirm | The provider raised the price mid-session — re-confirm at the new price |
 | Users report "Maintenance" | Maintenance mode is on — toggle it in 📡 Status |
 | `no such table` | Migrations were not run: `alembic upgrade head` |
