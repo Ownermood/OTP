@@ -8,6 +8,7 @@ rather than failing on a user's first purchase.
 
 from __future__ import annotations
 
+import os
 from decimal import Decimal
 from functools import lru_cache
 from pathlib import Path
@@ -28,7 +29,12 @@ class Settings(BaseSettings):
     """Typed view over the ``.env`` file."""
 
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore", case_sensitive=False
+        # ENV_FILE lets a deployment (or the test suite) point somewhere other
+        # than ./.env, so settings never depend on the working directory's file.
+        env_file=os.environ.get("ENV_FILE", ".env"),
+        env_file_encoding="utf-8",
+        extra="ignore",
+        case_sensitive=False,
     )
 
     # --- Telegram -------------------------------------------------------

@@ -23,6 +23,11 @@ PRICES_22 = {"22": {"ttf": {"0.0195": 0, "0.0400": 118, "1.3024": 5}, "obi": {"0
 PRICES_6 = {"6": {"ttf": {"0.0600": 40}}}
 
 
+#: Actions the live API rejects with BAD_OPERATOR when the parameter is absent.
+#: ``getBalance`` is deliberately not among them -- it answers without one.
+OPERATOR_REQUIRED = frozenset({"getPrices", "getCountries", "getNumber"})
+
+
 class FakeApi:
     """A stand-in for handler_api.php that records what it was asked."""
 
@@ -37,8 +42,10 @@ class FakeApi:
         action = params.get("action", "")
         if action in self.missing:
             return httpx.Response(200, text="BAD_ACTION")
-        if action != "getOperators" and "operator" not in params:
+        if action in OPERATOR_REQUIRED and "operator" not in params:
             return httpx.Response(200, text="BAD_OPERATOR")
+        if action == "getBalance":
+            return httpx.Response(200, text="ACCESS_BALANCE:0.222")
         if action == "getOperators":
             return httpx.Response(200, json=OPERATORS)
         if action == "getCountries":
@@ -77,13 +84,20 @@ def api() -> FakeApi:
     return FakeApi(bulk_prices=True)
 
 
-async def test_every_catalogue_call_carries_an_operator(api):
+async def test_every_call_that_needs_an_operator_carries_one(api):
     provider = build(api)
     await provider.get_services()
-    catalogue_calls = [c for c in api.calls if c["action"] != "getOperators"]
-    assert catalogue_calls
-    assert all("operator" in call for call in catalogue_calls)
-    assert not any("BAD_OPERATOR" in call.get("action", "") for call in api.calls)
+    await provider.create_activation("ttf", 22)
+    needing = [call for call in api.calls if call["action"] in OPERATOR_REQUIRED]
+    assert needing
+    assert all("operator" in call for call in needing)
+    await provider.close()
+
+
+async def test_the_balance_check_works_without_an_operator(api):
+    provider = build(api)
+    assert await provider.get_balance() == 2220  # 0.222 * 100, rounded up
+    assert "operator" not in next(c for c in api.calls if c["action"] == "getBalance")
     await provider.close()
 
 

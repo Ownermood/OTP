@@ -17,6 +17,9 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 # Settings are constructed from the environment, so give the tests a valid one
 # before app.core.config is imported anywhere.
 os.environ.update(
+    # Never read the developer's own .env -- a local deployment file must not
+    # decide whether a test passes.
+    ENV_FILE="tests/.env-that-does-not-exist",
     BOT_TOKEN="123456789:TEST-TOKEN-FOR-UNIT-TESTS-ONLY",
     ADMIN_IDS="1",
     SMS_ACTIVATE_API_TOKEN="test-key",

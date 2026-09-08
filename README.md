@@ -90,6 +90,7 @@ The settings that shape the business:
 | `SERVICE_FEE_PERCENT` / `SERVICE_FEE_FIXED` | Markup on the provider's cost |
 | `MIN_PRICE` / `MAX_PRICE` | Clamp the final user-facing price (0 = unset) |
 | `PROVIDER_CURRENCY_RATE` | Multiplier from provider currency to yours |
+| `ENV_FILE` | Read settings from this file instead of `./.env` |
 | `SMS_POLL_INTERVAL` / `SMS_TIMEOUT` | Polling cadence and refund deadline |
 | `SMM_MARKUP_PERCENT` | Markup on SMM panel rates |
 | `REFERRAL_PERCENT` | Commission paid to an inviter on each deposit |
