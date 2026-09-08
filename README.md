@@ -531,18 +531,38 @@ id, whose numbering is undocumented and differs between providers. A country
 that is not in the table shows no dial code, which is an omission rather than
 a wrong one.
 
-### On button colours
+### Button colours
 
-The Bot API has no way to colour an inline keyboard button. Bots that appear to
-have coloured buttons are being viewed in a modified Telegram client applying
-its own theme; the same bot renders in the standard grey for everyone else.
+Bot API 9.4 made colour a real property of a button, so it is set on the button
+rather than faked with emoji in the label. Styles are assigned by meaning, in
+`app/bot/keyboards/style.py`:
 
-Labels therefore carry their own colour, as an emoji that renders identically
-on every client — 🟢 for the primary action, 🔴 for money, 🔵 for navigation.
-Edit them in `locales/en/messages.yaml` under `buttons`.
+| Style | Colour | Used for |
+| --- | --- | --- |
+| `success` | green | the one action a screen exists for — Buy, Confirm, Pay Now, Approve |
+| `danger` | red | money leaving, or a decision that cannot be undone — Add Balance, Cancel activation, Decline, Ban, Broadcast |
+| `primary` | blue | navigation and secondary actions |
+| *(none)* | default | inert or incidental — Back, Home, page counters |
 
-Custom (premium) emoji have a separate restriction: a bot may only send them
-once it owns a username bought on Fragment.
+Never more than one `success` on a screen; a test enforces it. On a cancel
+screen the red button is "Yes, cancel" and the green one is "Keep number", so
+colour tracks consequence rather than the word yes.
+
+This needs aiogram 3.31+; older versions silently drop the field.
+
+### Custom (premium) emoji
+
+Buttons can carry a custom emoji before their label:
+
+```env
+BUTTON_ICONS=buy:5350513667437440642,wallet:5352640560718949874
+```
+
+Telegram accepts these from a bot that owns a Fragment username, or from any
+bot whose owner has Telegram Premium when the message goes to a private, group
+or supergroup chat. Buttons render normally without them, so this is entirely
+optional. Ids are validated at startup — a pasted emoji character rather than
+an id is refused rather than silently ignored.
 
 ## Troubleshooting
 

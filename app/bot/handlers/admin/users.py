@@ -10,6 +10,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from app.bot.callbacks import AdminCB
 from app.bot.handlers.admin.common import _back_button, _back_only, _guard, router
 from app.bot.handlers.common import build_context, show, toast
+from app.bot.keyboards.style import DANGER, PRIMARY, SUCCESS
 from app.bot.states import AdminStates
 from app.core.exceptions import ValidationError
 from app.core.logging import get_logger
@@ -87,6 +88,7 @@ async def user_detail(query: CallbackQuery, callback_data: AdminCB, **data):
             InlineKeyboardButton(
                 text="💰 Adjust balance",
                 callback_data=AdminCB(action="balance", value=str(user.id)).pack(),
+                style=PRIMARY,
             )
         )
     if can(role, "ban"):
@@ -96,6 +98,7 @@ async def user_detail(query: CallbackQuery, callback_data: AdminCB, **data):
                 callback_data=AdminCB(
                     action="unban" if user.is_banned else "ban", value=str(user.id)
                 ).pack(),
+                style=SUCCESS if user.is_banned else DANGER,
             )
         )
     builder.row(_back_button())

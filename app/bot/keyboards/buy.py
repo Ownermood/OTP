@@ -17,6 +17,7 @@ from app.bot.callbacks import (
     ServiceCB,
 )
 from app.bot.keyboards.common import _chunks, _nav_row
+from app.bot.keyboards.style import DANGER, PRIMARY, SUCCESS
 from app.bot.texts import Texts
 from app.core.constants import GRID_COLUMNS
 from app.core.money import format_money
@@ -53,10 +54,10 @@ def services(
         builder.row(
             InlineKeyboardButton(
                 text=texts.button("show_all", locale),
-                callback_data=Nav(to="services_all").pack(),
+                callback_data=Nav(to="services_all").pack(), style=PRIMARY,
             ),
             InlineKeyboardButton(
-                text=texts.button("search", locale), callback_data=Nav(to="buy_search").pack()
+                text=texts.button("search", locale), callback_data=Nav(to="buy_search").pack(), style=PRIMARY
             ),
         )
 
@@ -95,10 +96,10 @@ def countries(
     builder.row(
         InlineKeyboardButton(
             text=texts.button("show_all", locale),
-            callback_data=Nav(to="countries_all").pack(),
+            callback_data=Nav(to="countries_all").pack(), style=PRIMARY,
         ),
         InlineKeyboardButton(
-            text=texts.button("search", locale), callback_data=Nav(to="country_search").pack()
+            text=texts.button("search", locale), callback_data=Nav(to="country_search").pack(), style=PRIMARY
         ),
     )
     for chunk in _chunks(list(page.items), GRID_COLUMNS):
@@ -135,7 +136,7 @@ def purchase_confirm(texts: Texts, locale: str | None, token: str) -> InlineKeyb
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
-            text=texts.button("confirm", locale), callback_data=ConfirmCB(token=token).pack()
+            text=texts.button("confirm", locale), callback_data=ConfirmCB(token=token).pack(), style=SUCCESS
         )
     )
     builder.row(
@@ -146,7 +147,7 @@ def purchase_confirm(texts: Texts, locale: str | None, token: str) -> InlineKeyb
     )
     builder.row(
         InlineKeyboardButton(
-            text=texts.button("cancel", locale), callback_data=Nav(to="buy").pack()
+            text=texts.button("cancel", locale), callback_data=Nav(to="buy").pack(), style=DANGER
         )
     )
     return builder.as_markup()
@@ -164,7 +165,7 @@ def activation(texts: Texts, locale: str | None, order_id: int) -> InlineKeyboar
     builder.row(
         InlineKeyboardButton(
             text=texts.button("cancel", locale),
-            callback_data=OrderCB(action="cancel", order_id=order_id).pack(),
+            callback_data=OrderCB(action="cancel", order_id=order_id).pack(), style=DANGER,
         ),
         InlineKeyboardButton(
             text=texts.button("details", locale),
@@ -185,13 +186,13 @@ def cancel_confirm(texts: Texts, locale: str | None, order_id: int) -> InlineKey
     builder.row(
         InlineKeyboardButton(
             text="✅ Yes, cancel",
-            callback_data=OrderCB(action="cancel_yes", order_id=order_id).pack(),
+            callback_data=OrderCB(action="cancel_yes", order_id=order_id).pack(), style=DANGER,
         )
     )
     builder.row(
         InlineKeyboardButton(
             text="❌ Keep number",
-            callback_data=OrderCB(action="detail", order_id=order_id).pack(),
+            callback_data=OrderCB(action="detail", order_id=order_id).pack(), style=SUCCESS,
         )
     )
     return builder.as_markup()

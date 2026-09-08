@@ -9,6 +9,7 @@ from app.bot.callbacks import (
     Nav,
     NoopCB,
 )
+from app.bot.keyboards.style import DANGER, PRIMARY, SUCCESS
 from app.bot.texts import Texts
 from app.utils.pagination import Page
 
@@ -47,37 +48,37 @@ def main_menu(texts: Texts, locale: str | None, smm_enabled: bool) -> InlineKeyb
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
-            text=texts.button("buy", locale), callback_data=Nav(to="buy").pack()
+            text=texts.button("buy", locale), icon_custom_emoji_id=texts.icon("buy"), callback_data=Nav(to="buy").pack(), style=SUCCESS
         )
     )
     builder.row(
         InlineKeyboardButton(
-            text=texts.button("orders", locale), callback_data=Nav(to="orders").pack()
+            text=texts.button("orders", locale), icon_custom_emoji_id=texts.icon("orders"), callback_data=Nav(to="orders").pack(), style=PRIMARY
         ),
         InlineKeyboardButton(
-            text=texts.button("favorites", locale), callback_data=Nav(to="favorites").pack()
+            text=texts.button("favorites", locale), icon_custom_emoji_id=texts.icon("favorites"), callback_data=Nav(to="favorites").pack(), style=PRIMARY
         ),
     )
     if smm_enabled:
         builder.row(
             InlineKeyboardButton(
-                text=texts.button("smm", locale), callback_data=Nav(to="smm").pack()
+                text=texts.button("smm", locale), icon_custom_emoji_id=texts.icon("smm"), callback_data=Nav(to="smm").pack(), style=PRIMARY
             )
         )
     builder.row(
         InlineKeyboardButton(
-            text=texts.button("profile", locale), callback_data=Nav(to="profile").pack()
+            text=texts.button("profile", locale), icon_custom_emoji_id=texts.icon("profile"), callback_data=Nav(to="profile").pack(), style=PRIMARY
         ),
         InlineKeyboardButton(
-            text=texts.button("wallet", locale), callback_data=Nav(to="wallet").pack()
+            text=texts.button("wallet", locale), icon_custom_emoji_id=texts.icon("wallet"), callback_data=Nav(to="wallet").pack(), style=DANGER
         ),
     )
     builder.row(
         InlineKeyboardButton(
-            text=texts.button("referral", locale), callback_data=Nav(to="referral").pack()
+            text=texts.button("referral", locale), icon_custom_emoji_id=texts.icon("referral"), callback_data=Nav(to="referral").pack(), style=PRIMARY
         ),
         InlineKeyboardButton(
-            text=texts.button("help", locale), callback_data=Nav(to="help").pack()
+            text=texts.button("help", locale), icon_custom_emoji_id=texts.icon("help"), callback_data=Nav(to="help").pack()
         ),
     )
     return builder.as_markup()
@@ -104,7 +105,7 @@ def confirm_or_cancel(
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text=texts.button("confirm", locale), callback_data=confirm_callback)
+        InlineKeyboardButton(text=texts.button("confirm", locale), callback_data=confirm_callback, style=SUCCESS)
     )
     builder.row(
         InlineKeyboardButton(

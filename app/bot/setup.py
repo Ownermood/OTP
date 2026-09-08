@@ -86,7 +86,7 @@ def build_application(settings: Settings) -> Application:
     engine = create_engine(settings.database_url)
     session_factory = create_session_factory(engine)
 
-    texts = Texts(settings.locales_path, settings.locale)
+    texts = Texts(settings.locales_path, settings.locale, settings.button_icons)
     pricing = PricingService(settings)
     sms_provider = build_sms_provider(settings)
     payment_providers = build_payment_providers(settings)

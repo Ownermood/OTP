@@ -17,6 +17,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from app.bot.callbacks import AdminCB
 from app.bot.handlers.admin.common import _back_button, _back_only, _guard, router
 from app.bot.handlers.common import build_context, show, toast
+from app.bot.keyboards.style import DANGER, PRIMARY
 from app.bot.states import AdminStates
 
 
@@ -33,12 +34,15 @@ async def show_qr(query: CallbackQuery, state: FSMContext, **data):
         InlineKeyboardButton(
             text=("🔄 Replace QR" if file_id else "📤 Upload QR"),
             callback_data=AdminCB(action="qr_upload").pack(),
+            style=PRIMARY,
         )
     )
     if file_id:
         builder.row(
             InlineKeyboardButton(
-                text="🗑 Remove QR", callback_data=AdminCB(action="qr_clear").pack()
+                text="🗑 Remove QR",
+                callback_data=AdminCB(action="qr_clear").pack(),
+                style=DANGER,
             )
         )
     builder.row(_back_button())

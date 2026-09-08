@@ -23,6 +23,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from app.bot import keyboards
 from app.bot.callbacks import ManualCB, Nav, PaymentCB
 from app.bot.handlers.common import Context, build_context, show, toast
+from app.bot.keyboards.style import DANGER, SUCCESS
 from app.bot.states import ManualPaymentStates
 from app.core.exceptions import ValidationError
 from app.core.logging import get_logger
@@ -135,11 +136,14 @@ def _paid_or_cancel(context: Context):
         InlineKeyboardButton(
             text=context.button("paid"),
             callback_data=PaymentCB(action="paid", provider=PROVIDER).pack(),
+            style=SUCCESS,
         )
     )
     builder.row(
         InlineKeyboardButton(
-            text=context.button("cancel"), callback_data=Nav(to="wallet").pack()
+            text=context.button("cancel"),
+            callback_data=Nav(to="wallet").pack(),
+            style=DANGER,
         )
     )
     return builder.as_markup()
@@ -252,10 +256,12 @@ async def _post_for_review(
         InlineKeyboardButton(
             text="✅ Approve",
             callback_data=ManualCB(action="approve", payment_id=payment.id).pack(),
+            style=SUCCESS,
         ),
         InlineKeyboardButton(
             text="❌ Decline",
             callback_data=ManualCB(action="decline", payment_id=payment.id).pack(),
+            style=DANGER,
         ),
     )
 

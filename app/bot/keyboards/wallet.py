@@ -15,6 +15,7 @@ from app.bot.callbacks import (
     WalletCB,
 )
 from app.bot.keyboards.common import _chunks, _nav_row
+from app.bot.keyboards.style import DANGER, PRIMARY, SUCCESS
 from app.bot.texts import Texts
 from app.utils.pagination import Page
 
@@ -23,10 +24,10 @@ def profile(texts: Texts, locale: str | None) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
-            text=texts.button("deposit", locale), callback_data=WalletCB(action="deposit").pack()
+            text=texts.button("deposit", locale), callback_data=WalletCB(action="deposit").pack(), style=DANGER
         ),
         InlineKeyboardButton(
-            text=texts.button("orders", locale), callback_data=Nav(to="orders").pack()
+            text=texts.button("orders", locale), callback_data=Nav(to="orders").pack(), style=PRIMARY
         ),
     )
     builder.row(
@@ -57,7 +58,7 @@ def wallet(texts: Texts, locale: str | None, transfer_enabled: bool) -> InlineKe
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
-            text=texts.button("deposit", locale), callback_data=WalletCB(action="deposit").pack()
+            text=texts.button("deposit", locale), callback_data=WalletCB(action="deposit").pack(), style=DANGER
         )
     )
     builder.row(
@@ -106,17 +107,17 @@ def invoice(
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     if pay_url:
-        builder.row(InlineKeyboardButton(text=texts.button("pay", locale), url=pay_url))
+        builder.row(InlineKeyboardButton(text=texts.button("pay", locale), url=pay_url, style=SUCCESS))
     builder.row(
         InlineKeyboardButton(
             text=texts.button("check_payment", locale),
-            callback_data=PaymentCB(action="check", payment_id=payment_id).pack(),
+            callback_data=PaymentCB(action="check", payment_id=payment_id).pack(), style=PRIMARY,
         )
     )
     builder.row(
         InlineKeyboardButton(
             text=texts.button("cancel", locale),
-            callback_data=PaymentCB(action="cancel", payment_id=payment_id).pack(),
+            callback_data=PaymentCB(action="cancel", payment_id=payment_id).pack(), style=DANGER,
         )
     )
     return builder.as_markup()

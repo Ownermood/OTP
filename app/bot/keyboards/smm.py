@@ -12,6 +12,7 @@ from app.bot.callbacks import (
     SmmCB,
 )
 from app.bot.keyboards.common import _nav_row
+from app.bot.keyboards.style import PRIMARY
 from app.bot.texts import Texts
 from app.core.money import format_money
 from app.utils.formatting import truncate
@@ -34,10 +35,10 @@ def smm_categories(
     builder.row(
         InlineKeyboardButton(
             text=texts.button("show_all", locale),
-            callback_data=SmmCB(action="show_all").pack(),
+            callback_data=SmmCB(action="show_all").pack(), style=PRIMARY,
         ),
         InlineKeyboardButton(
-            text=texts.button("search", locale), callback_data=SmmCB(action="search").pack()
+            text=texts.button("search", locale), callback_data=SmmCB(action="search").pack(), style=PRIMARY
         ),
     )
     for category, count in categories:
@@ -90,7 +91,7 @@ def smm_order(texts: Texts, locale: str | None, order_id: int) -> InlineKeyboard
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
-            text="🔄 Track Status", callback_data=SmmCB(action="track", value=str(order_id)).pack()
+            text="🔄 Track Status", callback_data=SmmCB(action="track", value=str(order_id)).pack(), style=PRIMARY
         )
     )
     builder.row(

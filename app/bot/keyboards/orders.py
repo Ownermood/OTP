@@ -14,6 +14,7 @@ from app.bot.callbacks import (
     WalletCB,
 )
 from app.bot.keyboards.common import _nav_row
+from app.bot.keyboards.style import DANGER, SUCCESS
 from app.bot.texts import Texts
 from app.core.money import format_money
 from app.utils.formatting import order_icon, truncate
@@ -97,7 +98,7 @@ def order_detail(
             controls.append(
                 InlineKeyboardButton(
                     text=texts.button("cancel", locale),
-                    callback_data=OrderCB(action="cancel", order_id=order.id).pack(),
+                    callback_data=OrderCB(action="cancel", order_id=order.id).pack(), style=DANGER,
                 )
             )
         builder.row(*controls)
@@ -140,13 +141,13 @@ def favorite_detail(
     if token:
         builder.row(
             InlineKeyboardButton(
-                text=texts.button("buy_now", locale), callback_data=CountryCB(token=token).pack()
+                text=texts.button("buy_now", locale), callback_data=CountryCB(token=token).pack(), style=SUCCESS
             )
         )
     builder.row(
         InlineKeyboardButton(
             text=texts.button("remove", locale),
-            callback_data=FavoriteCB(action="remove", favorite_id=favorite_id).pack(),
+            callback_data=FavoriteCB(action="remove", favorite_id=favorite_id).pack(), style=DANGER,
         )
     )
     builder.row(

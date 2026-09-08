@@ -29,9 +29,15 @@ class Safe(str):
 class Texts:
     """Loads message catalogues and renders keys with placeholders."""
 
-    def __init__(self, locales_dir: Path, default_locale: str = "en") -> None:
+    def __init__(
+        self,
+        locales_dir: Path,
+        default_locale: str = "en",
+        icons: dict[str, str] | None = None,
+    ) -> None:
         self._locales_dir = locales_dir
         self._default = default_locale
+        self._icons = icons or {}
         self._catalogues: dict[str, dict[str, Any]] = {}
         self.reload()
 
@@ -62,6 +68,10 @@ class Texts:
 
     def button(self, name: str, locale: str | None = None, **values: Any) -> str:
         return self.get(f"buttons.{name}", locale, **values)
+
+    def icon(self, name: str) -> str | None:
+        """The custom emoji id configured for a named button, if any."""
+        return self._icons.get(name)
 
     def _lookup(self, key: str, locale: str | None) -> str | None:
         for candidate in (locale or self._default, self._default):

@@ -16,6 +16,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from app.bot.callbacks import ManualCB
 from app.bot.handlers.common import Context, build_context, show, toast
 from app.bot.handlers.manual_payments import _service, router
+from app.bot.keyboards.style import DANGER, SUCCESS
 from app.bot.states import ManualPaymentStates
 from app.core.exceptions import AccessDeniedError
 from app.core.logging import get_logger
@@ -55,10 +56,12 @@ async def open_request(query: CallbackQuery, callback_data: ManualCB, **data):
         InlineKeyboardButton(
             text="✅ Approve",
             callback_data=ManualCB(action="approve", payment_id=payment.id).pack(),
+            style=SUCCESS,
         ),
         InlineKeyboardButton(
             text="❌ Decline",
             callback_data=ManualCB(action="decline", payment_id=payment.id).pack(),
+            style=DANGER,
         ),
     )
 
