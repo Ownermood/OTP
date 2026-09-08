@@ -21,7 +21,7 @@ from aiogram.types import (
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from app.bot import keyboards
-from app.bot.callbacks import ManualCB, PaymentCB
+from app.bot.callbacks import ManualCB, Nav, PaymentCB
 from app.bot.handlers.common import Context, build_context, show, toast
 from app.bot.states import ManualPaymentStates
 from app.core.exceptions import ValidationError
@@ -61,30 +61,50 @@ async def start_manual_deposit(query: CallbackQuery, state: FSMContext, **data):
 
 @router.message(ManualPaymentStates.entering_amount)
 async def enter_amount(message: Message, state: FSMContext, **data):
-    """Accept the amount, then hand over a QR that already contains it."""
+    """Accept the amount, then put the QR and the payment details on screen."""
     context = build_context(data)
     amount = parse_amount(message.text or "")
     if amount is None:
         raise ValidationError("unparseable amount")
     context.payments.validate_amount(amount)
 
-    await state.set_state(ManualPaymentStates.entering_utr)
+    await state.set_state(ManualPaymentStates.awaiting_payment)
     await state.update_data(manual_amount=amount)
     await _send_payment_qr(message, context, amount)
 
 
 async def _send_payment_qr(message: Message, context: Context, amount: int) -> None:
-    """Send the QR for this exact amount, or the operator's static one."""
+    """Send the QR alongside the amount and UPI id, and wait for confirmation."""
     settings = context.settings
+    keyboard = _paid_or_cancel(context)
     caption = context.text(
         "wallet.manual_qr",
         amount=context.money(amount),
         upi_id=settings.upi_id or "—",
         payee=settings.payee_name,
     )
-    keyboard = keyboards.back_home(context.texts, context.locale, back_to="wallet")
 
+    photo = _qr_photo(settings, amount)
+    if photo is None:
+        # Configuration guarantees a QR, but never leave the user staring at a
+        # screen with nothing to pay to.
+        logger.error("manual_payment.no_qr_configured")
+        await show(message, caption, keyboard)
+        return
+
+    await message.answer_photo(photo, caption=caption, reply_markup=keyboard)
+
+
+def _qr_photo(settings, amount: int):
+    """Your own QR when you supply one, otherwise a generated one.
+
+    A static code is the operator's explicit choice, so it wins: they have
+    branded it and expect every user to see the same image.
+    """
     static_qr = settings.qr_image_path
+    if static_qr is not None and static_qr.exists():
+        return FSInputFile(static_qr)
+
     if settings.upi_id:
         # Generated: the amount travels inside the code, so the payer's app
         # opens pre-filled and cannot drift from what they told the bot.
@@ -94,24 +114,65 @@ async def _send_payment_qr(message: Message, context: Context, amount: int) -> N
             to_major(amount),
             note=f"{settings.service_name} top-up",
         )
-        photo = BufferedInputFile(render_qr(link), filename="upi-qr.png")
-    elif static_qr is not None and static_qr.exists():
-        photo = FSInputFile(static_qr)
-        caption = context.text(
-            "wallet.manual_qr_static", amount=context.money(amount), payee=settings.payee_name
+        return BufferedInputFile(render_qr(link), filename="upi-qr.png")
+
+    if static_qr is not None:
+        logger.error("manual_payment.qr_image_missing", path=str(static_qr))
+    return None
+
+
+def _paid_or_cancel(context: Context):
+    """``I Have Paid`` gates the reference prompt.
+
+    Without it the bot would be listening for a UTR the moment the QR appears,
+    and any stray message would be read as one.
+    """
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(
+            text=context.button("paid"),
+            callback_data=PaymentCB(action="paid", provider=PROVIDER).pack(),
         )
-    else:
-        # Configuration guarantees one of the two, but never leave the user
-        # staring at nothing if that ever changes.
-        logger.error("manual_payment.no_qr_configured")
-        await show(
-            message,
-            context.text("wallet.manual_utr", amount=context.money(amount)),
-            keyboard,
+    )
+    builder.row(
+        InlineKeyboardButton(
+            text=context.button("cancel"), callback_data=Nav(to="wallet").pack()
         )
+    )
+    return builder.as_markup()
+
+
+@router.message(ManualPaymentStates.awaiting_payment)
+async def waiting_for_the_tap(message: Message, **data):
+    """Nudge rather than ignore.
+
+    Anything typed while the QR is up is not a reference yet -- the user has
+    not said they paid -- but silence looks like the bot has stopped working.
+    """
+    context = build_context(data)
+    # Repeat the buttons: the QR may be several messages up by now.
+    await message.answer(
+        context.text("wallet.manual_tap_paid"), reply_markup=_paid_or_cancel(context)
+    )
+
+
+@router.callback_query(PaymentCB.filter((F.action == "paid") & (F.provider == PROVIDER)))
+async def i_have_paid(query: CallbackQuery, state: FSMContext, **data):
+    """The user says the money has gone out; now ask for the reference."""
+    context = build_context(data)
+    amount = (await state.get_data()).get("manual_amount")
+    if not amount:
+        await toast(query, context.text("errors.expired_action"), alert=True)
+        await state.clear()
         return
 
-    await message.answer_photo(photo, caption=caption, reply_markup=keyboard)
+    await state.set_state(ManualPaymentStates.entering_utr)
+    await show(
+        query,
+        context.text("wallet.manual_utr", amount=context.money(int(amount))),
+        keyboards.back_home(context.texts, context.locale, back_to="wallet"),
+        force_new=True,
+    )
 
 
 @router.message(ManualPaymentStates.entering_utr)

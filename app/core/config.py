@@ -97,8 +97,11 @@ class Settings(BaseSettings):
     upi_id: str = ""
     #: Name shown in the payer's app. Defaults to SERVICE_NAME.
     upi_payee_name: str = ""
-    #: Optional path to your own QR image, used instead of a generated one.
-    #: A static QR carries no amount, so the generated one is preferred.
+    #: Your own QR image. When set, this is what users are shown -- one code
+    #: for every deposit. The amount is stated in the caption instead of being
+    #: carried inside the code, so the payer types it themselves.
+    #: Leave it empty to have the bot generate a code per request with the
+    #: amount already filled in.
     upi_qr_image: str = ""
     #: Channel where requests are posted for review. The bot must be an admin
     #: there, and reviewers must be listed in ADMIN_IDS / ADMIN_ROLES.
@@ -110,7 +113,7 @@ class Settings(BaseSettings):
     #: How long past its expiry an unreported invoice is still polled, so a
     #: payment made during a restart is not written off with the money taken.
     payment_grace_hours: int = 24
-    min_deposit: Decimal = Decimal("50")
+    min_deposit: Decimal = Decimal("100")
     max_deposit: Decimal = Decimal("50000")
 
     # --- Referral -------------------------------------------------------

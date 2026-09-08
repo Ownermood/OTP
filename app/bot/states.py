@@ -26,6 +26,9 @@ class PaymentStates(StatesGroup):
 
 class ManualPaymentStates(StatesGroup):
     entering_amount = State()
+    #: The QR is on screen and we are waiting for the user to say they paid.
+    #: A distinct state so stray chatter is not mistaken for a reference.
+    awaiting_payment = State()
     entering_utr = State()
     entering_proof = State()
     declining = State()

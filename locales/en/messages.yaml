@@ -25,6 +25,7 @@ buttons:
   cancel: "❌ Cancel"
   confirm: "✅ Confirm"
   refresh: "🔄 Refresh"
+  paid: "✅ I Have Paid"
   previous: "⬅️"
   next: "➡️"
   add_favorite: "⭐ Add to Favorites"
@@ -368,51 +369,45 @@ wallet:
 
     📝 {reason}
   manual_start: |
-    💵 <b>ADD BALANCE — UPI</b>
+    💳 <b>UPI DEPOSIT</b>
 
     {divider}
 
     How much do you want to add?
 
-    Minimum: {minimum}
-    Maximum: {maximum}
+    Minimum: <b>{minimum}</b>
+    Maximum: <b>{maximum}</b>
 
-    <i>Send the amount and I will give you a QR to scan.</i>
+    <i>Send the amount and I will show you the QR.</i>
   manual_qr: |
-    📲 <b>SCAN TO PAY</b>
+    💳 <b>UPI DEPOSIT</b>
 
     💰 Amount: <b>{amount}</b>
     🏦 UPI ID: <code>{upi_id}</code>
-    👤 Payee: {payee}
 
     {divider}
 
-    Scan the QR with any UPI app — GPay, PhonePe, Paytm, BHIM.
-    The amount is already filled in, so <b>do not change it</b>.
-
-    <i>Once paid, send me the UTR / reference number from your app.</i>
-  manual_qr_static: |
-    📲 <b>SCAN TO PAY</b>
-
-    💰 Amount: <b>{amount}</b>
-    👤 Payee: {payee}
+    1️⃣ Pay <b>exactly {amount}</b> using the QR or the UPI ID above.
+    2️⃣ Tap <b>✅ I Have Paid</b>.
+    3️⃣ Send your UTR / Transaction ID.
 
     {divider}
 
-    Scan the QR with any UPI app and pay <b>exactly {amount}</b>.
-
-    <i>Once paid, send me the UTR / reference number from your app.</i>
+    ⚠️ Balance is added only after our team verifies the payment.
+  manual_tap_paid: |
+    ⏳ Once you have paid, tap <b>✅ I Have Paid</b> above and I will ask for
+    your UTR.
   manual_utr: |
-    🔖 <b>TRANSACTION REFERENCE</b>
+    🔖 <b>UTR / TRANSACTION ID</b>
 
     💰 Amount: <b>{amount}</b>
 
     {divider}
 
-    Send the <b>UTR / reference number</b> from your payment app.
+    Send the <b>UTR / Transaction ID</b> from your payment app.
 
-    <i>It is 6–32 letters and digits, shown as "UTR", "Transaction ID" or
-    "Reference no". Each one can only be used once.</i>
+    <i>6–32 letters and digits. Your app may label it "UTR", "Transaction ID",
+    "UPI Ref No" or "Order ID". Each one can only be used once.</i>
   manual_proof: |
     📸 <b>PAYMENT SCREENSHOT</b>
 

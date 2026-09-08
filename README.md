@@ -171,10 +171,13 @@ CRYPTOBOT_RATE=90
 
 The primary deposit method, and the one `.env.example` ships enabled.
 
-The user enters an amount, the bot replies with a **QR containing that exact
-amount**, and after paying they send the UTR and a screenshot. The request goes
-to a review channel with Approve and Decline buttons. **No balance moves until
-a reviewer approves it.**
+The user enters an amount and the bot shows the QR with the amount and your UPI
+id beside it. They pay, tap **I Have Paid**, then send the UTR and a
+screenshot. The request goes to a review channel with Approve and Decline
+buttons. **No balance moves until a reviewer approves it.**
+
+The reference is only asked for after **I Have Paid** is tapped, so a message
+sent while the QR is still up is never mistaken for a UTR.
 
 ```env
 MANUAL_PAYMENT_ENABLED=true
@@ -214,19 +217,27 @@ python -m scripts.read_qr assets/qr.png
 
 It prints the `UPI_ID` and `UPI_PAYEE_NAME` lines to paste into `.env`.
 
-#### Using your own QR instead
+#### Using one QR for every deposit
 
-Put the image in `assets/` and point at it:
+Put your own image in `assets/` and point at it:
 
 ```env
-UPI_ID=
+UPI_ID=yourshop@okaxis
 UPI_QR_IMAGE=assets/qr.png
 ```
 
-`assets/` is mounted into the container, so swapping the image does not need a
-rebuild. The caption then states the amount in words, because a static code
-cannot carry one — which is the mismatch `UPI_ID` exists to avoid. Prefer
-`UPI_ID` unless you have a reason not to.
+When `UPI_QR_IMAGE` is set it is what users see — you branded a code and expect
+everyone to get the same one. `UPI_ID` is still worth setting: it appears as
+copyable text beside the QR for anyone who would rather paste than scan.
+
+`assets/` is mounted into the container, so swapping the image needs no
+rebuild.
+
+The trade-off: a static code carries no amount, so the payer types it in and
+can send a different figure. The caption states the amount in bold, and the
+review step is where a mismatch gets caught. Leaving `UPI_QR_IMAGE` empty makes
+the bot generate a code per request with the amount inside it, which removes
+the mismatch entirely.
 
 `UPI_ID` is validated at startup, and the generated codes are decoded back in
 the test suite to prove they actually scan.
