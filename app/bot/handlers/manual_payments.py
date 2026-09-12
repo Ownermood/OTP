@@ -21,10 +21,12 @@ from aiogram.types import (
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from app.bot import keyboards
+from app.bot.ack import acknowledge
 from app.bot.callbacks import ManualCB, Nav, PaymentCB
 from app.bot.handlers.common import Context, build_context, show, toast
 from app.bot.keyboards.style import DANGER, SUCCESS, button
 from app.bot.states import ManualPaymentStates
+from app.core.constants import QUICK_DEPOSIT_AMOUNTS
 from app.core.exceptions import ValidationError
 from app.core.logging import get_logger
 from app.core.money import parse_amount, to_major, to_minor
@@ -56,7 +58,9 @@ async def start_manual_deposit(query: CallbackQuery, state: FSMContext, **data):
             minimum=context.money(to_minor(context.settings.min_deposit)),
             maximum=context.money(to_minor(context.settings.max_deposit)),
         ),
-        keyboards.back_home(context.texts, context.locale, back_to="wallet"),
+        keyboards.amount_prompt(
+            context.texts, context.locale, PROVIDER, context.settings.currency_symbol, back_to="wallet"
+        ),
     )
 
 
@@ -67,14 +71,35 @@ async def enter_amount(message: Message, state: FSMContext, **data):
     amount = parse_amount(message.text or "")
     if amount is None:
         raise ValidationError("unparseable amount")
-    context.payments.validate_amount(amount)
 
+    await _accept_manual_amount(message, context, state, amount)
+
+
+@router.callback_query(
+    PaymentCB.filter((F.action.in_(QUICK_DEPOSIT_AMOUNTS)) & (F.provider == PROVIDER))
+)
+async def quick_amount(query: CallbackQuery, callback_data: PaymentCB, state: FSMContext, **data):
+    """A one-tap shortcut for the amount prompt -- never a different code path.
+
+    The callback carries only a preset key; the amount always comes from the
+    server-side QUICK_DEPOSIT_AMOUNTS table, and is still validated exactly
+    like a typed amount would be.
+    """
+    context = build_context(data)
+    amount = to_minor(QUICK_DEPOSIT_AMOUNTS[callback_data.action])
+    await _accept_manual_amount(query, context, state, amount)
+
+
+async def _accept_manual_amount(
+    event: Message | CallbackQuery, context: Context, state: FSMContext, amount: int
+) -> None:
+    context.payments.validate_amount(amount)
     await state.set_state(ManualPaymentStates.awaiting_payment)
     await state.update_data(manual_amount=amount)
-    await _send_payment_qr(message, context, amount)
+    await _send_payment_qr(event, context, amount)
 
 
-async def _send_payment_qr(message: Message, context: Context, amount: int) -> None:
+async def _send_payment_qr(event: Message | CallbackQuery, context: Context, amount: int) -> None:
     """Send the QR alongside the amount and UPI id, and wait for confirmation."""
     settings = context.settings
     keyboard = _paid_or_cancel(context)
@@ -92,9 +117,14 @@ async def _send_payment_qr(message: Message, context: Context, amount: int) -> N
         # Configuration guarantees a QR, but never leave the user staring at a
         # screen with nothing to pay to.
         logger.error("manual_payment.no_qr_configured")
-        await show(message, caption, keyboard)
+        await show(event, caption, keyboard)
         return
 
+    if isinstance(event, CallbackQuery):
+        await acknowledge(event)
+        message = event.message
+    else:
+        message = event
     await message.answer_photo(photo, caption=caption, reply_markup=keyboard)
 
 

@@ -247,3 +247,37 @@ async def test_a_real_order_is_never_treated_as_an_orphan(orders, user, wallet):
 
     assert result.order.status == OrderStatus.PROCESSING
     assert await wallet.get_balance(user.id) == balance
+
+
+async def test_count_by_kind_tallies_without_fetching_every_order(session, orders, user):
+    """Profile stats only need counts -- not every order row in memory."""
+    await _buy(orders, user.id)
+    await orders.purchase_activation(
+        user_id=user.id,
+        service_code="tg",
+        service_name="Telegram",
+        country_id=22,
+        country_name="India",
+        quoted_price=1_100,
+    )
+
+    counts = await OrderRepository(session).count_by_kind(user.id)
+
+    assert counts == {OrderKind.ACTIVATION: 2}
+
+
+async def test_profile_stats_do_not_load_every_order_row(session, orders, user, wallet, settings, monkeypatch):
+    """Regression: stats() used to fetch up to 1000 full rows just to count them."""
+    from app.services.users import UserService
+
+    await _buy(orders, user.id)
+
+    def _must_not_be_called(*args, **kwargs):
+        raise AssertionError("stats() should count in the database, not fetch every row")
+
+    monkeypatch.setattr(OrderRepository, "list_for_user", _must_not_be_called)
+
+    users = UserService(session, wallet, settings)
+    stats = await users.stats(user.id)
+
+    assert stats.activations == 1

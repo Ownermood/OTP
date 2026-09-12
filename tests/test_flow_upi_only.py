@@ -66,6 +66,21 @@ async def test_the_qr_contains_the_amount_the_user_asked_for(upi_harness):
     assert params["cu"] == "INR"
 
 
+async def test_a_quick_amount_button_works_for_manual_upi_too(upi_harness):
+    """Manual entry is the primary path; quick amounts are the same shortcut here."""
+    h = upi_harness
+    await h.send("/start")
+    await h.tap("Balance")
+    await h.tap("Add Balance")
+    await h.tap("UPI / QR")
+
+    await h.tap("₹100")
+
+    qr = h.session.sent[-1]
+    assert qr.method == "SendPhoto"
+    assert "₹100.00" in qr.text
+
+
 async def test_the_qr_screen_offers_a_copy_upi_id_button(upi_harness):
     """A tap-to-copy button beats making the user retype the UPI id by hand."""
     h = upi_harness

@@ -49,6 +49,15 @@ class OrderRepository(BaseRepository):
         result = await self.session.execute(statement.order_by(Order.created_at.desc()).limit(limit))
         return result.scalars().all()
 
+    async def count_by_kind(self, user_id: int) -> dict[OrderKind, int]:
+        """Order counts per kind -- for profile stats, without loading every row."""
+        result = await self.session.execute(
+            select(Order.kind, func.count(Order.id))
+            .where(Order.user_id == user_id)
+            .group_by(Order.kind)
+        )
+        return dict(result.all())
+
     async def list_open(self, kind: OrderKind) -> Sequence[Order]:
         """Orders the poller still needs to watch."""
         result = await self.session.execute(

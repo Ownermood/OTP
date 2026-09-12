@@ -17,6 +17,8 @@ from app.bot.callbacks import (
 from app.bot.keyboards.common import _chunks, _nav_row
 from app.bot.keyboards.style import DANGER, PRIMARY, SUCCESS, button
 from app.bot.texts import Texts
+from app.core.constants import QUICK_DEPOSIT_AMOUNTS
+from app.core.money import format_money, to_minor
 from app.utils.pagination import Page
 
 
@@ -97,6 +99,33 @@ def payment_methods(
     builder.row(
         InlineKeyboardButton(
             text=texts.button("back", locale), callback_data=Nav(to="wallet").pack()
+        )
+    )
+    return builder.as_markup()
+
+
+def amount_prompt(
+    texts: Texts, locale: str | None, provider: str, currency_symbol: str, back_to: str = "wallet"
+) -> InlineKeyboardMarkup:
+    """The enter-amount screen: manual typing is the primary path, these are shortcuts."""
+    builder = InlineKeyboardBuilder()
+    quick_buttons = [
+        InlineKeyboardButton(
+            text=format_money(to_minor(major), currency_symbol),
+            callback_data=PaymentCB(action=action, provider=provider).pack(),
+        )
+        for action, major in QUICK_DEPOSIT_AMOUNTS.items()
+    ]
+    for row in _chunks(quick_buttons, 3):
+        builder.row(*row)
+    builder.row(
+        InlineKeyboardButton(
+            text=texts.button("back", locale), callback_data=Nav(to=back_to).pack()
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(
+            text=texts.button("home", locale), callback_data=Nav(to="home").pack()
         )
     )
     return builder.as_markup()

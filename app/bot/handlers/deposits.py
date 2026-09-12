@@ -12,11 +12,12 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, LabeledPrice, Message, PreCheckoutQuery
 
 from app.bot import keyboards
+from app.bot.ack import acknowledge
 from app.bot.callbacks import PaymentCB, WalletCB
 from app.bot.handlers.common import Context, build_context, show, toast
 from app.bot.handlers.wallet import METHOD_LABELS, router
 from app.bot.states import PaymentStates
-from app.core.constants import PaymentStatus
+from app.core.constants import QUICK_DEPOSIT_AMOUNTS, PaymentStatus
 from app.core.exceptions import ValidationError
 from app.core.logging import get_logger
 from app.core.money import parse_amount, to_minor
@@ -58,7 +59,13 @@ async def prompt_amount(query: CallbackQuery, callback_data: PaymentCB, state: F
             minimum=context.money(to_minor(context.settings.min_deposit)),
             maximum=context.money(to_minor(context.settings.max_deposit)),
         ),
-        keyboards.back_home(context.texts, context.locale, back_to="wallet"),
+        keyboards.amount_prompt(
+            context.texts,
+            context.locale,
+            callback_data.provider,
+            context.settings.currency_symbol,
+            back_to="wallet",
+        ),
     )
 
 
@@ -69,20 +76,42 @@ async def create_invoice(message: Message, state: FSMContext, **data):
     amount = parse_amount(message.text or "")
     if amount is None:
         raise ValidationError("unparseable amount")
-    context.payments.validate_amount(amount)
 
     provider_name = (await state.get_data()).get("provider", "")
+    await _finalize_deposit(message, context, state, provider_name, amount)
+
+
+@router.callback_query(
+    PaymentCB.filter((F.action.in_(QUICK_DEPOSIT_AMOUNTS)) & (F.provider != "manual"))
+)
+async def quick_amount(query: CallbackQuery, callback_data: PaymentCB, state: FSMContext, **data):
+    """A one-tap shortcut for the amount prompt -- never a different code path.
+
+    The callback carries only a preset *key*; the amount itself always comes
+    from the server-side QUICK_DEPOSIT_AMOUNTS table, and is still validated
+    exactly like a typed amount would be.
+    """
+    context = build_context(data)
+    amount = to_minor(QUICK_DEPOSIT_AMOUNTS[callback_data.action])
+    await _finalize_deposit(query, context, state, callback_data.provider, amount)
+
+
+async def _finalize_deposit(
+    event: Message | CallbackQuery, context: Context, state: FSMContext, provider_name: str, amount: int
+) -> None:
+    context.payments.validate_amount(amount)
     await state.clear()
 
-    payment = await context.payments.create_invoice(message.from_user.id, provider_name, amount)
+    user_id = event.from_user.id
+    payment = await context.payments.create_invoice(user_id, provider_name, amount)
     provider = context.payments.provider(provider_name)
 
     if provider.is_native:
-        await _send_stars_invoice(message, context, payment, provider)
+        await _send_stars_invoice(event, context, payment, provider)
         return
 
     await show(
-        message,
+        event,
         context.text(
             "wallet.invoice",
             amount=context.money(payment.amount),
@@ -94,12 +123,19 @@ async def create_invoice(message: Message, state: FSMContext, **data):
     )
 
 
-async def _send_stars_invoice(message: Message, context: Context, payment, provider) -> None:
+async def _send_stars_invoice(
+    event: Message | CallbackQuery, context: Context, payment, provider
+) -> None:
     """Telegram Stars checkout: the invoice id travels as the payload."""
     stars = int(payment.provider_amount)
     if stars > provider.max_stars:
         raise ValidationError("amount exceeds the Telegram Stars limit")
 
+    if isinstance(event, CallbackQuery):
+        await acknowledge(event)
+        message = event.message
+    else:
+        message = event
     await message.answer_invoice(
         title=f"{context.settings.service_name} — balance top-up",
         description=f"Add {context.money(payment.amount)} to your balance",

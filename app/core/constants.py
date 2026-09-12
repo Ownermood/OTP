@@ -5,6 +5,7 @@ Statuses live here as enums so no handler ever compares against a bare string.
 
 from __future__ import annotations
 
+from decimal import Decimal
 from enum import StrEnum
 
 
@@ -105,6 +106,18 @@ SMM_CATEGORY_KEYWORDS: dict[SmmCategory, tuple[str, ...]] = {
     SmmCategory.TIKTOK: ("tiktok", "tik tok"),
     SmmCategory.FACEBOOK: ("facebook", "fb "),
     SmmCategory.TWITTER: ("twitter", "x.com"),
+}
+
+#: Optional one-tap deposit shortcuts shown alongside manual entry (never a
+#: replacement for it). Keys are ``PaymentCB.action`` values; values are major
+#: units. Per app/bot/callbacks.py's rule that callbacks carry no authoritative
+#: values, the client only ever selects one of these keys -- the amount itself
+#: always comes from this server-side table, and is still re-validated against
+#: the configured deposit bounds before an invoice is created.
+QUICK_DEPOSIT_AMOUNTS: dict[str, Decimal] = {
+    "quick_50": Decimal("50"),
+    "quick_100": Decimal("100"),
+    "quick_500": Decimal("500"),
 }
 
 #: Items per page for every paginated list.

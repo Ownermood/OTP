@@ -1,5 +1,6 @@
 """Wallet: deposits, promo codes, transfers and history."""
 
+from decimal import Decimal
 
 from tests.flow_helpers import fund
 
@@ -19,6 +20,49 @@ async def test_wallet_deposit_flow(harness):
     assert "PAYMENT" in harness.text
     assert "₹500.00" in harness.text
     assert "Pay Now" in " ".join(harness.buttons())
+
+
+async def test_a_quick_amount_button_creates_the_invoice_like_typing_would(harness):
+    """Quick amounts are a shortcut for typing, not a different code path."""
+    await harness.send("/start")
+    await harness.tap("Balance")
+    await harness.tap("Add Balance")
+    await harness.tap("fake_pay")
+    assert "ENTER AMOUNT" in harness.text
+
+    await harness.tap("₹100")
+
+    assert "PAYMENT" in harness.text
+    assert "₹100.00" in harness.text
+
+
+async def test_manual_entry_still_works_alongside_quick_amounts(harness):
+    """Quick amounts are an optional convenience -- typing must keep working."""
+    await harness.send("/start")
+    await harness.tap("Balance")
+    await harness.tap("Add Balance")
+    await harness.tap("fake_pay")
+
+    assert any("₹" in b for b in harness.buttons())  # the quick-amount row is present
+    await harness.send("77")
+
+    assert "PAYMENT" in harness.text
+    assert "₹77.00" in harness.text
+
+
+async def test_a_quick_amount_is_still_server_side_validated(harness, settings):
+    """The client only ever selects a preset key -- but the server still checks it."""
+    settings.min_deposit = Decimal("60")
+
+    await harness.send("/start")
+    await harness.tap("Balance")
+    await harness.tap("Add Balance")
+    await harness.tap("fake_pay")
+
+    await harness.tap("₹50")
+
+    assert "PAYMENT" not in harness.text
+    assert "minimum" in harness.text.lower()
 
 
 async def test_deposit_below_the_minimum_is_rejected(harness):

@@ -23,6 +23,7 @@ from app.bot.keyboards.orders import (
 )
 from app.bot.keyboards.smm import smm_categories, smm_order, smm_services
 from app.bot.keyboards.wallet import (
+    amount_prompt,
     help_menu,
     invoice,
     payment_methods,
@@ -35,6 +36,7 @@ from app.bot.keyboards.wallet import (
 
 __all__ = [
     "activation",
+    "amount_prompt",
     "back_home",
     "cancel_confirm",
     "confirm_or_cancel",

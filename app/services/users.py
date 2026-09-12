@@ -52,11 +52,11 @@ class UserService:
         return await self._users.get(user_id)
 
     async def stats(self, user_id: int) -> ProfileStats:
-        orders = await self._orders.list_for_user(user_id, limit=1000)
+        counts = await self._orders.count_by_kind(user_id)
         user = await self._users.get(user_id)
         return ProfileStats(
-            activations=sum(1 for o in orders if o.kind == OrderKind.ACTIVATION),
-            smm_orders=sum(1 for o in orders if o.kind == OrderKind.SMM),
+            activations=counts.get(OrderKind.ACTIVATION, 0),
+            smm_orders=counts.get(OrderKind.SMM, 0),
             total_spent=user.total_spent if user else 0,
             referral_earned=user.referral_earned if user else 0,
         )
