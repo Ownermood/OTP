@@ -17,6 +17,7 @@ from app.bot.keyboards.orders import (
     favorite_detail,
     favorites_list,
     order_detail,
+    orders_empty,
     orders_list,
     orders_root,
 )
@@ -45,6 +46,7 @@ __all__ = [
     "invoice",
     "main_menu",
     "order_detail",
+    "orders_empty",
     "orders_list",
     "orders_root",
     "payment_methods",

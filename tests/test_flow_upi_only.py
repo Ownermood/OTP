@@ -66,6 +66,21 @@ async def test_the_qr_contains_the_amount_the_user_asked_for(upi_harness):
     assert params["cu"] == "INR"
 
 
+async def test_the_qr_screen_offers_a_copy_upi_id_button(upi_harness):
+    """A tap-to-copy button beats making the user retype the UPI id by hand."""
+    h = upi_harness
+    await h.send("/start")
+    await h.tap("Balance")
+    await h.tap("Add Balance")
+    await h.tap("UPI / QR")
+    await h.send("500")
+
+    qr = h.session.sent[-1]
+    buttons = [b for row in qr.markup.inline_keyboard for b in row]
+    copy_button = next(b for b in buttons if b.copy_text is not None)
+    assert copy_button.copy_text.text == "shop@okaxis"
+
+
 async def test_the_whole_deposit_lands_after_approval(upi_harness, session_factory):
     """Amount, QR, UTR, screenshot, review, approval, balance."""
     from app.services.wallet import WalletService
@@ -282,10 +297,11 @@ async def test_the_minimum_deposit_is_enforced(upi_harness):
     await h.tap("Add Balance")
     await h.tap("UPI / QR")
 
-    assert "₹100.00" in h.text  # stated up front
+    assert "₹50.00" in h.text  # stated up front
 
-    await h.send("50")
-    assert "does not look right" in h.text.lower()
+    await h.send("49")
+    assert "minimum" in h.text.lower()
+    assert "50" in h.text
 
 
 async def test_exactly_the_minimum_is_accepted(upi_harness):
@@ -294,11 +310,11 @@ async def test_exactly_the_minimum_is_accepted(upi_harness):
     await h.tap("Balance")
     await h.tap("Add Balance")
     await h.tap("UPI / QR")
-    await h.send("100")
+    await h.send("50")
 
     qr = h.session.sent[-1]
     assert qr.method == "SendPhoto"
-    assert "₹100.00" in qr.text
+    assert "₹50.00" in qr.text
 
 
 # -- which QR is shown ------------------------------------------------------

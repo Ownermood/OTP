@@ -17,7 +17,7 @@ from app.bot.callbacks import (
     QuoteCB,
 )
 from app.bot.keyboards.common import _chunks, _nav_row
-from app.bot.keyboards.style import DANGER, PRIMARY, SUCCESS
+from app.bot.keyboards.style import DANGER, PRIMARY, SUCCESS, button
 from app.bot.texts import Texts
 from app.core.constants import GRID_COLUMNS
 from app.core.countries import dial_code, iso_code
@@ -177,9 +177,14 @@ def purchase_confirm(texts: Texts, locale: str | None, token: str) -> InlineKeyb
     return builder.as_markup()
 
 
-def activation(texts: Texts, locale: str | None, order_id: int) -> InlineKeyboardMarkup:
+def activation(
+    texts: Texts, locale: str | None, order_id: int, phone: str | None = None
+) -> InlineKeyboardMarkup:
     """Controls on a live activation screen."""
     builder = InlineKeyboardBuilder()
+    if phone:
+        # A tap-to-copy button beats making the user select/retype the number.
+        builder.row(button(texts.button("copy_number", locale), copy=phone))
     builder.row(
         InlineKeyboardButton(
             text=texts.button("refresh", locale),

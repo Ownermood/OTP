@@ -77,6 +77,18 @@ class ValidationError(BotError):
     message_key = "errors.invalid_input"
 
 
+class DepositBelowMinimumError(ValidationError):
+    """Deposit amount is below the configured minimum. Carries ``minimum`` (minor units)."""
+
+    message_key = "errors.deposit_below_minimum"
+
+
+class DepositAboveMaximumError(ValidationError):
+    """Deposit amount is above the configured maximum. Carries ``maximum`` (minor units)."""
+
+    message_key = "errors.deposit_above_maximum"
+
+
 class PromoError(BotError):
     message_key = "errors.promo_invalid"
 

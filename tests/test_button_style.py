@@ -86,13 +86,20 @@ def test_buying_is_the_highlighted_action(texts):
     assert "buy" in success.text.lower()
 
 
-def test_money_is_marked_danger(texts):
-    """Balance and Add Balance are where money moves, so they read as such."""
-    menu = next(b for b in _flat(keyboards.main_menu(texts, "en", True)) if b.style == DANGER)
-    assert "balance" in menu.text.lower()
+def test_balance_navigation_carries_no_style(texts):
+    """Per style.py: plain balance/wallet navigation is unstyled, not danger."""
+    wallet_button = next(
+        b for b in _flat(keyboards.main_menu(texts, "en", True)) if "balance" in b.text.lower()
+    )
+    assert wallet_button.style is None
 
-    deposit = next(b for b in _flat(keyboards.wallet(texts, "en", False)) if b.style == DANGER)
-    assert "add balance" in deposit.text.lower()
+
+def test_add_balance_is_primary_not_danger(texts):
+    """Topping up is money arriving; danger there reads as a warning against it."""
+    deposit = next(
+        b for b in _flat(keyboards.wallet(texts, "en", False)) if "add balance" in b.text.lower()
+    )
+    assert deposit.style == PRIMARY
 
 
 def test_confirming_a_purchase_is_success_and_cancelling_is_danger(texts):

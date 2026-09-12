@@ -28,7 +28,19 @@ async def test_deposit_below_the_minimum_is_rejected(harness):
     await harness.tap("fake_pay")
     await harness.send("1")
 
-    assert "does not look right" in harness.text.lower()
+    assert "minimum" in harness.text.lower()
+    assert "50" in harness.text
+
+
+async def test_deposit_of_exactly_the_minimum_is_accepted(harness):
+    await harness.send("/start")
+    await harness.tap("Balance")
+    await harness.tap("Add Balance")
+    await harness.tap("fake_pay")
+    await harness.send("50")
+
+    assert "PAYMENT" in harness.text
+    assert "₹50.00" in harness.text
 
 
 async def test_checking_a_paid_invoice_credits_the_balance(harness, session_factory):

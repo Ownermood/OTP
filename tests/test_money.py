@@ -53,3 +53,19 @@ def test_parse_amount_rejects_junk(text):
 
 def test_parse_amount_accepts_formatted_input():
     assert parse_amount(" ₹1,234.50 ") == 123_450
+
+
+@pytest.mark.parametrize("text", ["nan", "NaN", "-nan", "snan", "inf", "-inf", "Infinity"])
+def test_parse_amount_rejects_nan_and_infinity_without_raising(text):
+    """Comparing a NaN Decimal with <= raises InvalidOperation; must not crash the handler."""
+    assert parse_amount(text) is None
+
+
+@pytest.mark.parametrize("text", ["0.001", "0.004", "1e-100", "0.0001"])
+def test_parse_amount_rejects_values_that_round_to_zero_minor_units(text):
+    assert parse_amount(text) is None
+
+
+def test_parse_amount_never_raises():
+    for text in ["nan", "inf", "-inf", "snan", "1e-400", "🙂", "0.001", "--5", "5..5"]:
+        parse_amount(text)  # must not raise

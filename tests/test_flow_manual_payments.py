@@ -48,7 +48,7 @@ async def test_manual_deposit_reaches_the_review_channel(manual_harness):
     assert "shop@okaxis" in qr.text
     assert "₹500.00" in qr.text
     assert "verifies the payment" in qr.text
-    assert [b.lower() for b in qr.buttons()] == ["✅ i have paid", "❌ cancel"]
+    assert [b.lower() for b in qr.buttons()] == ["📋 copy upi id", "✅ i have paid", "❌ cancel"]
 
     await h.tap("I Have Paid")
     assert "UTR / TRANSACTION ID" in h.text

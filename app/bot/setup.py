@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.types import BotCommand
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
 
 from app.bot.handlers import build_router
@@ -45,6 +46,24 @@ from app.utils.cache import TTLCache
 from app.utils.tokens import TokenStore
 
 logger = get_logger(__name__)
+
+#: The native Telegram "/" command menu, in the order it should list them.
+#: Kept in one place so the menu can never drift from the commands the
+#: navigation router actually registers.
+COMMAND_MENU = ["start", "buy", "balance", "orders", "account", "help", "support", "cancel"]
+
+
+async def register_commands(bot: Bot, texts: Texts, locale: str) -> None:
+    """Populate Telegram's native "/" command menu.
+
+    Cosmetic, not safety-critical: callers should treat a failure here as
+    non-fatal rather than block startup on it.
+    """
+    commands = [
+        BotCommand(command=name, description=texts.get(f"commands.{name}", locale))
+        for name in COMMAND_MENU
+    ]
+    await bot.set_my_commands(commands)
 
 
 @dataclass(slots=True)
@@ -167,10 +186,15 @@ def _register_drain(dispatcher: Dispatcher, settings: Settings) -> None:
             pending, timeout=settings.shutdown_drain_seconds
         )
         if still_running:
-            # A handler stuck on a slow provider must not hold the deploy up.
+            # A handler stuck on a slow provider must not hold the deploy up,
+            # but cancellation must still be awaited: cancel() only requests
+            # it, and the handler's finally/rollback code (often itself
+            # awaiting) needs the loop to actually deliver CancelledError and
+            # run to completion before the process tears down the engine.
             logger.warning("shutdown.drain_timed_out", handlers=len(still_running))
             for task in still_running:
                 task.cancel()
+            await asyncio.gather(*still_running, return_exceptions=True)
         else:
             logger.info("shutdown.drained", handlers=len(done))
 

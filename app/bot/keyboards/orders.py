@@ -14,7 +14,7 @@ from app.bot.callbacks import (
     WalletCB,
 )
 from app.bot.keyboards.common import _nav_row
-from app.bot.keyboards.style import DANGER, SUCCESS
+from app.bot.keyboards.style import DANGER, SUCCESS, button
 from app.bot.texts import Texts
 from app.core.money import format_money
 from app.utils.formatting import order_icon, truncate
@@ -75,6 +75,40 @@ def orders_list(
     return builder.as_markup()
 
 
+def orders_empty(texts: Texts, locale: str | None, kind: str) -> InlineKeyboardMarkup:
+    """The empty state tells the user to go buy something -- let them, in one tap."""
+    from app.core.constants import OrderKind
+
+    builder = InlineKeyboardBuilder()
+    if OrderKind(kind) is OrderKind.ACTIVATION:
+        builder.row(
+            InlineKeyboardButton(
+                text=texts.button("buy", locale),
+                callback_data=Nav(to="buy").pack(),
+                style=SUCCESS,
+            )
+        )
+    else:
+        builder.row(
+            InlineKeyboardButton(
+                text=texts.button("smm", locale),
+                callback_data=Nav(to="smm").pack(),
+                style=SUCCESS,
+            )
+        )
+    builder.row(
+        InlineKeyboardButton(
+            text=texts.button("back", locale), callback_data=Nav(to="orders").pack()
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(
+            text=texts.button("home", locale), callback_data=Nav(to="home").pack()
+        )
+    )
+    return builder.as_markup()
+
+
 def order_detail(
     texts: Texts, locale: str | None, order, back_kind: str
 ) -> InlineKeyboardMarkup:
@@ -87,6 +121,13 @@ def order_detail(
     from app.core.constants import OrderKind, OrderStatus
 
     builder = InlineKeyboardBuilder()
+    copy_row = []
+    if getattr(order, "phone", None):
+        copy_row.append(button(texts.button("copy_number", locale), copy=order.phone))
+    if getattr(order, "sms_code", None):
+        copy_row.append(button(texts.button("copy_code", locale), copy=order.sms_code))
+    if copy_row:
+        builder.row(*copy_row)
     if not OrderStatus(order.status).is_final:
         controls = [
             InlineKeyboardButton(

@@ -139,6 +139,7 @@ async def harness(session_factory, settings, monkeypatch):
         admin,
         buy,
         manual_payments,
+        navigation,
         orders,
         profile,
         smm,
@@ -150,6 +151,8 @@ async def harness(session_factory, settings, monkeypatch):
         admin, start, buy, orders, wallet, manual_payments, smm, profile
     ):
         module.router._parent_router = None
+    navigation.commands_router._parent_router = None
+    navigation.fallback_router._parent_router = None
 
     # The same registration production uses, so the harness cannot drift from
     # what actually runs.

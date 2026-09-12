@@ -17,6 +17,7 @@ from app.bot.handlers import (
     help_center,  # noqa: F401  -- registers on the profile router
     manual_payments,
     manual_review,  # noqa: F401  -- registers on the manual_payments router
+    navigation,
     orders,
     profile,
     referrals,  # noqa: F401  -- registers on the profile router
@@ -30,6 +31,10 @@ from app.bot.handlers import (
 def build_router() -> Router:
     root = Router(name="root")
     root.include_routers(
+        # /help, /balance, /orders, /cancel: checked before any flow router so
+        # they interrupt an in-progress flow instead of being parsed as its
+        # typed input.
+        navigation.commands_router,
         admin.router,
         start.router,
         buy.router,
@@ -38,6 +43,9 @@ def build_router() -> Router:
         manual_payments.router,
         smm.router,
         profile.router,
+        # Dead last: only reached once nothing else -- no command, no active
+        # FSM state's handler -- has matched.
+        navigation.fallback_router,
     )
     return root
 

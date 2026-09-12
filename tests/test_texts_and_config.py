@@ -149,7 +149,7 @@ def test_the_shipped_example_env_file_is_loadable(monkeypatch):
     finally:
         Settings.model_config["env_file"] = "tests/.env-that-does-not-exist"
     assert settings.backup_chat_id == 0
-    assert settings.min_deposit == 100
+    assert settings.min_deposit == 50
 
 
 async def test_startup_refuses_a_database_that_was_never_migrated(tmp_path):

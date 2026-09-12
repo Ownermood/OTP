@@ -9,7 +9,7 @@ from app.bot.callbacks import (
     Nav,
     NoopCB,
 )
-from app.bot.keyboards.style import DANGER, PRIMARY, SUCCESS
+from app.bot.keyboards.style import PRIMARY, SUCCESS
 from app.bot.texts import Texts
 from app.utils.pagination import Page
 
@@ -70,7 +70,7 @@ def main_menu(texts: Texts, locale: str | None, smm_enabled: bool) -> InlineKeyb
             text=texts.button("profile", locale), icon_custom_emoji_id=texts.icon("profile"), callback_data=Nav(to="profile").pack(), style=PRIMARY
         ),
         InlineKeyboardButton(
-            text=texts.button("wallet", locale), icon_custom_emoji_id=texts.icon("wallet"), callback_data=Nav(to="wallet").pack(), style=DANGER
+            text=texts.button("wallet", locale), icon_custom_emoji_id=texts.icon("wallet"), callback_data=Nav(to="wallet").pack()
         ),
     )
     builder.row(
@@ -89,12 +89,16 @@ def back_home(texts: Texts, locale: str | None, back_to: str = "home") -> Inline
     if back_to != "home":
         builder.row(
             InlineKeyboardButton(
-                text=texts.button("back", locale), callback_data=Nav(to=back_to).pack()
+                text=texts.button("back", locale),
+                icon_custom_emoji_id=texts.icon("back"),
+                callback_data=Nav(to=back_to).pack(),
             )
         )
     builder.row(
         InlineKeyboardButton(
-            text=texts.button("home", locale), callback_data=Nav(to="home").pack()
+            text=texts.button("home", locale),
+            icon_custom_emoji_id=texts.icon("home"),
+            callback_data=Nav(to="home").pack(),
         )
     )
     return builder.as_markup()

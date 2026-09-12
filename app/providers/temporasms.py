@@ -294,7 +294,7 @@ class TemporaSmsProvider(SmsActivateProvider):
 
     def _to_offer(self, entry: object) -> Offer | None:
         """Turn one ``getPrices`` service entry into a quotable offer."""
-        if isinstance(entry, (int, float, str)):
+        if isinstance(entry, int | float | str):
             price = _as_decimal(entry)
             return (self._to_minor(price), None) if price is not None else None
         if not isinstance(entry, dict):

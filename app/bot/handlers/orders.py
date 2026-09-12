@@ -46,7 +46,7 @@ async def list_orders(query: CallbackQuery, callback_data: OrdersListCB, **data)
         await show(
             query,
             context.text("orders.empty", title=title),
-            keyboards.back_home(context.texts, context.locale, back_to="orders"),
+            keyboards.orders_empty(context.texts, context.locale, kind.value),
         )
         return
 

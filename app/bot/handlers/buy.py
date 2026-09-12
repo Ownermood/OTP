@@ -277,7 +277,7 @@ async def do_purchase(query: CallbackQuery, callback_data: ConfirmCB, state: FSM
             price=context.money(order.price),
             order_id=order.id,
         ),
-        keyboards.activation(context.texts, context.locale, order.id),
+        keyboards.activation(context.texts, context.locale, order.id, order.phone),
     )
 
 

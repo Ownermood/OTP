@@ -9,6 +9,7 @@ rather than failing on a user's first purchase.
 from __future__ import annotations
 
 import os
+import re
 from decimal import Decimal
 from functools import lru_cache
 from pathlib import Path
@@ -23,6 +24,9 @@ from app.utils.qr import is_valid_vpa
 
 VERSION = "3.0.0"
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
+
+#: Custom-emoji marker names: the charset shared with ``texts.EMOJI_MARKER``.
+_EMOJI_NAME = re.compile(r"[a-z0-9_]+")
 
 
 class Settings(BaseSettings):
@@ -129,7 +133,7 @@ class Settings(BaseSettings):
     #: How long past its expiry an unreported invoice is still polled, so a
     #: payment made during a restart is not written off with the money taken.
     payment_grace_hours: int = 24
-    min_deposit: Decimal = Decimal("100")
+    min_deposit: Decimal = Decimal("50")
     max_deposit: Decimal = Decimal("50000")
 
     # --- Referral -------------------------------------------------------
@@ -197,9 +201,14 @@ class Settings(BaseSettings):
             if ":" not in part:
                 raise ValueError("CUSTOM_EMOJI must look like 'buy:5350513667437440642,...'")
             name, _, emoji_id = part.partition(":")
+            name = name.strip()
+            if not _EMOJI_NAME.fullmatch(name):
+                raise ValueError(
+                    f"CUSTOM_EMOJI: {name!r} is not a valid name (use a-z, 0-9, _)"
+                )
             if not emoji_id.strip().isdigit():
                 raise ValueError(f"CUSTOM_EMOJI: {emoji_id!r} is not a custom emoji id")
-            icons[name.strip()] = emoji_id.strip()
+            icons[name] = emoji_id.strip()
         return icons
 
     @field_validator("parse_mode")

@@ -29,7 +29,9 @@ async def open_referral(query: CallbackQuery, state: FSMContext, **data):
             percent=stats.percent,
             link=link,
         ),
-        keyboards.referral(context.texts, context.locale, f"https://t.me/share/url?url={link}"),
+        keyboards.referral(
+            context.texts, context.locale, f"https://t.me/share/url?url={link}", link
+        ),
     )
 
 

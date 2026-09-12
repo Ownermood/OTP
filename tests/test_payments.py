@@ -1,9 +1,12 @@
 """Deposit settlement must be exactly-once under replay."""
 
+from decimal import Decimal
+
 import pytest
 
 from app.core.constants import PaymentStatus
 from app.core.exceptions import ValidationError
+from app.core.money import to_minor
 from app.services.payments import PaymentService
 from app.services.referrals import ReferralService
 from tests.fakes import FakePaymentProvider
@@ -38,6 +41,38 @@ async def test_deposit_bounds_are_enforced(payments, settings, user, provider):
         await payments.create_invoice(user.id, provider.name, 1)  # below MIN_DEPOSIT
     with pytest.raises(ValidationError):
         await payments.create_invoice(user.id, provider.name, 999_999_999)
+
+
+def test_the_configured_minimum_deposit_is_50_rupees(settings):
+    assert settings.min_deposit == Decimal("50")
+
+
+@pytest.mark.parametrize(
+    ("rupees", "accepted"),
+    [
+        (-10, False),
+        (0, False),
+        (49, False),
+        (50, True),
+        (51, True),
+        (100, True),
+        (500, True),
+    ],
+)
+def test_deposit_minimum_boundary_is_50_rupees(payments, rupees, accepted):
+    amount = to_minor(Decimal(rupees))
+    if accepted:
+        payments.validate_amount(amount)  # must not raise
+    else:
+        with pytest.raises(ValidationError):
+            payments.validate_amount(amount)
+
+
+def test_below_minimum_error_carries_the_minimum_for_the_user_facing_message(payments):
+    with pytest.raises(ValidationError) as exc_info:
+        payments.validate_amount(to_minor(Decimal("49")))
+    assert exc_info.value.context.get("minimum") == to_minor(Decimal("50"))
+    assert exc_info.value.message_key != "errors.invalid_input"
 
 
 async def test_settlement_credits_the_balance(payments, provider, user, wallet):

@@ -8,8 +8,10 @@ common:
   loading: "⏳ Loading…"
   done: "✅ Done."
   empty: "Nothing here yet."
+  cancelled: "✅ Cancelled."
 
 buttons:
+  copy_upi: "📋 Copy UPI ID"
   buy: "🛍 Buy Number"
   smm: "📈 SMM Panel"
   orders: "📦 My Orders"
@@ -42,6 +44,59 @@ buttons:
   pay: "💳 Pay Now"
   check_payment: "🔄 Check Payment"
   recent: "🕘 Recently Used"
+  # -- labels that used to be hard-coded in Python --------------------------
+  orders_sms: "📱 SMS Activations"
+  orders_smm: "📈 SMM"
+  payments: "💳 Payments"
+  cancel_yes: "✅ Yes, cancel"
+  keep_number: "❌ Keep Number"
+  track: "🔄 Track Status"
+  approve: "✅ Approve"
+  decline: "❌ Decline"
+  copy_number: "📋 Copy Number"
+  copy_code: "📋 Copy Code"
+  copy_upi: "📋 Copy UPI ID"
+  copy_link: "📋 Copy Link"
+  notifications_on: "🔔 Notifications: ON"
+  notifications_off: "🔕 Notifications: OFF"
+  filter_all: "All"
+  filter_deposit: "➕ Deposits"
+  filter_purchase: "🛍 Purchases"
+  filter_refund: "↩️ Refunds"
+  filter_referral: "🎁 Referral"
+
+# Payment-method names, keyed by provider.
+methods:
+  cryptobot: "🩵 Crypto"
+  telegram_stars: "⭐ Telegram Stars"
+  manual: "📲 UPI / QR"
+
+# SMM platform tab labels, keyed by category.
+smm_platforms:
+  instagram: "🟣 Instagram"
+  telegram: "🔵 Telegram"
+  youtube: "🔴 YouTube"
+  tiktok: "⚫️ TikTok"
+  facebook: "🔷 Facebook"
+  twitter: "⚪️ X / Twitter"
+  other: "🌐 Other Services"
+
+# Telegram slash-command menu descriptions (setMyCommands).
+commands:
+  start: "Open the main menu"
+  buy: "Buy a virtual number"
+  balance: "Wallet & balance"
+  orders: "My orders & history"
+  account: "Your profile & stats"
+  help: "Help centre"
+  support: "Contact support"
+  cancel: "Cancel and go home"
+
+# Reply to a stray message sent outside any flow.
+fallback: |
+  🤖 I didn't catch that.
+
+  Use the buttons below to get around — or send /help if you're stuck.
 
 start:
   welcome: |
@@ -54,9 +109,9 @@ start:
     Choose an option below:
   smm_line: "📈 Instagram, Telegram, YouTube & more\n"
   returning: |
-    ⚡️ <b>{service_name}</b>
+    <tg-emoji id="welcome">⚡️</tg-emoji> <b>{service_name}</b>
 
-    💳 Balance: <b>{balance}</b>
+    <tg-emoji id="wallet">💳</tg-emoji> Balance: <b>{balance}</b>
 
     {divider}
 
@@ -72,14 +127,14 @@ buy:
 
     <i>🟢 in stock · 🟡 low · 🔴 none</i>
   select_country: |
-    🛍 <b>BUY NUMBER</b>
+    <tg-emoji id="buy">🛍</tg-emoji> <b>BUY NUMBER</b>
 
     🌍 Tap a country to see its services and prices.
     Prices shown are the cheapest in that country.
 
     <i>{count} countries available</i>
   select_service: |
-    📱 <b>{country}</b>
+    <tg-emoji id="buy">📱</tg-emoji> <b>{country}</b>
 
     Choose the service you need:
 
@@ -105,7 +160,7 @@ buy:
 
     Try a shorter word.
   confirm: |
-    🛒 <b>ORDER CONFIRMATION</b>
+    <tg-emoji id="buy">🛒</tg-emoji> <b>ORDER CONFIRMATION</b>
 
     📱 Service: <b>{service}</b>
     🌍 Country: <b>{country}</b>
@@ -118,6 +173,20 @@ buy:
     💵 After purchase: {balance_after}
 
     Ready to continue?
+  confirm_short: |
+    <tg-emoji id="buy">🛒</tg-emoji> <b>ORDER CONFIRMATION</b>
+
+    📱 Service: <b>{service}</b>
+    🌍 Country: <b>{country}</b>
+
+    💰 Price: <b>{price}</b>
+
+    {divider}
+
+    💳 Your balance: {balance}
+    ⚠️ Short by <b>{shortfall}</b>
+
+    Add balance, then choose this number again.
   purchased: |
     <tg-emoji id="success">✅</tg-emoji> <b>NUMBER PURCHASED</b>
 
@@ -138,7 +207,7 @@ buy:
 
 sms:
   received: |
-    📨 <b>SMS RECEIVED</b>
+    <tg-emoji id="sms">📨</tg-emoji> <b>SMS RECEIVED</b>
 
     🛍 Service: {service}
     📱 Number: <code>{phone}</code>
@@ -186,17 +255,19 @@ sms:
 
 orders:
   root: |
-    📦 <b>MY ORDERS</b>
+    <tg-emoji id="orders">📦</tg-emoji> <b>MY ORDERS</b>
 
     Choose a section:
   list: |
-    📦 <b>{title}</b>
+    <tg-emoji id="orders">📦</tg-emoji> <b>{title}</b>
 
     {count} order(s) total.
   empty: |
-    📦 <b>{title}</b>
+    <tg-emoji id="orders">📦</tg-emoji> <b>{title}</b>
 
-    You have no orders yet.
+    Nothing here yet.
+
+    <i>Buy a number and it shows up here with its code and receipt.</i>
   detail: |
     🧾 <b>RECEIPT</b>
 
@@ -211,6 +282,13 @@ orders:
     📅 Date: {created_at}
 
     {code_block}
+  country_line: "🌍 Country: {country}\n"
+  code_block: |
+    {divider}
+
+    🔐 <b>Code:</b>
+    <code>{code}</code>
+  no_sms_yet: "⏳ No SMS yet — I'll message you the moment it lands."
 
 favorites:
   list: |
@@ -671,6 +749,8 @@ errors:
   order_not_found: "❌ Order not found."
   access_denied: "🚫 You do not have access to that."
   invalid_input: "⚠️ That does not look right. Please try again."
+  deposit_below_minimum: "⚠️ The minimum deposit is <b>{minimum}</b>. Please enter a larger amount."
+  deposit_above_maximum: "⚠️ The maximum deposit is <b>{maximum}</b>. Please enter a smaller amount."
   promo_invalid: "❌ Invalid or expired promo code."
   duplicate_operation: "⏳ That is already being processed. Please wait."
   price_changed: |

@@ -15,7 +15,7 @@ from app.bot.callbacks import (
     WalletCB,
 )
 from app.bot.keyboards.common import _chunks, _nav_row
-from app.bot.keyboards.style import DANGER, PRIMARY, SUCCESS
+from app.bot.keyboards.style import DANGER, PRIMARY, SUCCESS, button
 from app.bot.texts import Texts
 from app.utils.pagination import Page
 
@@ -24,7 +24,7 @@ def profile(texts: Texts, locale: str | None) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
-            text=texts.button("deposit", locale), callback_data=WalletCB(action="deposit").pack(), style=DANGER
+            text=texts.button("deposit", locale), callback_data=WalletCB(action="deposit").pack(), style=PRIMARY
         ),
         InlineKeyboardButton(
             text=texts.button("orders", locale), callback_data=Nav(to="orders").pack(), style=PRIMARY
@@ -58,7 +58,7 @@ def wallet(texts: Texts, locale: str | None, transfer_enabled: bool) -> InlineKe
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
-            text=texts.button("deposit", locale), callback_data=WalletCB(action="deposit").pack(), style=DANGER
+            text=texts.button("deposit", locale), callback_data=WalletCB(action="deposit").pack(), style=PRIMARY
         )
     )
     builder.row(
@@ -152,9 +152,14 @@ def transactions_filters(texts: Texts, locale: str | None, page: Page) -> Inline
     return builder.as_markup()
 
 
-def referral(texts: Texts, locale: str | None, share_url: str) -> InlineKeyboardMarkup:
+def referral(
+    texts: Texts, locale: str | None, share_url: str, link: str | None = None
+) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(InlineKeyboardButton(text=texts.button("share", locale), url=share_url))
+    if link:
+        # A tap-to-copy button beats making the user select/retype the link.
+        builder.row(button(texts.button("copy_link", locale), copy=link))
     builder.row(
         InlineKeyboardButton(
             text=texts.button("history", locale), callback_data=Nav(to="referral_history").pack()

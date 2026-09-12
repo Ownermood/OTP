@@ -23,7 +23,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from app.bot import keyboards
 from app.bot.callbacks import ManualCB, Nav, PaymentCB
 from app.bot.handlers.common import Context, build_context, show, toast
-from app.bot.keyboards.style import DANGER, SUCCESS
+from app.bot.keyboards.style import DANGER, SUCCESS, button
 from app.bot.states import ManualPaymentStates
 from app.core.exceptions import ValidationError
 from app.core.logging import get_logger
@@ -132,6 +132,9 @@ def _paid_or_cancel(context: Context):
     and any stray message would be read as one.
     """
     builder = InlineKeyboardBuilder()
+    if context.settings.upi_id:
+        # A tap-to-copy button beats making the user retype it by hand.
+        builder.row(button(context.button("copy_upi"), copy=context.settings.upi_id))
     builder.row(
         InlineKeyboardButton(
             text=context.button("paid"),

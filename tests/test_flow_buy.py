@@ -27,6 +27,11 @@ async def test_buy_flow_end_to_end(harness, session_factory):
     assert "+91" in harness.text
     assert "Waiting for SMS" in harness.text
 
+    # A tap-to-copy button beats making the user select/retype the number.
+    buttons = [b for row in harness.screen.markup.inline_keyboard for b in row]
+    copy_button = next(b for b in buttons if b.copy_text is not None)
+    assert copy_button.copy_text.text.startswith("+91")
+
 
 async def test_buying_debits_exactly_once(harness, session_factory):
     from app.services.wallet import WalletService
@@ -96,6 +101,11 @@ async def test_buying_without_balance_shows_a_helpful_error(harness):
     assert "Insufficient balance" in harness.text
     assert "₹11.00" in harness.text  # what they needed
     assert harness.sms.created == 0
+
+    # A dead end here would strand the user; the error must offer a one-tap
+    # way to top up instead of only telling them to.
+    await harness.tap("Add Balance")
+    assert "payment method" in harness.text.lower()
 
 
 async def test_no_numbers_available_is_reported_and_refunded(harness, session_factory):

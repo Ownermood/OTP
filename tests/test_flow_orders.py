@@ -20,6 +20,43 @@ async def test_orders_screen_lists_a_purchase(harness, session_factory):
     assert any("#1" in b and "WhatsApp" in b for b in harness.buttons())
 
 
+async def test_order_detail_offers_copy_buttons_for_number_and_code(harness, session_factory):
+    """A tap-to-copy button beats making the user select/retype the code by hand."""
+    from app.core.constants import OrderStatus
+    from app.database.models import Order
+
+    await harness.send("/start")
+    await fund(session_factory, harness.user_id, 10_000)
+    await harness.tap("Buy Number")
+    await harness.tap("IN")
+    await harness.tap("WhatsApp")
+    await harness.tap("Confirm")
+
+    async with session_factory() as session:
+        order = await session.get(Order, 1)
+        order.sms_code = "654321"
+        order.status = OrderStatus.SUCCESS
+        await session.commit()
+
+    await harness.tap("Details")
+
+    buttons = [b for row in harness.screen.markup.inline_keyboard for b in row]
+    copy_texts = {b.copy_text.text for b in buttons if b.copy_text is not None}
+    assert "654321" in copy_texts
+    assert any(t.startswith("+91") for t in copy_texts)
+
+
+async def test_empty_orders_list_offers_a_buy_shortcut(harness):
+    """The empty state tells the user to buy a number -- it should also let them."""
+    await harness.send("/start")
+    await harness.tap("Orders")
+    await harness.tap("SMS Activations")
+
+    assert "Nothing here yet" in harness.text
+    await harness.tap("Buy Number")
+    assert "BUY NUMBER" in harness.text
+
+
 async def test_cancelling_an_order_refunds_it(harness, session_factory):
     from app.services.wallet import WalletService
 
@@ -76,6 +113,11 @@ async def test_referral_screen_shows_a_working_link(harness):
 
     assert "REFERRAL PROGRAM" in harness.text
     assert f"?start=ref{harness.user_id}" in harness.text
+
+    # A tap-to-copy button beats making the user select/retype the link.
+    buttons = [b for row in harness.screen.markup.inline_keyboard for b in row]
+    copy_button = next(b for b in buttons if b.copy_text is not None)
+    assert f"?start=ref{harness.user_id}" in copy_button.copy_text.text
 
 
 async def test_help_topics_render(harness):

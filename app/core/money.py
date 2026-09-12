@@ -53,9 +53,18 @@ def parse_amount(text: str) -> int | None:
         value = Decimal(cleaned)
     except InvalidOperation:
         return None
+    # NaN/sNaN/Infinity construct fine but raise InvalidOperation on <=/>
+    # comparison under the default context -- check finiteness first so a
+    # malformed amount returns None instead of crashing the handler.
+    if not value.is_finite():
+        return None
     if value <= 0 or value > Decimal("10000000"):
         return None
-    return to_minor(value)
+    minor = to_minor(value)
+    if minor <= 0:
+        # Rounds away to nothing (e.g. 0.001 or 1e-100) -- not a real amount.
+        return None
+    return minor
 
 
 def _as_decimal(value: Decimal | int | float | str) -> Decimal:

@@ -11,7 +11,7 @@ from __future__ import annotations
 import asyncio
 import sys
 
-from app.bot.setup import Application, build_application
+from app.bot.setup import Application, build_application, register_commands
 from app.core.config import VERSION, Settings, get_settings
 from app.core.exceptions import ConfigurationError
 from app.core.logging import get_logger, setup_logging
@@ -77,6 +77,12 @@ async def run(settings: Settings) -> int:
     if not await preflight(app):
         await app.shutdown()
         return 1
+
+    try:
+        await register_commands(app.bot, app.texts, settings.locale)
+    except Exception as exc:
+        # The native "/" menu is cosmetic; a failure here must never block startup.
+        logger.warning("startup.command_menu_failed", error=str(exc))
 
     _banner(settings, me.username)
     for worker in app.workers:

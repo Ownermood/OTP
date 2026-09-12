@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
 from app.core.constants import PaymentStatus, TransactionType
-from app.core.exceptions import ValidationError
+from app.core.exceptions import DepositAboveMaximumError, DepositBelowMinimumError, ValidationError
 from app.core.logging import get_logger
 from app.core.money import to_minor
 from app.database.models import Payment
@@ -77,10 +77,12 @@ class PaymentService:
 
     def validate_amount(self, amount: int) -> None:
         """Enforce the configured deposit bounds."""
-        if amount < to_minor(self._settings.min_deposit):
-            raise ValidationError("below minimum deposit")
-        if amount > to_minor(self._settings.max_deposit):
-            raise ValidationError("above maximum deposit")
+        minimum = to_minor(self._settings.min_deposit)
+        maximum = to_minor(self._settings.max_deposit)
+        if amount < minimum:
+            raise DepositBelowMinimumError("below minimum deposit", minimum=minimum)
+        if amount > maximum:
+            raise DepositAboveMaximumError("above maximum deposit", maximum=maximum)
 
     async def create_invoice(self, user_id: int, provider_name: str, amount: int) -> Payment:
         """Create an invoice upstream and record it locally."""

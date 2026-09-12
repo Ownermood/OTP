@@ -33,7 +33,11 @@ class Safe(str):
 #: operator. The tag's contents are the fallback shown to anyone whose client
 #: will not render the custom emoji, and are what is left behind when no id is
 #: configured at all.
-EMOJI_MARKER = re.compile(r'<tg-emoji id="([a-z_]+)">(.*?)</tg-emoji>', re.S)
+#:
+#: Names are ``[a-z0-9_]+`` -- the same charset the CUSTOM_EMOJI parser accepts,
+#: so a name that is valid in the environment can never be one the marker
+#: silently fails to match.
+EMOJI_MARKER = re.compile(r'<tg-emoji id="([a-z0-9_]+)">(.*?)</tg-emoji>', re.S)
 
 
 class Texts:
