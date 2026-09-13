@@ -7,6 +7,8 @@ the buttons are visible to everyone who can see the channel.
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 from aiogram import F
 from aiogram.exceptions import TelegramAPIError
 from aiogram.fsm.context import FSMContext
@@ -166,11 +168,11 @@ async def approve(query: CallbackQuery, callback_data: ManualCB, **data):
     decision = await manual.approve(callback_data.payment_id, query.from_user.id)
     if not decision.applied:
         await toast(query, context.text("wallet.manual_already_reviewed"), alert=True)
-        await _close_review(query, context, decision, reviewer=query.from_user)
+        await _record_verdict(query.bot, context, decision, query.from_user, tapped_from=query.message)
         return
 
     await query.answer()
-    await _close_review(query, context, decision, reviewer=query.from_user)
+    await _record_verdict(query.bot, context, decision, query.from_user, tapped_from=query.message)
     await data["notifications"].notify_user(
         decision.payment.user_id,
         context.text(
@@ -185,14 +187,24 @@ async def approve(query: CallbackQuery, callback_data: ManualCB, **data):
 
 @router.callback_query(ManualCB.filter(F.action == "decline"))
 async def prompt_decline(query: CallbackQuery, callback_data: ManualCB, state: FSMContext, **data):
-    """Ask for a reason, so the user is told something useful."""
+    """Ask for a reason, so the user is told something useful.
+
+    The message Decline was tapped from -- the channel card, or the admin
+    panel's copy of it -- is stashed now, because it is only reachable here;
+    by the time the reason comes back as a DM this is a fresh update with no
+    such message of its own.
+    """
     context = build_context(data)
     manual = _service(context)
     if not manual.can_review(query.from_user.id):
         raise AccessDeniedError("not a payment reviewer")
 
     await state.set_state(ManualPaymentStates.declining)
-    await state.update_data(decline_payment_id=callback_data.payment_id)
+    await state.update_data(
+        decline_payment_id=callback_data.payment_id,
+        decline_source_chat_id=query.message.chat.id if query.message else None,
+        decline_source_message_id=query.message.message_id if query.message else None,
+    )
     await query.answer()
     await query.bot.send_message(
         query.from_user.id,
@@ -209,13 +221,22 @@ async def do_decline(message: Message, state: FSMContext, **data):
     await state.clear()
     payment_id = int(stored.get("decline_payment_id", 0))
     reason = (message.text or "").strip()
+    source_chat_id = stored.get("decline_source_chat_id")
+    source_message_id = stored.get("decline_source_message_id")
 
     decision = await manual.decline(payment_id, message.from_user.id, reason)
     if not decision.applied:
         await message.answer(context.text("wallet.manual_already_reviewed"))
         return
 
-    await _edit_review_post(message.bot, context, decision, message.from_user)
+    tapped_from = (
+        SimpleNamespace(
+            chat=SimpleNamespace(id=source_chat_id), message_id=source_message_id
+        )
+        if source_chat_id is not None
+        else None
+    )
+    await _record_verdict(message.bot, context, decision, message.from_user, tapped_from=tapped_from)
     await message.answer(
         context.text("wallet.manual_decline_done", request_id=payment_id, reason=reason),
         reply_parameters=build_reply_parameters(message),
@@ -232,61 +253,60 @@ async def do_decline(message: Message, state: FSMContext, **data):
     )
 
 
-async def _close_review(query: CallbackQuery, context: Context, decision, reviewer) -> None:
-    """Strip the buttons and record the outcome as a reply.
+async def _record_verdict(bot, context: Context, decision, reviewer, *, tapped_from=None) -> None:
+    """Close the decision out everywhere it might still be showing.
 
-    A reply works whether the card was a photo (caption) or the text-only
-    fallback -- editing the caption directly does not: ``edit_caption`` is
-    rejected outright on a plain text message, which used to leave the
-    text-only fallback's outcome never recorded on screen.
+    The channel copy is the authoritative record and is always targeted
+    directly by ``payment.review_message_id`` -- regardless of whether the
+    decision was actually made by tapping the channel post, by tapping its
+    copy in the admin panel, or by replying to a DM decline prompt. Approving
+    from the panel used to strip/reply only on the panel's own message,
+    leaving the channel post stuck showing live Approve/Decline buttons on an
+    already-settled payment -- reviewers glancing at the channel had no way
+    to tell it was already handled.
+
+    ``tapped_from`` is whatever message the admin actually interacted with;
+    if that differs from the channel post (the panel case) it gets the same
+    treatment too, purely as a convenience -- the channel update above is
+    what actually matters.
     """
     verdict = context.text(
         "wallet.manual_verdict_approved" if decision.approved else "wallet.manual_verdict_declined",
         reviewer=f"@{reviewer.username}" if reviewer.username else str(reviewer.id),
         request_id=decision.payment.id,
     )
-    if query.message is None:
-        return
-    # Independent try/except per call: a decision is already committed to the
-    # database by this point, so one call failing must not swallow the other
-    # -- stripping the buttons still matters even if the reply fails, and the
-    # reply still matters even if the buttons could not be stripped. Either
-    # failure is logged visibly: the outcome is decided either way, so a
-    # missing on-screen record is an audit-trail gap, not routine noise.
-    try:
-        await query.message.edit_reply_markup(reply_markup=None)
-    except TelegramAPIError as exc:
-        logger.warning(
-            "manual_payment.markup_strip_failed", payment_id=decision.payment.id, error=str(exc)
-        )
-    try:
-        await query.message.reply(verdict)
-    except TelegramAPIError as exc:
-        logger.warning(
-            "manual_payment.verdict_reply_failed", payment_id=decision.payment.id, error=str(exc)
-        )
-
-
-async def _edit_review_post(bot, context: Context, decision, reviewer) -> None:
-    """Same, for a decision made over DM rather than on the post itself."""
     payment = decision.payment
-    if not payment.review_message_id:
-        return
-    verdict = context.text(
-        "wallet.manual_verdict_declined",
-        reviewer=f"@{reviewer.username}" if reviewer.username else str(reviewer.id),
-        request_id=payment.id,
-    )
-    try:
-        await bot.edit_message_reply_markup(
-            chat_id=context.settings.manual_payment_channel_id,
-            message_id=payment.review_message_id,
-            reply_markup=None,
-        )
-        await bot.send_message(
-            chat_id=context.settings.manual_payment_channel_id,
-            text=verdict,
-            reply_to_message_id=payment.review_message_id,
-        )
-    except TelegramAPIError as exc:
-        logger.debug("manual_payment.review_edit_failed", error=str(exc))
+
+    targets: list[tuple[int, int]] = []
+    if payment.review_message_id:
+        targets.append((context.settings.manual_payment_channel_id, payment.review_message_id))
+    if tapped_from is not None:
+        candidate = (tapped_from.chat.id, tapped_from.message_id)
+        if candidate not in targets:
+            targets.append(candidate)
+
+    # Independent try/except per call and per target: the decision is already
+    # committed to the database by this point, so one failure must not
+    # swallow another -- every surface gets its own attempt, and a failure on
+    # one is logged without blocking the rest.
+    for chat_id, message_id in targets:
+        try:
+            await bot.edit_message_reply_markup(
+                chat_id=chat_id, message_id=message_id, reply_markup=None
+            )
+        except TelegramAPIError as exc:
+            logger.warning(
+                "manual_payment.markup_strip_failed",
+                payment_id=payment.id,
+                chat_id=chat_id,
+                error=str(exc),
+            )
+        try:
+            await bot.send_message(chat_id=chat_id, text=verdict, reply_to_message_id=message_id)
+        except TelegramAPIError as exc:
+            logger.warning(
+                "manual_payment.verdict_reply_failed",
+                payment_id=payment.id,
+                chat_id=chat_id,
+                error=str(exc),
+            )

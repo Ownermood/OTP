@@ -1,10 +1,10 @@
 """Top-level commands and the catch-all fallback for text outside any flow.
 
 ``commands_router`` is registered before every flow router so /help, /balance,
-/orders, /buy, /account, /support and /cancel work as an escape hatch from
-*inside* a flow too -- a user stuck in the deposit-amount prompt can type
-/cancel instead of a number and leave it, rather than that text being parsed
-as the amount.
+/orders, /buy, /account and /cancel work as an escape hatch from *inside* a
+flow too -- a user stuck in the deposit-amount prompt can type /cancel
+instead of a number and leave it, rather than that text being parsed as the
+amount.
 
 ``fallback_router`` is registered dead last. Its handler is filtered on
 ``StateFilter(None)``, so it only ever sees a message once every other router
@@ -91,12 +91,6 @@ async def cmd_account(message: Message, state: FSMContext, **data) -> None:
         ),
         keyboards.profile(context.texts, context.locale),
     )
-
-
-@commands_router.message(Command("support"))
-async def cmd_support(message: Message, state: FSMContext, **data) -> None:
-    """Same destination as /help: the help centre carries the support link."""
-    await cmd_help(message, state, **data)
 
 
 @commands_router.message(Command("cancel"))

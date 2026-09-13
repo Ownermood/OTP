@@ -158,6 +158,28 @@ async def test_help_topics_render(harness):
     assert "refunds the full price" in harness.text
 
 
+async def test_help_is_the_only_help_support_entry_point(harness):
+    """Regression: /support used to be a dead duplicate destination. Help now
+    covers every category, including the ones that used to have no home."""
+    await harness.send("/start")
+    await harness.tap("Help")
+
+    labels = " ".join(harness.buttons()).lower()
+    for expected in ("how to buy", "payment", "otp", "referral", "account", "troubleshooting"):
+        assert expected in labels, f"missing help category: {expected!r}"
+    # No support_url configured in tests, so there is no separate "Contact
+    # Support" surface at all here -- Help is the only entry point.
+    assert "support" not in labels
+
+    await harness.tap("OTP")
+    assert "OTP & ORDERS" in harness.text
+
+    await harness.send("/start")
+    await harness.tap("Help")
+    await harness.tap("Troubleshooting")
+    assert "TROUBLESHOOTING" in harness.text
+
+
 # -- SMM panel --------------------------------------------------------------
 
 

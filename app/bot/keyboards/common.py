@@ -44,41 +44,63 @@ def _chunks(items: list, size: int) -> list[list]:
 
 
 def main_menu(texts: Texts, locale: str | None, smm_enabled: bool) -> InlineKeyboardMarkup:
-    """The home screen. One primary action, then pairs."""
+    """The home screen: one headline action, the core pair below it, then
+    secondary/utility rows kept visually and physically separate from the
+    primary group -- not a dense, undifferentiated grid."""
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
-            text=texts.button("buy", locale), icon_custom_emoji_id=texts.icon("buy"), callback_data=Nav(to="buy").pack(), style=SUCCESS
+            text=texts.button("buy", locale),
+            icon_custom_emoji_id=texts.icon("buy"),
+            callback_data=Nav(to="buy").pack(),
+            style=SUCCESS,
         )
     )
     builder.row(
         InlineKeyboardButton(
-            text=texts.button("orders", locale), icon_custom_emoji_id=texts.icon("orders"), callback_data=Nav(to="orders").pack(), style=PRIMARY
+            text=texts.button("wallet", locale),
+            icon_custom_emoji_id=texts.icon("balance"),
+            callback_data=Nav(to="wallet").pack(),
+            style=PRIMARY,
         ),
         InlineKeyboardButton(
-            text=texts.button("favorites", locale), icon_custom_emoji_id=texts.icon("favorites"), callback_data=Nav(to="favorites").pack(), style=PRIMARY
+            text=texts.button("orders", locale),
+            icon_custom_emoji_id=texts.icon("orders"),
+            callback_data=Nav(to="orders").pack(),
+            style=PRIMARY,
         ),
     )
     if smm_enabled:
         builder.row(
             InlineKeyboardButton(
-                text=texts.button("smm", locale), icon_custom_emoji_id=texts.icon("smm"), callback_data=Nav(to="smm").pack(), style=PRIMARY
+                text=texts.button("smm", locale),
+                icon_custom_emoji_id=texts.icon("smm"),
+                callback_data=Nav(to="smm").pack(),
+                style=PRIMARY,
             )
         )
     builder.row(
         InlineKeyboardButton(
-            text=texts.button("profile", locale), icon_custom_emoji_id=texts.icon("account"), callback_data=Nav(to="profile").pack(), style=PRIMARY
+            text=texts.button("profile", locale),
+            icon_custom_emoji_id=texts.icon("account"),
+            callback_data=Nav(to="profile").pack(),
         ),
         InlineKeyboardButton(
-            text=texts.button("wallet", locale), icon_custom_emoji_id=texts.icon("balance"), callback_data=Nav(to="wallet").pack()
+            text=texts.button("help", locale),
+            icon_custom_emoji_id=texts.icon("help"),
+            callback_data=Nav(to="help").pack(),
         ),
     )
     builder.row(
         InlineKeyboardButton(
-            text=texts.button("referral", locale), icon_custom_emoji_id=texts.icon("referral"), callback_data=Nav(to="referral").pack(), style=PRIMARY
+            text=texts.button("referral", locale),
+            icon_custom_emoji_id=texts.icon("referral"),
+            callback_data=Nav(to="referral").pack(),
         ),
         InlineKeyboardButton(
-            text=texts.button("help", locale), icon_custom_emoji_id=texts.icon("help"), callback_data=Nav(to="help").pack()
+            text=texts.button("favorites", locale),
+            icon_custom_emoji_id=texts.icon("favorites"),
+            callback_data=Nav(to="favorites").pack(),
         ),
     )
     return builder.as_markup()

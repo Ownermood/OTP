@@ -294,14 +294,16 @@ def settings_menu(
 
 
 def help_menu(texts: Texts, locale: str | None, support_url: str) -> InlineKeyboardMarkup:
+    """Categorised help topics, grouped the way a user actually thinks about
+    them: how things work, then troubleshooting, then policy fine print."""
     builder = InlineKeyboardBuilder()
     topics = [
-        ("buy", "📱 How to buy a number"),
-        ("payment", "💳 Payment help"),
-        ("no_sms", "📩 SMS not received"),
-        ("refund", "💰 Refund policy"),
-        ("terms", "📄 Terms of Service"),
-        ("privacy", "🔐 Privacy Policy"),
+        ("buy", "📱 How to Buy"),
+        ("payment", "💳 Payment / Deposit"),
+        ("orders", "📦 OTP / Orders"),
+        ("referral", "🎁 Referral"),
+        ("account", "👤 Account / Balance"),
+        ("troubleshooting", "🛠 Troubleshooting"),
     ]
     for key, label in topics:
         builder.row(
@@ -309,6 +311,23 @@ def help_menu(texts: Texts, locale: str | None, support_url: str) -> InlineKeybo
                 text=label, icon_custom_emoji_id=texts.icon("help"), callback_data=HelpCB(topic=key).pack()
             )
         )
+    policies = [
+        ("refund", "💰 Refund Policy"),
+        ("terms", "📄 Terms of Service"),
+        ("privacy", "🔐 Privacy Policy"),
+    ]
+    for chunk in _chunks(
+        [
+            InlineKeyboardButton(
+                text=label,
+                icon_custom_emoji_id=texts.icon("help"),
+                callback_data=HelpCB(topic=key).pack(),
+            )
+            for key, label in policies
+        ],
+        3,
+    ):
+        builder.row(*chunk)
     if support_url:
         builder.row(
             InlineKeyboardButton(

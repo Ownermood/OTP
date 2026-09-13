@@ -32,9 +32,12 @@ async def test_account_command_shows_the_profile(harness):
     assert "MY PROFILE" in harness.text
 
 
-async def test_support_command_shows_the_help_center(harness):
+async def test_support_command_no_longer_exists(harness):
+    """Regression: /support used to be a dead duplicate of /help -- Help is
+    now the single help/support entry point, so /support falls through to
+    the ordinary catch-all instead of quietly working as a shortcut."""
     await harness.send("/support")
-    assert "HELP CENTER" in harness.text
+    assert "HELP CENTER" not in harness.text
 
 
 async def test_cancel_command_with_no_active_flow_is_harmless(harness):

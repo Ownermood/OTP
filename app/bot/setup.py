@@ -51,7 +51,7 @@ logger = get_logger(__name__)
 #: The native Telegram "/" command menu, in the order it should list them.
 #: Kept in one place so the menu can never drift from the commands the
 #: navigation router actually registers.
-COMMAND_MENU = ["start", "buy", "balance", "orders", "account", "help", "support", "cancel"]
+COMMAND_MENU = ["start", "buy", "balance", "orders", "account", "help", "cancel"]
 
 
 async def register_commands(bot: Bot, texts: Texts, locale: str) -> None:

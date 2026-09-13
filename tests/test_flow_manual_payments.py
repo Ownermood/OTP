@@ -1,8 +1,11 @@
 """Manual UPI / bank deposits, from submission to approval."""
 
+from datetime import datetime
+
 import pytest
 from sqlalchemy import select
 
+from app.bot.callbacks import ManualCB
 from app.core.constants import AdminRole, PaymentStatus
 from tests.flow_helpers import REVIEW_CHANNEL
 
@@ -134,20 +137,52 @@ async def test_cancelling_the_approve_confirmation_credits_nothing(manual_harnes
         assert await WalletService(session).get_balance(h.user_id) == 50_000
 
 
+async def _press_in_channel(h, chat_id: int, message_id: int, callback_data: str):
+    """Simulate a tap on a specific message in a specific chat.
+
+    ``h.press()`` always fakes the tap as coming from the driving user's own
+    private chat, which cannot exercise "tapped on the channel post itself"
+    scenarios -- this builds the callback query with the real chat/message it
+    claims to be replying about, the way Telegram actually would.
+    """
+    from aiogram.types import CallbackQuery, Chat, Message, Update
+
+    h._update_id += 1
+    message = Message(
+        message_id=message_id,
+        date=datetime.now(),
+        chat=Chat(id=chat_id, type="channel"),
+        text="placeholder",
+    )
+    query = CallbackQuery(
+        id=f"cb{h._update_id}",
+        from_user=h._user(),
+        chat_instance="test",
+        data=callback_data,
+        message=message,
+    )
+    h.session.clear()
+    await h.dispatcher.feed_update(h.bot, Update(update_id=h._update_id, callback_query=query))
+    return h.session.screens[-1] if h.session.screens else None
+
+
 async def test_the_verdict_is_recorded_even_if_stripping_the_buttons_fails(
-    manual_harness, monkeypatch
+    manual_harness, monkeypatch, session_factory
 ):
-    """_close_review's two Telegram calls are independent: the decision is
+    """The two Telegram calls per target are independent: the decision is
     already committed to the database by this point, so a failure removing
-    the buttons must not also swallow the verdict reply."""
+    the buttons must not also swallow the verdict reply -- tapped directly on
+    the channel post, so there is exactly one target and one verdict."""
     from aiogram.exceptions import TelegramBadRequest
 
+    from app.database.models import Payment
     from tests.harness import MockedSession
 
     h = manual_harness
-    approve = await _submit_manual(h)
-    await h.press(approve)
-    confirm = h.screen.callback_for("Yes, Approve")
+    await _submit_manual(h)
+    async with session_factory() as session:
+        payment = await session.get(Payment, 1)
+        review_message_id = payment.review_message_id
 
     original = MockedSession.make_request
 
@@ -159,10 +194,16 @@ async def test_the_verdict_is_recorded_even_if_stripping_the_buttons_fails(
         return await original(self, bot, method, timeout)
 
     monkeypatch.setattr(MockedSession, "make_request", markup_strip_fails)
-    await h.press(confirm)
+    await _press_in_channel(
+        h,
+        REVIEW_CHANNEL,
+        review_message_id,
+        ManualCB(action="approve", payment_id=1).pack(),
+    )
 
     # The verdict reply ("APPROVED — request #1 by ...") is distinct from the
-    # separate "PAYMENT APPROVED" notice sent to the user.
+    # separate "PAYMENT APPROVED" notice sent to the user. Tapped directly on
+    # the channel post: the channel *is* the only target, so exactly one.
     verdict_posts = [s for s in h.session.screens if " by " in s.text]
     assert len(verdict_posts) == 1
 
@@ -219,6 +260,35 @@ async def test_declining_asks_for_a_reason_and_credits_nothing(manual_harness):
 
     async with h.dispatcher.workflow_data["session_factory"]() as session:
         assert await WalletService(session).get_balance(h.user_id) == 0
+
+
+async def test_declining_from_the_panel_also_closes_out_the_channel_copy(
+    manual_harness, session_factory
+):
+    """Same regression as approve: declining via the panel must still close
+    out the channel's copy of the review card, not just wherever the reason
+    was typed."""
+    from app.database.models import Payment
+
+    h = manual_harness
+    await _submit_manual(h)
+
+    await h.send("/admin")
+    await h.tap("Payments")
+    await h.tap("Pending deposits")
+    await h.tap("402199881122")
+    await h.tap("Decline")
+    await h.send("does not match")
+
+    channel_posts = h.posted_to(REVIEW_CHANNEL)
+    stripped = [s for s in channel_posts if s.method == "EditMessageReplyMarkup"]
+    verdicts = [s for s in channel_posts if s.method == "SendMessage" and " by " in s.text]
+    assert stripped, "the channel copy's buttons were never stripped"
+    assert verdicts, "no verdict was ever posted to the channel"
+
+    async with session_factory() as session:
+        payment = await session.get(Payment, 1)
+        assert stripped[0].payload["message_id"] == payment.review_message_id
 
 
 async def test_a_reused_reference_is_rejected_at_submission(manual_harness):
@@ -566,6 +636,36 @@ async def test_a_request_can_be_approved_from_the_panel(manual_harness, session_
     await h.tap("Yes, Approve")
     async with session_factory() as session:
         assert await WalletService(session).get_balance(h.user_id) == 50_000
+
+
+async def test_approving_from_the_panel_also_closes_out_the_channel_copy(
+    manual_harness, session_factory
+):
+    """Regression: approving from the admin panel used to strip/reply only on
+    the panel's own message. The channel copy -- what anyone else reviewing
+    payments actually looks at -- was left showing live Approve/Decline
+    buttons forever on an already-settled payment, with no verdict at all."""
+    from app.database.models import Payment
+
+    h = manual_harness
+    await _submit_manual(h)
+
+    await h.send("/admin")
+    await h.tap("Payments")
+    await h.tap("Pending deposits")
+    await h.tap("402199881122")
+    await h.tap("Approve")
+    await h.tap("Yes, Approve")
+
+    channel_posts = h.posted_to(REVIEW_CHANNEL)
+    stripped = [s for s in channel_posts if s.method == "EditMessageReplyMarkup"]
+    verdicts = [s for s in channel_posts if s.method == "SendMessage" and " by " in s.text]
+    assert stripped, "the channel copy's buttons were never stripped"
+    assert verdicts, "no verdict was ever posted to the channel"
+
+    async with session_factory() as session:
+        payment = await session.get(Payment, 1)
+        assert stripped[0].payload["message_id"] == payment.review_message_id
 
 
 async def test_an_approved_request_leaves_the_queue(manual_harness):

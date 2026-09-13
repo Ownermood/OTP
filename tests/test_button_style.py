@@ -75,6 +75,23 @@ def test_every_style_used_is_one_telegram_accepts(texts):
             assert style in VALID_STYLES, f"unknown style {style!r}"
 
 
+def test_the_home_screen_groups_primary_actions_before_secondary_ones(texts):
+    """Buy/Balance/Orders/SMM are the prominent primary group; Account, Help,
+    Referral and Favorites are secondary utilities kept in their own rows,
+    not mixed into a dense undifferentiated grid."""
+    rows = keyboards.main_menu(texts, "en", True).inline_keyboard
+    styled_rows = [[b.style for b in row] for row in rows]
+
+    # First rows: buy (success) then balance/orders/smm, all primary.
+    assert styled_rows[0] == [SUCCESS]
+    for row in styled_rows[1:3]:
+        assert all(style == PRIMARY for style in row)
+
+    # Later rows (account/help, referral/favorites): no style at all.
+    for row in styled_rows[3:]:
+        assert all(style is None for style in row)
+
+
 def test_the_main_menu_highlights_exactly_one_action(texts):
     """If everything is green, nothing is."""
     assert _styles(keyboards.main_menu(texts, "en", True)).count(SUCCESS) == 1
@@ -86,12 +103,14 @@ def test_buying_is_the_highlighted_action(texts):
     assert "buy" in success.text.lower()
 
 
-def test_balance_navigation_carries_no_style(texts):
-    """Per style.py: plain balance/wallet navigation is unstyled, not danger."""
+def test_balance_is_a_primary_headline_action_on_the_home_screen(texts):
+    """The /start redesign groups Buy, Balance and Orders as the three
+    prominent primary actions -- Balance is no longer plain, unstyled
+    navigation on this particular screen."""
     wallet_button = next(
         b for b in _flat(keyboards.main_menu(texts, "en", True)) if "balance" in b.text.lower()
     )
-    assert wallet_button.style is None
+    assert wallet_button.style == PRIMARY
 
 
 def test_add_balance_is_primary_not_danger(texts):

@@ -88,8 +88,7 @@ commands:
   balance: "Wallet & balance"
   orders: "My orders & history"
   account: "Your profile & stats"
-  help: "Help centre"
-  support: "Contact support"
+  help: "Help & support"
   cancel: "Cancel and go home"
 
 # Reply to a stray message sent outside any flow.
@@ -191,9 +190,7 @@ buy:
   purchased: |
     <tg-emoji id="success">✅</tg-emoji> <b>NUMBER PURCHASED</b>
 
-    📱 <b>Number:</b>
-    <code>{phone}</code>
-
+    📱 Number: <b>{phone}</b>
     🌍 Country: {country}
     🛍 Service: {service}
     💰 Price: {price}
@@ -201,9 +198,7 @@ buy:
 
     {divider}
 
-    ⏳ <b>Waiting for SMS…</b>
-
-    <i>Tap the number to copy it. The code arrives here automatically.</i>
+    ⏳ <b>Waiting for SMS…</b> The code arrives here automatically.
   waiting: "⏳ Waiting for SMS…"
 
 sms:
@@ -211,16 +206,11 @@ sms:
     <tg-emoji id="sms">📨</tg-emoji> <b>SMS RECEIVED</b>
 
     🛍 Service: {service}
-    📱 Number: <code>{phone}</code>
+    📱 Number: <b>{phone}</b>
 
     {divider}
 
-    🔐 <b>Code:</b>
-    <code>{code}</code>
-
-    {divider}
-
-    <i>Tap the code to copy it.</i>
+    🔐 Code: <b>{code}</b>
   expired: |
     ⌛ <b>ACTIVATION EXPIRED</b>
 
@@ -278,7 +268,7 @@ orders:
     {divider}
 
     🛍 Service: {service}
-    {country_line}📱 Number: <code>{phone}</code>
+    {country_line}📱 Number: <b>{phone}</b>
     💰 Price: {price}
     📅 Date: {created_at}
 
@@ -287,8 +277,7 @@ orders:
   code_block: |
     {divider}
 
-    🔐 <b>Code:</b>
-    <code>{code}</code>
+    🔐 Code: <b>{code}</b>
   no_sms_yet: "⏳ No SMS yet — I'll message you the moment it lands."
 
 favorites:
@@ -418,7 +407,7 @@ wallet:
     <tg-emoji id="wallet">💳</tg-emoji> <b>UPI DEPOSIT</b>
 
     💰 Amount: <b>{amount}</b>
-    🏦 UPI ID: <code>{upi_id}</code>
+    🏦 UPI ID: <b>{upi_id}</b>
 
     {divider}
 
@@ -590,8 +579,7 @@ referral:
 
     {divider}
 
-    🔗 <b>Your link:</b>
-    <code>{link}</code>
+    🔗 Your link: <b>{link}</b>
   earned: |
     🎁 <b>REFERRAL REWARD</b>
 
@@ -684,30 +672,55 @@ help:
   main: |
     ℹ️ <b>HELP CENTER</b>
 
-    Pick a topic:
+    Everything in one place — pick a topic below.
   faq_buy: |
     📱 <b>HOW TO BUY A NUMBER</b>
 
-    1. Tap 🛍 Buy Number
-    2. Pick a service (or search for it)
-    3. Pick a country
-    4. Confirm the price
-    5. The code arrives here automatically
+    1. Tap <b>Buy Number</b>
+    2. Pick a country, then a service (or search for it)
+    3. Confirm the price
+    4. The code arrives here automatically
 
     <i>Make sure your balance covers the price first.</i>
   faq_payment: |
-    💳 <b>PAYMENT HELP</b>
+    💳 <b>PAYMENT & DEPOSIT</b>
 
-    Add balance from 💳 Balance → ➕ Add Balance.
-    Your balance updates automatically once the payment lands — usually within a minute.
+    Add balance from <b>Balance → Add Balance</b>, then pay by UPI or your
+    configured method. Your balance updates automatically — usually within a
+    minute of the payment being confirmed.
 
-    If it does not, contact support with your invoice id.
-  faq_no_sms: |
-    📩 <b>SMS NOT RECEIVED</b>
+    <i>Still pending after a while? Check Balance → Payment History, or
+    contact support with your request id.</i>
+  faq_orders: |
+    📦 <b>OTP & ORDERS</b>
 
-    • Wait the full activation window — some services are slow
-    • Make sure you requested the code on the right service
-    • If nothing arrives, cancel the activation for an automatic refund
+    Every number you buy shows up under <b>Orders</b> with its live status:
+    🟡 waiting for the code, 🟢 delivered, 🔴 expired or cancelled.
+
+    • Tap <b>Refresh</b> on an order to check again right away
+    • A number that never receives its code within the window is refunded
+      automatically — no need to ask
+  faq_referral: |
+    🎁 <b>REFERRAL PROGRAM</b>
+
+    Share your personal link from <b>Balance → Referral</b>. When someone
+    joins through it and makes their first deposit, you earn a bonus —
+    credited straight to your balance, automatically.
+  faq_account: |
+    👤 <b>ACCOUNT & BALANCE</b>
+
+    <b>Account</b> shows your profile, lifetime spend and referral earnings.
+    <b>Balance</b> shows what you can spend right now, plus deposit and
+    order history.
+  faq_troubleshooting: |
+    🛠 <b>TROUBLESHOOTING</b>
+
+    • <b>No SMS arriving</b> — wait the full activation window (some
+      services are slower than others); if nothing comes, cancel the
+      activation for an automatic refund
+    • <b>Payment not credited</b> — see Payment & Deposit above
+    • <b>Something looks stuck</b> — tap Home and try again; nothing you do
+      in the bot can charge you twice
   faq_refund: |
     💰 <b>REFUND POLICY</b>
 
