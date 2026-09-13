@@ -97,6 +97,20 @@ async def test_approving_from_the_channel_credits_and_notifies(manual_harness):
     assert "₹500.00" in notice
 
 
+async def test_approving_acknowledges_the_callback_so_the_button_stops_spinning(manual_harness):
+    """Regression: the success path used to skip answering the callback query,
+    so Telegram left the admin's "Yes, Approve" tap spinning indefinitely even
+    though the credit had already gone through."""
+    h = manual_harness
+    approve = await _submit_manual(h)
+    await h.press(approve)
+
+    confirm = h.screen.callback_for("Yes, Approve")
+    await h.press(confirm)
+
+    assert any(s.method == "AnswerCallbackQuery" for s in h.session.sent)
+
+
 async def test_cancelling_the_approve_confirmation_credits_nothing(manual_harness):
     from app.services.wallet import WalletService
 

@@ -24,7 +24,7 @@ from app.bot import keyboards
 from app.bot.ack import acknowledge
 from app.bot.callbacks import ManualCB, Nav, PaymentCB
 from app.bot.handlers.common import Context, build_context, show, toast
-from app.bot.keyboards.style import DANGER, SUCCESS, button
+from app.bot.keyboards.style import DANGER, PRIMARY, SUCCESS, button
 from app.bot.states import ManualPaymentStates
 from app.core.constants import QUICK_DEPOSIT_AMOUNTS
 from app.core.exceptions import ValidationError
@@ -316,7 +316,9 @@ def decision_keyboard(texts, payment_id: int, missing_notification: bool = False
         builder.row(
             InlineKeyboardButton(
                 text="📤 Resend Review",
+                icon_custom_emoji_id=texts.icon("refresh"),
                 callback_data=ManualCB(action="resend", payment_id=payment_id).pack(),
+                style=PRIMARY,
             )
         )
     return builder.as_markup()

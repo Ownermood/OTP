@@ -87,6 +87,7 @@ async def user_detail(query: CallbackQuery, callback_data: AdminCB, **data):
         builder.row(
             InlineKeyboardButton(
                 text="💰 Adjust balance",
+                icon_custom_emoji_id=context.texts.icon("balance"),
                 callback_data=AdminCB(action="balance", value=str(user.id)).pack(),
                 style=PRIMARY,
             )

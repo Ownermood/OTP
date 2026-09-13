@@ -14,6 +14,7 @@ from app.bot.handlers.admin.common import (
     router,
 )
 from app.bot.handlers.common import build_context, show, toast
+from app.bot.keyboards.style import DANGER, PRIMARY, SUCCESS
 from app.core.logging import get_logger
 from app.core.money import format_money
 from app.utils.formatting import format_datetime
@@ -39,7 +40,11 @@ async def dashboard(query: CallbackQuery, callback_data: AdminCB, **data):
         ]
     )
     builder.row(
-        InlineKeyboardButton(text="📡 Status", callback_data=AdminCB(action="health").pack())
+        InlineKeyboardButton(
+            text="📡 Status",
+            callback_data=AdminCB(action="health").pack(),
+            style=PRIMARY,
+        )
     )
     builder.row(_back_button())
 
@@ -99,6 +104,7 @@ async def health(query: CallbackQuery, **data):
         InlineKeyboardButton(
             text=("✅ Disable maintenance" if maintenance else "🔧 Enable maintenance"),
             callback_data=AdminCB(action="maintenance", value=str(not maintenance).lower()).pack(),
+            style=SUCCESS if maintenance else DANGER,
         )
     )
     builder.row(_back_button())

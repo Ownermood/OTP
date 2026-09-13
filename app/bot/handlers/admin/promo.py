@@ -10,6 +10,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from app.bot.callbacks import AdminCB
 from app.bot.handlers.admin.common import _back_button, _back_only, _guard, router
 from app.bot.handlers.common import build_context, show
+from app.bot.keyboards.style import PRIMARY
 from app.bot.states import AdminStates
 from app.core.exceptions import ValidationError
 from app.core.money import format_money, parse_amount
@@ -24,7 +25,12 @@ async def promo_list(query: CallbackQuery, **data):
     promos = await context.promo.list_all()
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text="➕ Create", callback_data=AdminCB(action="promo_new").pack())
+        InlineKeyboardButton(
+            text="➕ Create",
+            icon_custom_emoji_id=context.texts.icon("deposit"),
+            callback_data=AdminCB(action="promo_new").pack(),
+            style=PRIMARY,
+        )
     )
     builder.row(_back_button())
 

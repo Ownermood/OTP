@@ -16,7 +16,7 @@ from app.bot.handlers.admin.common import (
     router,
 )
 from app.bot.handlers.common import build_context, show, toast
-from app.bot.keyboards.style import DANGER, PRIMARY
+from app.bot.keyboards.style import SUCCESS
 from app.bot.states import AdminStates
 from app.bot.texts import Safe
 
@@ -75,12 +75,12 @@ async def broadcast_preview(message: Message, state: FSMContext, **data):
         InlineKeyboardButton(
             text=f"✅ Send to {len(recipients)}",
             callback_data=AdminCB(action="broadcast_send").pack(),
-            style=DANGER,
+            style=SUCCESS,
         )
     )
     builder.row(
         InlineKeyboardButton(
-            text="❌ Cancel", callback_data=AdminCB(action="panel").pack(), style=PRIMARY
+            text="❌ Cancel", callback_data=AdminCB(action="panel").pack()
         )
     )
     await show(

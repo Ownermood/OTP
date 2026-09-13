@@ -9,6 +9,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from app.bot.callbacks import AdminCB, ManualCB
 from app.bot.handlers.admin.common import _back_button, _guard, router
 from app.bot.handlers.common import build_context, show
+from app.bot.keyboards.style import PRIMARY
 from app.core.constants import OrderStatus
 from app.core.money import format_money
 from app.services.manual_payments import ManualPaymentService
@@ -80,7 +81,9 @@ async def pending_deposits(query: CallbackQuery, **data):
             row.append(
                 InlineKeyboardButton(
                     text="📤 Resend",
+                    icon_custom_emoji_id=context.texts.icon("refresh"),
                     callback_data=ManualCB(action="resend", payment_id=payment.id).pack(),
+                    style=PRIMARY,
                 )
             )
         builder.row(*row)
@@ -114,7 +117,10 @@ async def list_payments(query: CallbackQuery, **data):
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
-            text="⏳ Pending deposits", callback_data=AdminCB(action="pending").pack()
+            text="⏳ Pending deposits",
+            icon_custom_emoji_id=context.texts.icon("pending"),
+            callback_data=AdminCB(action="pending").pack(),
+            style=PRIMARY,
         )
     )
     builder.row(_back_button())

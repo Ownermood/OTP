@@ -35,10 +35,13 @@ def smm_categories(
     builder.row(
         InlineKeyboardButton(
             text=texts.button("show_all", locale),
+            icon_custom_emoji_id=texts.icon("service"),
             callback_data=SmmCB(action="show_all").pack(), style=PRIMARY,
         ),
         InlineKeyboardButton(
-            text=texts.button("search", locale), callback_data=SmmCB(action="search").pack(), style=PRIMARY
+            text=texts.button("search", locale),
+            icon_custom_emoji_id=texts.icon("search"),
+            callback_data=SmmCB(action="search").pack(), style=PRIMARY
         ),
     )
     for category, count in categories:
@@ -50,7 +53,9 @@ def smm_categories(
         )
     builder.row(
         InlineKeyboardButton(
-            text=texts.button("home", locale), callback_data=Nav(to="home").pack()
+            text=texts.button("home", locale),
+            icon_custom_emoji_id=texts.icon("home"),
+            callback_data=Nav(to="home").pack(),
         )
     )
     return builder.as_markup()
@@ -78,10 +83,14 @@ def smm_services(
             builder.row(*nav)
     builder.row(
         InlineKeyboardButton(
-            text=texts.button("back", locale), callback_data=Nav(to="smm").pack()
+            text=texts.button("back", locale),
+            icon_custom_emoji_id=texts.icon("back"),
+            callback_data=Nav(to="smm").pack(),
         ),
         InlineKeyboardButton(
-            text=texts.button("home", locale), callback_data=Nav(to="home").pack()
+            text=texts.button("home", locale),
+            icon_custom_emoji_id=texts.icon("home"),
+            callback_data=Nav(to="home").pack(),
         ),
     )
     return builder.as_markup()
@@ -91,12 +100,16 @@ def smm_order(texts: Texts, locale: str | None, order_id: int) -> InlineKeyboard
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
-            text="🔄 Track Status", callback_data=SmmCB(action="track", value=str(order_id)).pack(), style=PRIMARY
+            text="🔄 Track Status",
+            icon_custom_emoji_id=texts.icon("refresh"),
+            callback_data=SmmCB(action="track", value=str(order_id)).pack(), style=PRIMARY
         )
     )
     builder.row(
         InlineKeyboardButton(
-            text=texts.button("home", locale), callback_data=Nav(to="home").pack()
+            text=texts.button("home", locale),
+            icon_custom_emoji_id=texts.icon("home"),
+            callback_data=Nav(to="home").pack(),
         )
     )
     return builder.as_markup()

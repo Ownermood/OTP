@@ -207,6 +207,36 @@ async def test_maintenance_mode_blocks_users_but_not_admins(admin_harness, harne
 
     assert "Maintenance: <b>ON</b>" in admin_harness.text
 
+
+async def test_the_maintenance_toggle_is_danger_only_while_turning_it_on(admin_harness):
+    """Enabling maintenance blocks every user, so it is the disruptive choice;
+    disabling it restores normal service and is the safe one -- same red/green
+    logic as any other ban/unban-shaped toggle."""
+    from app.bot.keyboards.style import DANGER, SUCCESS
+
+    h = admin_harness
+    await h.send("/start")
+    await h.send("/admin")
+    await h.tap("Dashboard")
+    await h.tap("Status")
+
+    toggle = next(
+        b
+        for row in h.screen.markup.inline_keyboard
+        for b in row
+        if "maintenance" in b.text.lower()
+    )
+    assert toggle.style == DANGER  # currently off: this button turns it on
+
+    await h.tap("Enable maintenance")
+    toggle = next(
+        b
+        for row in h.screen.markup.inline_keyboard
+        for b in row
+        if "maintenance" in b.text.lower()
+    )
+    assert toggle.style == SUCCESS  # currently on: this button turns it off
+
     # The admin still gets through.
     await admin_harness.send("/start")
     assert "Maintenance" not in admin_harness.text
@@ -234,6 +264,27 @@ async def test_a_broadcast_is_previewed_before_it_is_sent(admin_harness, session
     await h.tap("Send to")
     assert "BROADCAST FINISHED" in h.text
     assert "Delivered: <b>1</b>" in h.text
+
+
+async def test_the_broadcast_confirmation_colours_send_not_cancel(admin_harness):
+    """Regression: Send (the confirm action) was danger-red and Cancel (which
+    loses nothing) was blue -- the exact opposite of what red/green mean
+    everywhere else in the bot."""
+    from app.bot.keyboards.style import DANGER, SUCCESS
+
+    h = admin_harness
+    await h.send("/start")
+    await h.send("/admin")
+    await h.tap("Broadcast")
+    await h.tap("All users")
+    await h.send("<b>Scheduled maintenance tonight</b>")
+
+    buttons = [b for row in h.screen.markup.inline_keyboard for b in row]
+    send = next(b for b in buttons if "send to" in b.text.lower())
+    cancel = next(b for b in buttons if "cancel" in b.text.lower())
+
+    assert send.style == SUCCESS
+    assert cancel.style != DANGER
 
 
 async def test_cancelling_a_broadcast_sends_nothing(admin_harness):

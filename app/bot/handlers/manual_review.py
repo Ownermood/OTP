@@ -169,6 +169,7 @@ async def approve(query: CallbackQuery, callback_data: ManualCB, **data):
         await _close_review(query, context, decision, reviewer=query.from_user)
         return
 
+    await query.answer()
     await _close_review(query, context, decision, reviewer=query.from_user)
     await data["notifications"].notify_user(
         decision.payment.user_id,
