@@ -263,3 +263,29 @@ async def test_no_bonus_reported_when_none_was_paid(payments, provider, user):
 
     assert settlement.promo_bonus == 0
     assert settlement.referral_commission == 0
+
+
+async def test_count_by_status_tallies_without_fetching_every_row(session, payments, provider, user):
+    """Admin payment stats only need counts -- not every payment row in memory."""
+    from app.database.repositories import PaymentRepository
+
+    settled = await payments.create_invoice(user.id, provider.name, 5_000)
+    await payments.create_invoice(user.id, provider.name, 10_000)
+    await payments.settle(provider.name, settled.invoice_id)
+
+    counts = await PaymentRepository(session).count_by_status()
+
+    assert counts[PaymentStatus.PAID] == 1
+    assert counts[PaymentStatus.PENDING] == 1
+
+
+async def test_total_approved_volume_sums_only_paid_payments(session, payments, provider, user):
+    from app.database.repositories import PaymentRepository
+
+    settled = await payments.create_invoice(user.id, provider.name, 5_000)
+    await payments.create_invoice(user.id, provider.name, 10_000)  # stays pending
+    await payments.settle(provider.name, settled.invoice_id)
+
+    volume = await PaymentRepository(session).total_approved_volume()
+
+    assert volume == 5_000

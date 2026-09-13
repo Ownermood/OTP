@@ -111,6 +111,24 @@ class PaymentRepository(BaseRepository):
         )
         return result.scalars().all()
 
+    async def count_by_status(self) -> dict[PaymentStatus, int]:
+        """Payment counts per status, for admin stats -- without loading every row."""
+        result = await self.session.execute(
+            select(Payment.status, func.count(Payment.id)).group_by(Payment.status)
+        )
+        return dict(result.all())
+
+    async def total_approved_volume(self) -> int:
+        """All-time approved deposit volume, in minor units."""
+        return int(
+            await self.session.scalar(
+                select(func.coalesce(func.sum(Payment.amount), 0)).where(
+                    Payment.status == PaymentStatus.PAID
+                )
+            )
+            or 0
+        )
+
     async def deposits_since(self, since: datetime) -> int:
         return int(
             await self.session.scalar(

@@ -15,12 +15,19 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from app.bot.callbacks import ManualCB
 from app.bot.handlers.common import Context, build_context, show, toast
-from app.bot.handlers.manual_payments import _service, router
-from app.bot.keyboards.style import DANGER, SUCCESS
+from app.bot.handlers.manual_payments import (
+    _review_caption,
+    _service,
+    decision_keyboard,
+    post_for_review,
+    router,
+)
+from app.bot.keyboards.style import SUCCESS
 from app.bot.states import ManualPaymentStates
+from app.core.constants import PaymentStatus
 from app.core.exceptions import AccessDeniedError
 from app.core.logging import get_logger
-from app.utils.formatting import format_datetime
+from app.services.admin import require
 
 logger = get_logger(__name__)
 
@@ -40,38 +47,111 @@ async def open_request(query: CallbackQuery, callback_data: ManualCB, **data):
         await toast(query, context.text("errors.order_not_found"), alert=True)
         return
 
-    caption = context.text(
-        "wallet.manual_review",
-        request_id=payment.id,
-        amount=context.money(payment.amount),
-        utr=payment.invoice_id,
-        user_id=payment.user_id,
-        username="—",
-        name="—",
-        balance=context.money(await context.wallet.get_balance(payment.user_id)),
-        submitted_at=format_datetime(payment.created_at),
+    missing_notification = payment.review_message_id is None
+    caption = await _review_caption(context, payment)
+    if missing_notification:
+        caption += context.text("wallet.manual_review_missing_notice")
+    keyboard = decision_keyboard(payment.id, missing_notification)
+
+    await query.answer()
+    if payment.proof_file_id and query.message is not None:
+        try:
+            await query.message.answer_photo(payment.proof_file_id, caption=caption, reply_markup=keyboard)
+            return
+        except TelegramAPIError as exc:
+            # A stale/invalid file id (e.g. from before a bot token change)
+            # must not leave the reviewer with a dead tap and no way to act.
+            logger.warning(
+                "manual_payment.proof_photo_failed", payment_id=payment.id, error=str(exc)
+            )
+    await show(query, caption, keyboard, force_new=True)
+
+
+@router.callback_query(ManualCB.filter(F.action == "resend"))
+async def resend_review(query: CallbackQuery, callback_data: ManualCB, **data):
+    """Re-attempt the channel post for a request whose notification never landed.
+
+    Resend has no financial effect -- same payment, no new row, no wallet
+    change, no status/UTR change -- so it only needs the weaker "payments"
+    permission, not the "balance" permission Approve/Decline require.
+    """
+    context = build_context(data)
+    require(context.admin_role, "payments")
+    manual = _service(context)
+
+    payment = await manual.get(callback_data.payment_id)
+    if payment is None:
+        await toast(query, context.text("errors.order_not_found"), alert=True)
+        return
+    if payment.status != PaymentStatus.PENDING:
+        await toast(query, context.text("wallet.manual_already_reviewed"), alert=True)
+        return
+
+    sent = await post_for_review(query.bot, context, manual, payment, data["notifications"])
+    await toast(
+        query,
+        context.text("wallet.manual_resend_done" if sent else "wallet.manual_resend_failed"),
+        alert=not sent,
     )
+    await open_request(query, callback_data, **data)
+
+
+@router.callback_query(ManualCB.filter(F.action == "approve_confirm"))
+async def confirm_approve(query: CallbackQuery, callback_data: ManualCB, **data):
+    """Approve is the one tap here that moves real money -- confirm first.
+
+    Only swaps the keyboard in place; the card's own text/photo is untouched,
+    so cancelling can restore it exactly without re-fetching or re-sending
+    anything.
+    """
+    context = build_context(data)
+    manual = _service(context)
+    if not manual.can_review(query.from_user.id):
+        raise AccessDeniedError("not a payment reviewer")
+
+    payment = await manual.get(callback_data.payment_id)
+    if payment is None:
+        await toast(query, context.text("errors.order_not_found"), alert=True)
+        return
+    if payment.status != PaymentStatus.PENDING:
+        await toast(query, context.text("wallet.manual_already_reviewed"), alert=True)
+        return
+
+    await query.answer()
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
-            text="✅ Approve",
+            text="✅ Yes, Approve",
             callback_data=ManualCB(action="approve", payment_id=payment.id).pack(),
             style=SUCCESS,
         ),
         InlineKeyboardButton(
-            text="❌ Decline",
-            callback_data=ManualCB(action="decline", payment_id=payment.id).pack(),
-            style=DANGER,
+            text="❌ Cancel",
+            callback_data=ManualCB(action="approve_cancel", payment_id=payment.id).pack(),
         ),
     )
+    if query.message is not None:
+        await query.message.edit_reply_markup(reply_markup=builder.as_markup())
+
+
+@router.callback_query(ManualCB.filter(F.action == "approve_cancel"))
+async def cancel_approve(query: CallbackQuery, callback_data: ManualCB, **data):
+    context = build_context(data)
+    manual = _service(context)
+    if not manual.can_review(query.from_user.id):
+        raise AccessDeniedError("not a payment reviewer")
+
+    payment = await manual.get(callback_data.payment_id)
+    if payment is None:
+        await toast(query, context.text("errors.order_not_found"), alert=True)
+        return
 
     await query.answer()
-    if payment.proof_file_id and query.message is not None:
-        await query.message.answer_photo(
-            payment.proof_file_id, caption=caption, reply_markup=builder.as_markup()
+    if query.message is not None:
+        missing_notification = payment.review_message_id is None
+        await query.message.edit_reply_markup(
+            reply_markup=decision_keyboard(payment.id, missing_notification)
         )
-        return
-    await show(query, caption, builder.as_markup(), force_new=True)
 
 
 @router.callback_query(ManualCB.filter(F.action == "approve"))
@@ -147,19 +227,25 @@ async def do_decline(message: Message, state: FSMContext, **data):
 
 
 async def _close_review(query: CallbackQuery, context: Context, decision, reviewer) -> None:
-    """Rewrite the channel post so the outcome and reviewer are on the record."""
+    """Strip the buttons and record the outcome as a reply.
+
+    A reply works whether the card was a photo (caption) or the text-only
+    fallback -- editing the caption directly does not: ``edit_caption`` is
+    rejected outright on a plain text message, which used to leave the
+    text-only fallback's outcome never recorded on screen.
+    """
     verdict = context.text(
         "wallet.manual_verdict_approved" if decision.approved else "wallet.manual_verdict_declined",
         reviewer=f"@{reviewer.username}" if reviewer.username else str(reviewer.id),
         request_id=decision.payment.id,
     )
+    if query.message is None:
+        return
     try:
-        if query.message is not None:
-            await query.message.edit_caption(
-                caption=f"{query.message.caption}\n\n{verdict}", reply_markup=None
-            )
+        await query.message.edit_reply_markup(reply_markup=None)
+        await query.message.reply(verdict)
     except TelegramAPIError as exc:
-        logger.debug("manual_payment.caption_edit_failed", error=str(exc))
+        logger.debug("manual_payment.review_edit_failed", error=str(exc))
 
 
 async def _edit_review_post(bot, context: Context, decision, reviewer) -> None:

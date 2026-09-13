@@ -46,8 +46,16 @@ class NotificationService:
         return await self._send(user_id, text, reply_markup)
 
     async def notify_admins(self, text: str) -> None:
+        """Best-effort per admin, but a failure here is not routine.
+
+        This is often the fallback of last resort -- e.g. when a payment
+        review post fails to reach the channel -- so unlike a blocked
+        ordinary user, a failed admin send must be visible at the deployed
+        log level, not just at DEBUG.
+        """
         for admin_id in self._admin_ids:
-            await self._send(admin_id, text)
+            if not await self._send(admin_id, text):
+                logger.warning("notify_admins.failed", admin_id=admin_id)
 
     async def broadcast(self, user_ids: list[int], text: str) -> tuple[int, int]:
         """Rate-limited broadcast. Returns ``(delivered, failed)``."""

@@ -467,13 +467,17 @@ wallet:
   manual_review: |
     💵 <b>DEPOSIT REQUEST</b> <code>#{request_id}</code>
 
+    {divider}
+
+    👤 User: {name} ({username})
+    🆔 <code>{user_id}</code>
     💰 Amount: <b>{amount}</b>
     🔖 UTR: <code>{utr}</code>
-
-    👤 {name} ({username})
-    🆔 <code>{user_id}</code>
+    🕒 Submitted: {submitted_at}
     💳 Current balance: {balance}
-    📅 {submitted_at}
+    📌 Status: <b>Pending</b>
+
+    {divider}
   manual_verdict_approved: "✅ <b>APPROVED</b> — request #{request_id} by {reviewer}"
   manual_verdict_declined: "❌ <b>DECLINED</b> — request #{request_id} by {reviewer}"
   manual_already_reviewed: "⚠️ This request has already been reviewed."
@@ -501,6 +505,11 @@ wallet:
     📝 Reason: {reason}
 
     <i>If you believe this is a mistake, contact support with your reference number.</i>
+  manual_review_missing_notice: |
+
+    ⚠️ <b>Notification Missing</b> — this request was never posted to the review channel. Use Resend Review below.
+  manual_resend_done: "📤 Review card resent."
+  manual_resend_failed: "⚠️ Still could not reach the review channel."
   manual_post_failed: |
     🚨 <b>REVIEW CHANNEL UNREACHABLE</b>
 
@@ -770,6 +779,19 @@ admin:
     👨‍💼 <b>ADMIN PANEL</b>
 
     Role: <b>{role}</b>
+  payments: |
+    💳 <b>PAYMENT MANAGEMENT</b>
+
+    {divider}
+
+    ⏳ Pending: <b>{pending}</b>
+    ✅ Approved: <b>{approved}</b>
+    ❌ Rejected: <b>{rejected}</b>
+    💰 Approved volume: <b>{volume}</b>
+
+    {divider}
+  orders: |
+    📦 <b>ORDERS</b>
 
     Choose a section:
   dashboard: |

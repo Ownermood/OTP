@@ -105,8 +105,10 @@ class MockedSession(BaseSession):
         return screens[-1]
 
     #: Calls that put something on the user's screen. Photos count: a QR code
-    #: with a caption is a screen, not a side effect.
-    SCREEN_METHODS = ("SendMessage", "EditMessageText", "SendPhoto")
+    #: with a caption is a screen, not a side effect. A markup-only edit (e.g.
+    #: swapping in a confirm/cancel row) changes what is on screen too, even
+    #: though it carries no text/caption of its own.
+    SCREEN_METHODS = ("SendMessage", "EditMessageText", "SendPhoto", "EditMessageReplyMarkup")
 
     @property
     def screens(self) -> list[Sent]:

@@ -116,6 +116,7 @@ async def test_the_whole_deposit_lands_after_approval(upi_harness, session_facto
 
     approve = h.posted_to(REVIEW_CHANNEL)[0].callback_for("Approve")
     await h.press(approve)
+    await h.press(h.screen.callback_for("Yes, Approve"))
 
     async with session_factory() as session:
         assert await WalletService(session).get_balance(h.user_id) == 50_000
@@ -133,6 +134,7 @@ async def test_a_deposit_can_then_be_spent(upi_harness, session_factory):
     await h.send("402199881122")
     await h.send_photo("proof")
     await h.press(h.posted_to(REVIEW_CHANNEL)[0].callback_for("Approve"))
+    await h.press(h.screen.callback_for("Yes, Approve"))
 
     await h.send("/start")
     await h.tap("Buy Number")
@@ -223,6 +225,7 @@ async def test_a_static_qr_deposit_still_completes(static_qr, session_factory):
 
     assert "AWAITING APPROVAL" in h.text
     await h.press(h.posted_to(REVIEW_CHANNEL)[0].callback_for("Approve"))
+    await h.press(h.screen.callback_for("Yes, Approve"))
 
     async with session_factory() as session:
         assert await WalletService(session).get_balance(h.user_id) == 50_000

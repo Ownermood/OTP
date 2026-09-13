@@ -16,6 +16,7 @@ from app.core.constants import (
     ROLE_PERMISSIONS,
     AdminRole,
     OrderStatus,
+    PaymentStatus,
     TransactionType,
 )
 from app.core.exceptions import AccessDeniedError, ValidationError
@@ -73,6 +74,16 @@ class Dashboard:
     @property
     def average_order(self) -> int:
         return self.revenue // self.orders_success if self.orders_success else 0
+
+
+@dataclass(frozen=True, slots=True)
+class PaymentStats:
+    """All-time payment counts and volume, for the admin Payments screen."""
+
+    pending: int
+    approved: int
+    rejected: int
+    approved_volume: int
 
 
 class AdminService:
@@ -164,6 +175,15 @@ class AdminService:
 
     async def list_payments(self, status=None):
         return await self._payments.list_filtered(status=status)
+
+    async def payment_stats(self) -> PaymentStats:
+        counts = await self._payments.count_by_status()
+        return PaymentStats(
+            pending=counts.get(PaymentStatus.PENDING, 0),
+            approved=counts.get(PaymentStatus.PAID, 0),
+            rejected=counts.get(PaymentStatus.FAILED, 0),
+            approved_volume=await self._payments.total_approved_volume(),
+        )
 
     # -- settings / audit -----------------------------------------------
 

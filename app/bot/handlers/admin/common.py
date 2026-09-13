@@ -41,14 +41,19 @@ def _guard(context: Context, permission: str) -> AdminRole:
     return role
 
 
-def _panel_keyboard(role: AdminRole):
+async def _panel_keyboard(context: Context, role: AdminRole):
     """Only show sections the role can actually open."""
+    pending_badge = ""
+    if can(role, "payments"):
+        stats = await context.admin.payment_stats()
+        pending_badge = f" ({stats.pending})"
+
     builder = InlineKeyboardBuilder()
     sections = [
         ("dashboard", "📊 Dashboard", "dashboard"),
         ("users", "👥 Users", "search"),
         ("orders", "📦 Orders", "orders"),
-        ("payments", "💳 Payments", "payments"),
+        ("payments", f"💳 Payments{pending_badge}", "payments"),
         ("promo", "🎟 Promo Codes", "promo"),
         ("settings", "📲 Payment QR", "qr"),
         ("backup", "💾 Backup", "backup"),
@@ -66,7 +71,8 @@ def _panel_keyboard(role: AdminRole):
     if row:
         builder.row(*row)
     builder.row(
-        InlineKeyboardButton(text="🏠 Main Menu", callback_data=Nav(to="home").pack())
+        InlineKeyboardButton(text="🔄 Refresh", callback_data=AdminCB(action="panel").pack()),
+        InlineKeyboardButton(text="🏠 Main Menu", callback_data=Nav(to="home").pack()),
     )
     return builder.as_markup()
 
@@ -86,7 +92,8 @@ async def open_panel(message: Message, state: FSMContext, **data):
     context = build_context(data)
     role = _guard(context, "dashboard")
     await state.clear()
-    await show(message, context.text("admin.panel", role=role.value.title()), _panel_keyboard(role))
+    keyboard = await _panel_keyboard(context, role)
+    await show(message, context.text("admin.panel", role=role.value.title()), keyboard)
 
 
 @router.callback_query(AdminCB.filter(F.action == "panel"))
@@ -94,7 +101,8 @@ async def back_to_panel(query: CallbackQuery, state: FSMContext, **data):
     context = build_context(data)
     role = _guard(context, "dashboard")
     await state.clear()
-    await show(query, context.text("admin.panel", role=role.value.title()), _panel_keyboard(role))
+    keyboard = await _panel_keyboard(context, role)
+    await show(query, context.text("admin.panel", role=role.value.title()), keyboard)
 
 
 # -- dashboard --------------------------------------------------------------

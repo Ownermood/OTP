@@ -45,7 +45,7 @@ async def list_orders(query: CallbackQuery, callback_data: AdminCB, **data):
         for o in orders[:15]
     ]
     body = "\n".join(lines) or context.text("common.empty")
-    await show(query, f"📦 <b>ORDERS</b>\n\n{body}", builder.as_markup())
+    await show(query, f"{context.text('admin.orders')}\n\n{body}", builder.as_markup())
 
 
 @router.callback_query(AdminCB.filter(F.action == "pending"))
@@ -65,16 +65,25 @@ async def pending_deposits(query: CallbackQuery, **data):
 
     builder = InlineKeyboardBuilder()
     for payment in requests[:10]:
-        builder.row(
+        sent = payment.review_message_id is not None
+        row = [
             InlineKeyboardButton(
                 text=(
-                    f"#{payment.id} · "
+                    f"{'📤' if sent else '⚠️'} #{payment.id} · "
                     f"{format_money(payment.amount, context.settings.currency_symbol)} · "
                     f"{payment.invoice_id}"
                 ),
                 callback_data=ManualCB(action="open", payment_id=payment.id).pack(),
             )
-        )
+        ]
+        if not sent:
+            row.append(
+                InlineKeyboardButton(
+                    text="📤 Resend",
+                    callback_data=ManualCB(action="resend", payment_id=payment.id).pack(),
+                )
+            )
+        builder.row(*row)
     builder.row(_back_button())
 
     await show(
@@ -92,6 +101,9 @@ async def list_payments(query: CallbackQuery, **data):
     context = build_context(data)
     _guard(context, "payments")
 
+    # Counts and volume come from one aggregate query each, not from loading
+    # every payment row just to tally them.
+    stats = await context.admin.payment_stats()
     payments = await context.admin.list_payments()
     lines = [
         f"💳 <b>#{p.id}</b> {p.status} — "
@@ -107,7 +119,14 @@ async def list_payments(query: CallbackQuery, **data):
     )
     builder.row(_back_button())
     body = "\n".join(lines) or context.text("common.empty")
-    await show(query, f"💳 <b>PAYMENTS</b>\n\n{body}", builder.as_markup())
+    header = context.text(
+        "admin.payments",
+        pending=stats.pending,
+        approved=stats.approved,
+        rejected=stats.rejected,
+        volume=format_money(stats.approved_volume, context.settings.currency_symbol),
+    )
+    await show(query, f"{header}\n\n{body}", builder.as_markup())
 
 
 # -- promo ------------------------------------------------------------------

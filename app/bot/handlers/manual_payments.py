@@ -247,7 +247,7 @@ async def submit_request(message: Message, state: FSMContext, **data):
     await state.clear()
 
     payment = await manual.submit(message.from_user.id, amount, utr, file_id)
-    await _post_for_review(message, context, manual, payment, data["notifications"])
+    await post_for_review(message.bot, context, manual, payment, data["notifications"])
 
     await show(
         message,
@@ -268,57 +268,106 @@ async def proof_must_be_a_photo(message: Message, **data):
     await message.answer(context.text("wallet.manual_proof_required"))
 
 
-async def _post_for_review(
-    message: Message, context: Context, manual: ManualPaymentService, payment, notifications
-) -> None:
-    """Send the screenshot and details to the review channel."""
-    user = message.from_user
-    caption = context.text(
+async def _review_caption(context: Context, payment) -> str:
+    """Build the review card's text from the payment's owner, looked up by id.
+
+    Not from a live ``Message.from_user`` -- a resend is triggered by an
+    admin, not the original submitter, so there may be no such message.
+    """
+    user = await context.users.get(payment.user_id)
+    return context.text(
         "wallet.manual_review",
         request_id=payment.id,
         amount=context.money(payment.amount),
         utr=payment.invoice_id,
-        user_id=user.id,
-        username=f"@{user.username}" if user.username else "—",
-        name=truncate(user.full_name or "—", 40),
-        balance=context.money(context.user.balance),
+        user_id=payment.user_id,
+        username=f"@{user.username}" if user and user.username else "—",
+        name=truncate((user.full_name if user else None) or "—", 40),
+        balance=context.money(user.balance if user else 0),
         submitted_at=format_datetime(payment.created_at),
     )
+
+
+def decision_keyboard(payment_id: int, missing_notification: bool = False):
+    """Approve/Decline/[Resend], shared by the fresh channel post and the
+    admin-panel detail screen -- one place decides what these buttons are.
+
+    Approve routes to a confirmation step first (``approve_confirm``), not
+    straight to ``approve``: it is the only one-tap action here that moves
+    real money. Decline already gates on typing a reason, which is its own
+    deliberate-action step.
+    """
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
             text="✅ Approve",
-            callback_data=ManualCB(action="approve", payment_id=payment.id).pack(),
+            callback_data=ManualCB(action="approve_confirm", payment_id=payment_id).pack(),
             style=SUCCESS,
         ),
         InlineKeyboardButton(
             text="❌ Decline",
-            callback_data=ManualCB(action="decline", payment_id=payment.id).pack(),
+            callback_data=ManualCB(action="decline", payment_id=payment_id).pack(),
             style=DANGER,
         ),
     )
+    if missing_notification:
+        builder.row(
+            InlineKeyboardButton(
+                text="📤 Resend Review",
+                callback_data=ManualCB(action="resend", payment_id=payment_id).pack(),
+            )
+        )
+    return builder.as_markup()
 
-    try:
-        posted = await message.bot.send_photo(
-            chat_id=context.settings.manual_payment_channel_id,
-            photo=payment.proof_file_id,
-            caption=caption,
-            reply_markup=builder.as_markup(),
-        )
-        await manual.set_review_message(payment, posted.message_id)
-    except TelegramAPIError as exc:
-        # The request is saved either way, so it is never lost -- but a channel
-        # nobody can post to means nobody is reviewing, which admins must hear
-        # about directly.
-        logger.error(
-            "manual_payment.review_post_failed",
-            payment_id=payment.id,
-            channel=context.settings.manual_payment_channel_id,
-            error=str(exc),
-        )
-        await notifications.notify_admins(
-            context.text("wallet.manual_post_failed", request_id=payment.id, error=str(exc)[:120])
-        )
+
+async def post_for_review(
+    bot, context: Context, manual: ManualPaymentService, payment, notifications
+) -> bool:
+    """Send the review card to the channel. Returns whether it landed.
+
+    A stale/invalid proof photo (e.g. from before a bot token change) must
+    never lose the whole request: photo is tried first, and a rejected photo
+    falls back to the identical card as plain text. Only if *both* fail is
+    this treated as a real channel outage that admins must hear about
+    directly -- the request itself is never lost either way, since it is
+    already committed to the database before this is ever called.
+    """
+    caption = await _review_caption(context, payment)
+    keyboard = decision_keyboard(payment.id)
+    channel = context.settings.manual_payment_channel_id
+
+    posted = None
+    if payment.proof_file_id:
+        try:
+            posted = await bot.send_photo(
+                chat_id=channel, photo=payment.proof_file_id, caption=caption, reply_markup=keyboard
+            )
+        except TelegramAPIError as exc:
+            logger.warning(
+                "manual_payment.review_photo_failed", payment_id=payment.id, error=str(exc)
+            )
+
+    if posted is None:
+        try:
+            posted = await bot.send_message(chat_id=channel, text=caption, reply_markup=keyboard)
+        except TelegramAPIError as exc:
+            # A channel nobody can post to at all means nobody is reviewing,
+            # which admins must hear about directly.
+            logger.error(
+                "manual_payment.review_post_failed",
+                payment_id=payment.id,
+                channel=channel,
+                error=str(exc),
+            )
+            await notifications.notify_admins(
+                context.text(
+                    "wallet.manual_post_failed", request_id=payment.id, error=str(exc)[:120]
+                )
+            )
+            return False
+
+    await manual.set_review_message(payment, posted.message_id)
+    return True
 
 
 # -- review -----------------------------------------------------------------

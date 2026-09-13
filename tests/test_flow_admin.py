@@ -30,6 +30,18 @@ async def test_admin_panel_opens_for_the_owner(admin_harness):
     assert "Dashboard" in buttons and "Broadcast" in buttons
 
 
+async def test_admin_panel_shows_the_pending_count_and_a_refresh_button(admin_harness):
+    h = admin_harness
+    await h.send("/start")
+    await h.send("/admin")
+
+    assert any("Payments" in b and "(0)" in b for b in h.buttons())
+    assert any("Refresh" in b for b in h.buttons())
+
+    await h.tap("Refresh")
+    assert "ADMIN PANEL" in h.text
+
+
 async def test_admin_dashboard_renders(admin_harness):
     await admin_harness.send("/start")
     await admin_harness.send("/admin")
@@ -38,6 +50,19 @@ async def test_admin_dashboard_renders(admin_harness):
     assert "DASHBOARD" in admin_harness.text
     assert "Total users" in admin_harness.text
     assert "Revenue" in admin_harness.text
+
+
+async def test_payments_screen_shows_the_status_breakdown(admin_harness):
+    """Efficient counts, not a wall of every payment row."""
+    h = admin_harness
+    await h.send("/start")
+    await h.send("/admin")
+    await h.tap("Payments")
+
+    assert "PAYMENT MANAGEMENT" in h.text
+    assert "Pending" in h.text
+    assert "Approved" in h.text
+    assert "Rejected" in h.text
 
 
 async def test_admin_health_screen_probes_providers(admin_harness):
