@@ -111,6 +111,14 @@ class PaymentRepository(BaseRepository):
         )
         return result.scalars().all()
 
+    async def count_pending(self) -> int:
+        """Pending payment count only, for the admin-panel badge -- cheaper
+        than the full per-status breakdown when that is all that is needed."""
+        result = await self.session.execute(
+            select(func.count(Payment.id)).where(Payment.status == PaymentStatus.PENDING)
+        )
+        return int(result.scalar_one())
+
     async def count_by_status(self) -> dict[PaymentStatus, int]:
         """Payment counts per status, for admin stats -- without loading every row."""
         result = await self.session.execute(

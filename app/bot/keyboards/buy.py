@@ -25,6 +25,10 @@ from app.core.money import format_money
 from app.utils.formatting import availability_icon, truncate
 from app.utils.pagination import Page
 
+#: Above this many services, dumping them all as text (Show All) stops being
+#: usable -- search becomes the primary way to find one.
+SHOW_ALL_MAX_SERVICES = 100
+
 
 def country_grid(
     texts: Texts,
@@ -116,23 +120,28 @@ def country_services(
 ) -> InlineKeyboardMarkup:
     """Service picker *within a country*. Each button carries a token, never a price."""
     builder = InlineKeyboardBuilder()
-    builder.row(
-        InlineKeyboardButton(
-            text=texts.button("show_all", locale),
-            callback_data=Nav(to="services_all").pack(), style=PRIMARY,
-        ),
+    top_row = []
+    if page.total_items <= SHOW_ALL_MAX_SERVICES:
+        top_row.append(
+            InlineKeyboardButton(
+                text=texts.button("show_all", locale),
+                callback_data=Nav(to="services_all").pack(), style=PRIMARY,
+            )
+        )
+    top_row.append(
         InlineKeyboardButton(
             text=texts.button("search", locale),
             callback_data=Nav(to="buy_search").pack(), style=PRIMARY,
-        ),
+        )
     )
+    builder.row(*top_row)
     for chunk in _chunks(list(page.items), GRID_COLUMNS):
         builder.row(
             *[
                 InlineKeyboardButton(
                     text=(
                         f"{availability_icon(priced.offer.available)} "
-                        f"{truncate(priced.offer.service.name, 12)} · "
+                        f"{truncate(priced.offer.service.name, 18)} · "
                         f"{format_money(priced.price, currency)}"
                     ),
                     callback_data=QuoteCB(token=tokens[priced.offer.service.code]).pack(),

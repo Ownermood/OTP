@@ -45,8 +45,7 @@ async def _panel_keyboard(context: Context, role: AdminRole):
     """Only show sections the role can actually open."""
     pending_badge = ""
     if can(role, "payments"):
-        stats = await context.admin.payment_stats()
-        pending_badge = f" ({stats.pending})"
+        pending_badge = f" ({await context.admin.pending_payment_count()})"
 
     builder = InlineKeyboardBuilder()
     sections = [

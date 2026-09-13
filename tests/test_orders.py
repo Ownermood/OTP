@@ -144,6 +144,67 @@ async def test_sms_received_completes_without_refund(orders, session, user, wall
     assert provider.finished == ["prov-1"]
 
 
+async def test_refresh_activation_picks_up_a_received_sms(orders, user, provider):
+    from app.providers.base import ActivationStatus
+
+    result = await _buy(orders, user.id)
+    provider.status = ActivationStatus(state="received", code="999888")
+
+    refreshed = await orders.refresh_activation(result.order)
+
+    assert refreshed.status == OrderStatus.SUCCESS
+    assert refreshed.sms_code == "999888"
+
+
+async def test_refresh_activation_picks_up_a_provider_cancellation(orders, user, provider, wallet):
+    from app.providers.base import ActivationStatus
+
+    result = await _buy(orders, user.id)
+    provider.status = ActivationStatus(state="cancelled")
+
+    refreshed = await orders.refresh_activation(result.order)
+
+    assert refreshed.status == OrderStatus.REFUNDED
+    assert (await wallet.get_balance(user.id)) == 10_000
+
+
+async def test_refresh_activation_is_a_no_op_on_a_final_order(orders, user, provider):
+    from app.providers.base import ActivationStatus
+
+    result = await _buy(orders, user.id)
+    await orders.mark_sms_received(result.order, "111111", "code: 111111")
+    provider.status = ActivationStatus(state="received", code="222222")
+
+    refreshed = await orders.refresh_activation(result.order)
+
+    assert refreshed.sms_code == "111111"  # untouched, not overwritten
+
+
+async def test_refresh_activation_expires_a_timed_out_order(orders, user, wallet):
+    from datetime import datetime, timedelta
+
+    result = await _buy(orders, user.id)
+    result.order.expires_at = datetime.utcnow() - timedelta(minutes=1)
+
+    refreshed = await orders.refresh_activation(result.order)
+
+    assert refreshed.status == OrderStatus.EXPIRED
+    assert (await wallet.get_balance(user.id)) == 10_000
+
+
+async def test_refresh_activation_surfaces_a_provider_error(orders, user, provider):
+    """A live provider failure must not crash the Refresh tap or corrupt state."""
+    from app.core.exceptions import ProviderError
+
+    result = await _buy(orders, user.id)
+    provider.fail_status = ProviderError("upstream timeout")
+
+    with pytest.raises(ProviderError):
+        await orders.refresh_activation(result.order)
+
+    assert result.order.status == OrderStatus.PROCESSING  # unchanged, not corrupted
+
+
 async def test_user_cannot_read_another_users_order(orders, session, user):
     """Order ids come from callback data; ownership is checked server-side."""
     from app.core.exceptions import OrderNotFoundError

@@ -36,11 +36,14 @@ async def open_request(query: CallbackQuery, callback_data: ManualCB, **data):
     """Show one pending request with its proof, and the two decisions.
 
     Reached from the admin panel when the review channel is not an option.
+    Viewing only needs "payments" -- the same permission the pending list
+    already requires. Actually deciding (approve/decline) still requires
+    "balance", checked separately by those handlers: SUPPORT can read this
+    screen but not credit from it.
     """
     context = build_context(data)
+    require(context.admin_role, "payments")
     manual = _service(context)
-    if not manual.can_review(query.from_user.id):
-        raise AccessDeniedError("not a payment reviewer")
 
     payment = await manual.get(callback_data.payment_id)
     if payment is None:
@@ -50,7 +53,7 @@ async def open_request(query: CallbackQuery, callback_data: ManualCB, **data):
     missing_notification = payment.review_message_id is None
     caption = await _review_caption(context, payment)
     if missing_notification:
-        caption += context.text("wallet.manual_review_missing_notice")
+        caption += "\n\n" + context.text("wallet.manual_review_missing_notice")
     keyboard = decision_keyboard(payment.id, missing_notification)
 
     await query.answer()
@@ -241,11 +244,24 @@ async def _close_review(query: CallbackQuery, context: Context, decision, review
     )
     if query.message is None:
         return
+    # Independent try/except per call: a decision is already committed to the
+    # database by this point, so one call failing must not swallow the other
+    # -- stripping the buttons still matters even if the reply fails, and the
+    # reply still matters even if the buttons could not be stripped. Either
+    # failure is logged visibly: the outcome is decided either way, so a
+    # missing on-screen record is an audit-trail gap, not routine noise.
     try:
         await query.message.edit_reply_markup(reply_markup=None)
+    except TelegramAPIError as exc:
+        logger.warning(
+            "manual_payment.markup_strip_failed", payment_id=decision.payment.id, error=str(exc)
+        )
+    try:
         await query.message.reply(verdict)
     except TelegramAPIError as exc:
-        logger.debug("manual_payment.review_edit_failed", error=str(exc))
+        logger.warning(
+            "manual_payment.verdict_reply_failed", payment_id=decision.payment.id, error=str(exc)
+        )
 
 
 async def _edit_review_post(bot, context: Context, decision, reviewer) -> None:

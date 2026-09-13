@@ -15,9 +15,11 @@ class RecordingNotifier:
 
     def __init__(self) -> None:
         self.sent: list[tuple[int, str]] = []
+        self.calls: list[dict] = []
 
-    async def notify_user(self, user_id: int, text: str, **_kwargs) -> bool:
+    async def notify_user(self, user_id: int, text: str, **kwargs) -> bool:
         self.sent.append((user_id, text))
+        self.calls.append({"user_id": user_id, "text": text, **kwargs})
         return True
 
     async def notify_admins(self, text: str) -> None:
@@ -126,6 +128,7 @@ async def test_the_worker_delivers_an_sms_and_closes_the_order(
             service_name="WhatsApp",
             country_id=22,
             country_name="India",
+            phone="+919876543299",
             price=1_100,
             expires_at=datetime.utcnow() + timedelta(minutes=10),
         )
@@ -146,6 +149,13 @@ async def test_the_worker_delivers_an_sms_and_closes_the_order(
         assert await WalletService(session).get_balance(1003) == 8_900
 
     assert notifier.sent == [(1003, "sms.received")]
+
+    keyboard = notifier.calls[0].get("reply_markup")
+    assert keyboard is not None, "the SMS-received push should offer Copy Number/Copy OTP"
+    buttons = [b for row in keyboard.inline_keyboard for b in row]
+    copy_texts = {b.copy_text.text for b in buttons if b.copy_text is not None}
+    assert "654321" in copy_texts
+    assert any(t.startswith("+91") for t in copy_texts)
 
 
 async def test_an_expired_activation_is_refunded(session_factory, sms_worker, notifier):

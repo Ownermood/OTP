@@ -226,6 +226,26 @@ class OrderService:
         await self._refund_once(order, OrderStatus.REFUNDED, "cancelled by provider")
         await self._session.commit()
 
+    async def refresh_activation(self, order: Order) -> Order:
+        """Poll one activation immediately, for a user-initiated Refresh tap.
+
+        The background SmsWorker does the same check on its own schedule;
+        this lets it happen right when the user asks, rather than only
+        silently waiting for the next tick -- so Refresh is never a no-op.
+        """
+        if OrderStatus(order.status).is_final or not order.provider_order_id:
+            return order
+        if order.expires_at and order.expires_at < datetime.utcnow():
+            await self.expire(order)
+            return order
+
+        status = await self._provider.get_activation_status(order.provider_order_id)
+        if status.state == "received":
+            await self.mark_sms_received(order, status.code, status.text)
+        elif status.state in ("cancelled", "expired"):
+            await self.refund_provider_cancelled(order)
+        return order
+
     # -- reads ----------------------------------------------------------
 
     async def get_owned(self, order_id: int, user_id: int) -> Order:

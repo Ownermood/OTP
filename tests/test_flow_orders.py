@@ -57,6 +57,34 @@ async def test_empty_orders_list_offers_a_buy_shortcut(harness):
     assert "BUY NUMBER" in harness.text
 
 
+async def test_refreshing_an_activation_polls_the_provider_immediately(harness, session_factory):
+    """Regression: Refresh on an SMS activation only re-rendered the same
+    stale DB row -- it never actually checked the provider, unlike SMM's
+    Refresh. The user had to wait for the next background tick."""
+    from app.core.constants import OrderStatus
+
+    await harness.send("/start")
+    await fund(session_factory, harness.user_id, 10_000)
+    await harness.tap("Buy Number")
+    await harness.tap("IN")
+    await harness.tap("WhatsApp")
+    await harness.tap("Confirm")
+    assert "Waiting for SMS" in harness.text
+
+    from app.database.models import Order
+    from app.providers.base import ActivationStatus
+
+    harness.sms.status = ActivationStatus(state="received", code="654321")
+
+    await harness.tap("Refresh")
+
+    assert "654321" in harness.text
+    async with session_factory() as session:
+        order = await session.get(Order, 1)
+        assert order.status == OrderStatus.SUCCESS
+        assert order.sms_code == "654321"
+
+
 async def test_cancelling_an_order_refunds_it(harness, session_factory):
     from app.services.wallet import WalletService
 

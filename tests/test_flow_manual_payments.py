@@ -3,7 +3,7 @@
 import pytest
 from sqlalchemy import select
 
-from app.core.constants import PaymentStatus
+from app.core.constants import AdminRole, PaymentStatus
 from tests.flow_helpers import REVIEW_CHANNEL
 
 
@@ -118,6 +118,39 @@ async def test_cancelling_the_approve_confirmation_credits_nothing(manual_harnes
     await h.press(yes)
     async with h.dispatcher.workflow_data["session_factory"]() as session:
         assert await WalletService(session).get_balance(h.user_id) == 50_000
+
+
+async def test_the_verdict_is_recorded_even_if_stripping_the_buttons_fails(
+    manual_harness, monkeypatch
+):
+    """_close_review's two Telegram calls are independent: the decision is
+    already committed to the database by this point, so a failure removing
+    the buttons must not also swallow the verdict reply."""
+    from aiogram.exceptions import TelegramBadRequest
+
+    from tests.harness import MockedSession
+
+    h = manual_harness
+    approve = await _submit_manual(h)
+    await h.press(approve)
+    confirm = h.screen.callback_for("Yes, Approve")
+
+    original = MockedSession.make_request
+
+    async def markup_strip_fails(self, bot, method, timeout=None):
+        if type(method).__name__ == "EditMessageReplyMarkup":
+            raise TelegramBadRequest(
+                method=method, message="Bad Request: message can't be edited"
+            )
+        return await original(self, bot, method, timeout)
+
+    monkeypatch.setattr(MockedSession, "make_request", markup_strip_fails)
+    await h.press(confirm)
+
+    # The verdict reply ("APPROVED — request #1 by ...") is distinct from the
+    # separate "PAYMENT APPROVED" notice sent to the user.
+    verdict_posts = [s for s in h.session.screens if " by " in s.text]
+    assert len(verdict_posts) == 1
 
 
 async def test_a_non_admin_tapping_approve_is_refused(harness, settings):
@@ -407,6 +440,50 @@ async def test_resending_a_nonexistent_payment_is_refused_cleanly(manual_harness
     await h.press(ManualCB(action="resend", payment_id=999).pack())
 
     assert any("not found" in a.lower() for a in h.alerts)
+
+
+async def test_a_support_admin_can_resend_without_the_balance_permission(
+    manual_harness, monkeypatch, settings
+):
+    """Resend only needs 'payments' -- but it used to finish by calling
+    open_request, which required the stronger 'balance' permission SUPPORT
+    lacks, so a successful resend was immediately followed by an access-denied
+    error on the very screen meant to confirm it worked."""
+    from aiogram.exceptions import TelegramBadRequest
+
+    from app.bot.callbacks import ManualCB
+    from tests.harness import MockedSession
+
+    h = manual_harness
+    original = MockedSession.make_request
+    blocked = True
+
+    async def sometimes_failing(self, bot, method, timeout=None):
+        name = type(method).__name__
+        if blocked and name in ("SendPhoto", "SendMessage") and getattr(
+            method, "chat_id", None
+        ) == REVIEW_CHANNEL:
+            raise TelegramBadRequest(method=method, message="Bad Request: chat not found")
+        return await original(self, bot, method, timeout)
+
+    monkeypatch.setattr(MockedSession, "make_request", sometimes_failing)
+
+    await h.send("/start")
+    await h.tap("Balance")
+    await h.tap("Add Balance")
+    await h.tap("UPI / QR")
+    await h.send("500")
+    await h.tap("I Have Paid")
+    await h.send("402199881122")
+    await h.send_photo("screenshot-1")  # channel down: notification missing
+
+    settings.admin_roles = {h.user_id: AdminRole.SUPPORT}  # payments, not balance
+    blocked = False  # channel back up
+
+    await h.press(ManualCB(action="resend", payment_id=1).pack())
+
+    assert "do not have access" not in h.text
+    assert len(h.posted_to(REVIEW_CHANNEL)) == 1
 
 
 async def test_a_stale_proof_photo_does_not_hide_the_review_screen(manual_harness, monkeypatch):

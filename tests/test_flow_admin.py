@@ -26,8 +26,21 @@ async def test_admin_panel_opens_for_the_owner(admin_harness):
 
     assert "ADMIN PANEL" in admin_harness.text
     assert "Owner" in admin_harness.text
+    assert "Choose a section" in admin_harness.text
     buttons = " ".join(admin_harness.buttons())
     assert "Dashboard" in buttons and "Broadcast" in buttons
+
+
+async def test_the_orders_screen_does_not_borrow_the_panels_prompt(admin_harness):
+    """Regression: a YAML restructure once moved 'Choose a section:' from the
+    panel greeting onto the Orders list, where it made no sense."""
+    h = admin_harness
+    await h.send("/start")
+    await h.send("/admin")
+    await h.tap("Orders")
+
+    assert "ORDERS" in h.text
+    assert "Choose a section" not in h.text
 
 
 async def test_admin_panel_shows_the_pending_count_and_a_refresh_button(admin_harness):

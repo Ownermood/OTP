@@ -2,7 +2,15 @@
 
 import pytest
 
+from app.providers.base import CountryOffer, SmsService
 from tests.flow_helpers import fund
+
+
+def _country_offers(names: list[str]) -> list[CountryOffer]:
+    return [
+        CountryOffer(service=SmsService(code=f"s{i}", name=name, available=10), cost=1_000, available=10)
+        for i, name in enumerate(names)
+    ]
 
 
 async def test_the_country_screen_offers_show_all_and_search(harness):
@@ -46,6 +54,75 @@ async def test_show_all_services_lists_them_with_prices(harness):
     assert "WhatsApp" in harness.text
     assert "<code>wa</code>" in harness.text
     assert "₹11.00" in harness.text
+
+
+async def test_services_within_a_country_are_sorted_alphabetically(harness):
+    """Regression: services rendered in whatever raw order the provider
+    happened to return them in, which read as an unsorted, 'raw' list."""
+
+    async def unsorted(country_id):
+        return _country_offers(["Zebra Corp", "Apple Inc", "Mango App"])
+
+    harness.sms.get_services_for = unsorted
+
+    await harness.send("/start")
+    await harness.tap("Buy Number")
+    await harness.tap("IN")
+
+    buttons = harness.buttons()
+    apple = next(i for i, b in enumerate(buttons) if "Apple" in b)
+    mango = next(i for i, b in enumerate(buttons) if "Mango" in b)
+    zebra = next(i for i, b in enumerate(buttons) if "Zebra" in b)
+    assert apple < mango < zebra
+
+
+async def test_a_long_service_name_is_not_truncated_to_illegibility(harness):
+    async def one_long_name(country_id):
+        return _country_offers(["WhatsApp Business API"])
+
+    harness.sms.get_services_for = one_long_name
+
+    await harness.send("/start")
+    await harness.tap("Buy Number")
+    await harness.tap("IN")
+
+    button = next(b for b in harness.buttons() if "WhatsApp" in b)
+    assert "WhatsApp Business" in button
+
+
+async def test_show_all_is_hidden_for_a_country_with_too_many_services(harness):
+    """A raw text dump of hundreds of services is not a usable 'Show All'."""
+
+    async def many_services(country_id):
+        return _country_offers([f"Service {i}" for i in range(150)])
+
+    harness.sms.get_services_for = many_services
+
+    await harness.send("/start")
+    await harness.tap("Buy Number")
+    await harness.tap("IN")
+
+    assert "Show All" not in " ".join(harness.buttons())
+    assert "Search" in " ".join(harness.buttons())
+
+
+async def test_show_all_is_refused_server_side_for_too_many_services(harness):
+    """Defense in depth: even a stale button from before the catalogue grew
+    must not trigger the giant text dump."""
+    from app.bot.callbacks import Nav
+
+    async def many_services(country_id):
+        return _country_offers([f"Service {i}" for i in range(150)])
+
+    harness.sms.get_services_for = many_services
+
+    await harness.send("/start")
+    await harness.tap("Buy Number")
+    await harness.tap("IN")
+    await harness.press(Nav(to="services_all").pack())
+
+    assert any("Search" in a for a in harness.alerts)
+    assert not harness.replied
 
 
 async def test_a_listing_ends_with_a_way_back(harness):

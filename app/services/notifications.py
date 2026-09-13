@@ -54,7 +54,18 @@ class NotificationService:
         log level, not just at DEBUG.
         """
         for admin_id in self._admin_ids:
-            if not await self._send(admin_id, text):
+            # One admin failing in a way _send() doesn't already catch (a
+            # network reset, not just a rejected API call) must not stop the
+            # rest of the admins from being notified -- this loop is often
+            # the last channel a payment-review failure can reach anyone
+            # through. Exception, not BaseException: asyncio.CancelledError
+            # must still propagate for a clean shutdown.
+            try:
+                delivered = await self._send(admin_id, text)
+            except Exception:
+                logger.warning("notify_admins.failed", admin_id=admin_id, exc_info=True)
+                continue
+            if not delivered:
                 logger.warning("notify_admins.failed", admin_id=admin_id)
 
     async def broadcast(self, user_ids: list[int], text: str) -> tuple[int, int]:

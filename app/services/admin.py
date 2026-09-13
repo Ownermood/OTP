@@ -176,6 +176,12 @@ class AdminService:
     async def list_payments(self, status=None):
         return await self._payments.list_filtered(status=status)
 
+    async def pending_payment_count(self) -> int:
+        """Just the pending count, for the admin-panel badge/Refresh -- the
+        full payment_stats() below also computes approved volume, which that
+        call site never uses."""
+        return await self._payments.count_pending()
+
     async def payment_stats(self) -> PaymentStats:
         counts = await self._payments.count_by_status()
         return PaymentStats(

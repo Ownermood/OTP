@@ -136,9 +136,8 @@ class CatalogService:
                 lambda cid=country_id: self._provider.get_services_for(cid), self._ttl
             )
             self._offers[country_id] = cache
-        return [
-            PricedOffer(offer, self._pricing.quote(offer.cost).total) for offer in await cache.get()
-        ]
+        offers = sorted(await cache.get(), key=lambda offer: offer.service.name.lower())
+        return [PricedOffer(offer, self._pricing.quote(offer.cost).total) for offer in offers]
 
     async def search_offers(self, country_id: int, query: str) -> list[PricedOffer]:
         needle = query.lower()

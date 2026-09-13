@@ -23,6 +23,7 @@ from aiogram.types import CallbackQuery, Message
 from app.bot import keyboards
 from app.bot.callbacks import ConfirmCB, CountryCB, FavoriteCB, Nav, QuoteCB
 from app.bot.handlers.common import Context, build_context, show, toast
+from app.bot.keyboards.buy import SHOW_ALL_MAX_SERVICES
 from app.bot.listing import country_lines, offer_lines, paginate_lines
 from app.bot.states import BuyStates
 from app.core.logging import get_logger
@@ -127,6 +128,11 @@ async def show_all_services(query: CallbackQuery, state: FSMContext, **data):
 
     country = await context.catalog.find_any_country(country_id)
     offers = await context.catalog.offers_in(country_id)
+    if len(offers) > SHOW_ALL_MAX_SERVICES:
+        # Defense in depth: a stale button from before the catalogue grew
+        # must not trigger a giant text dump. Search is the usable path here.
+        await toast(query, context.text("buy.show_all_too_many"), alert=True)
+        return
     await _send_listing(
         query,
         context,

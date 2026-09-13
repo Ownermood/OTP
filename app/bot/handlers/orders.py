@@ -66,8 +66,11 @@ async def order_detail(query: CallbackQuery, callback_data: OrderCB, **data):
     context = build_context(data)
     order = await context.orders.get_owned(callback_data.order_id, query.from_user.id)
 
-    if callback_data.action == "refresh" and order.kind == OrderKind.SMM:
-        order = await context.smm.refresh_status(order)
+    if callback_data.action == "refresh":
+        if order.kind == OrderKind.SMM:
+            order = await context.smm.refresh_status(order)
+        else:
+            order = await context.orders.refresh_activation(order)
 
     await show(query, _render_order(context, order), keyboards.order_detail(
         context.texts, context.locale, order, order.kind

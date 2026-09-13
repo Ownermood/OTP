@@ -32,6 +32,7 @@ class FakeSmsProvider(BaseSMSProvider):
         self.finished: list[str] = []
         self.fail_next = False
         self.status = ActivationStatus(state="waiting")
+        self.fail_status: Exception | None = None
 
     async def get_services(self):
         return [SmsService(code="wa", name="WhatsApp", available=120)]
@@ -64,6 +65,8 @@ class FakeSmsProvider(BaseSMSProvider):
         )
 
     async def get_activation_status(self, provider_order_id: str) -> ActivationStatus:
+        if self.fail_status is not None:
+            raise self.fail_status
         return self.status
 
     async def cancel_activation(self, provider_order_id: str) -> bool:

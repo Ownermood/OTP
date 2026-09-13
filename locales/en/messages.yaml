@@ -122,6 +122,7 @@ buy:
     🗂 <b>ALL SERVICES</b> · {country} · {count}
 
     <i>🟢 in stock · 🟡 low · 🔴 none</i>
+  show_all_too_many: "🔍 Too many services to list. Please use Search instead."
   all_countries: |
     🌍 <b>ALL COUNTRIES</b> · {count}
 
@@ -779,6 +780,8 @@ admin:
     👨‍💼 <b>ADMIN PANEL</b>
 
     Role: <b>{role}</b>
+
+    Choose a section:
   payments: |
     💳 <b>PAYMENT MANAGEMENT</b>
 
@@ -792,8 +795,6 @@ admin:
     {divider}
   orders: |
     📦 <b>ORDERS</b>
-
-    Choose a section:
   dashboard: |
     📊 <b>DASHBOARD</b> — {period}
 
