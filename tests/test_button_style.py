@@ -241,3 +241,74 @@ def test_no_locale_string_leaves_a_raw_marker_behind(texts):
 
     for raw in walk(catalogue):
         assert 'id="' not in texts.expand_emoji(raw), f"marker survived: {raw[:60]}"
+
+
+# -- premium icons + the no-danger-on-harmless-actions audit -----------------
+
+#: Labels that must never carry danger/red styling, per the design system.
+HARMLESS_ACTION_WORDS = (
+    "balance", "add balance", "buy", "orders", "account", "profile",
+    "search", "help", "support", "back", "main menu", "home",
+)
+
+
+@pytest.fixture
+def premium_texts() -> Texts:
+    from app.core.emoji_registry import default_icon_ids
+
+    return Texts(ROOT_DIR / "locales", "en", default_icon_ids())
+
+
+def test_no_harmless_action_is_ever_danger_styled(premium_texts):
+    """Cancel/Decline/Remove/Delete are the only things allowed to be red."""
+    screens = [
+        keyboards.main_menu(premium_texts, "en", True),
+        keyboards.wallet(premium_texts, "en", True),
+        keyboards.profile(premium_texts, "en"),
+        keyboards.orders_root(premium_texts, "en", True),
+        keyboards.back_home(premium_texts, "en", back_to="wallet"),
+    ]
+    for markup in screens:
+        for btn in _flat(markup):
+            if btn.style != DANGER:
+                continue
+            label = btn.text.lower()
+            assert not any(word in label for word in HARMLESS_ACTION_WORDS), (
+                f"harmless-looking button {btn.text!r} is danger-styled"
+            )
+
+
+def test_main_menu_uses_real_premium_icons_not_only_unicode(premium_texts):
+    """Buy/Orders/Home should carry a verified custom_emoji_id, not just text."""
+    from app.core.emoji_registry import PREMIUM_EMOJI
+
+    buttons = {b.text: b for b in _flat(keyboards.main_menu(premium_texts, "en", True))}
+    buy_button = next(b for label, b in buttons.items() if "buy" in label.lower())
+    assert buy_button.icon_custom_emoji_id == PREMIUM_EMOJI["buy"].custom_emoji_id
+
+    orders_button = next(b for label, b in buttons.items() if "orders" in label.lower())
+    assert orders_button.icon_custom_emoji_id == PREMIUM_EMOJI["orders"].custom_emoji_id
+
+
+def test_a_missing_icon_role_degrades_to_no_icon_not_a_crash(texts):
+    """'back' has no verified premium match -- must render fine without one."""
+    markup = keyboards.back_home(texts, "en", back_to="wallet")
+    buttons = _flat(markup)
+    assert buttons  # the screen still renders
+    assert all(b.icon_custom_emoji_id is None for b in buttons)  # plain `texts` has no icons at all
+
+
+def test_manual_review_decision_buttons_carry_premium_icons(premium_texts):
+    from app.bot.handlers.manual_payments import decision_keyboard
+    from app.core.emoji_registry import PREMIUM_EMOJI
+
+    markup = decision_keyboard(premium_texts, payment_id=1)
+    buttons = {b.text: b for b in _flat(markup)}
+
+    approve = next(b for label, b in buttons.items() if "approve" in label.lower())
+    assert approve.icon_custom_emoji_id == PREMIUM_EMOJI["confirm"].custom_emoji_id
+    assert approve.style == SUCCESS
+
+    decline = next(b for label, b in buttons.items() if "decline" in label.lower())
+    assert decline.icon_custom_emoji_id == PREMIUM_EMOJI["cancel"].custom_emoji_id
+    assert decline.style == DANGER

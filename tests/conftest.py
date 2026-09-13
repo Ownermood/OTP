@@ -96,7 +96,7 @@ async def harness(session_factory, settings, monkeypatch):
     from aiogram.fsm.storage.memory import MemoryStorage
 
     from app.bot.handlers import build_router
-    from app.bot.setup import _register_drain, _register_middlewares
+    from app.bot.setup import _register_drain, _register_middlewares, _resolve_icons
     from app.bot.texts import Texts
     from app.core.config import ROOT_DIR
     from app.services.catalog import CatalogService
@@ -120,7 +120,7 @@ async def harness(session_factory, settings, monkeypatch):
 
     dispatcher.workflow_data.update(
         settings=settings,
-        texts=Texts(ROOT_DIR / "locales", settings.locale),
+        texts=Texts(ROOT_DIR / "locales", settings.locale, _resolve_icons(settings)),
         pricing=pricing,
         catalog=CatalogService(sms_provider, pricing, settings),
         engine=None,

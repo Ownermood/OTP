@@ -28,6 +28,7 @@ from app.core.constants import PaymentStatus
 from app.core.exceptions import AccessDeniedError
 from app.core.logging import get_logger
 from app.services.admin import require
+from app.utils.quotes import build_reply_parameters
 
 logger = get_logger(__name__)
 
@@ -54,7 +55,7 @@ async def open_request(query: CallbackQuery, callback_data: ManualCB, **data):
     caption = await _review_caption(context, payment)
     if missing_notification:
         caption += "\n\n" + context.text("wallet.manual_review_missing_notice")
-    keyboard = decision_keyboard(payment.id, missing_notification)
+    keyboard = decision_keyboard(context.texts, payment.id, missing_notification)
 
     await query.answer()
     if payment.proof_file_id and query.message is not None:
@@ -153,7 +154,7 @@ async def cancel_approve(query: CallbackQuery, callback_data: ManualCB, **data):
     if query.message is not None:
         missing_notification = payment.review_message_id is None
         await query.message.edit_reply_markup(
-            reply_markup=decision_keyboard(payment.id, missing_notification)
+            reply_markup=decision_keyboard(context.texts, payment.id, missing_notification)
         )
 
 
@@ -215,7 +216,8 @@ async def do_decline(message: Message, state: FSMContext, **data):
 
     await _edit_review_post(message.bot, context, decision, message.from_user)
     await message.answer(
-        context.text("wallet.manual_decline_done", request_id=payment_id, reason=reason)
+        context.text("wallet.manual_decline_done", request_id=payment_id, reason=reason),
+        reply_parameters=build_reply_parameters(message),
     )
     await data["notifications"].notify_user(
         decision.payment.user_id,

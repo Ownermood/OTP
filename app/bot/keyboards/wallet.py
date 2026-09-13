@@ -26,15 +26,23 @@ def profile(texts: Texts, locale: str | None) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
-            text=texts.button("deposit", locale), callback_data=WalletCB(action="deposit").pack(), style=PRIMARY
+            text=texts.button("deposit", locale),
+            icon_custom_emoji_id=texts.icon("deposit"),
+            callback_data=WalletCB(action="deposit").pack(),
+            style=PRIMARY,
         ),
         InlineKeyboardButton(
-            text=texts.button("orders", locale), callback_data=Nav(to="orders").pack(), style=PRIMARY
+            text=texts.button("orders", locale),
+            icon_custom_emoji_id=texts.icon("orders"),
+            callback_data=Nav(to="orders").pack(),
+            style=PRIMARY,
         ),
     )
     builder.row(
         InlineKeyboardButton(
-            text=texts.button("referral", locale), callback_data=Nav(to="referral").pack()
+            text=texts.button("referral", locale),
+            icon_custom_emoji_id=texts.icon("referral"),
+            callback_data=Nav(to="referral").pack(),
         ),
         InlineKeyboardButton(
             text=texts.button("favorites", locale), callback_data=Nav(to="favorites").pack()
@@ -50,7 +58,9 @@ def profile(texts: Texts, locale: str | None) -> InlineKeyboardMarkup:
     )
     builder.row(
         InlineKeyboardButton(
-            text=texts.button("home", locale), callback_data=Nav(to="home").pack()
+            text=texts.button("home", locale),
+            icon_custom_emoji_id=texts.icon("home"),
+            callback_data=Nav(to="home").pack(),
         )
     )
     return builder.as_markup()
@@ -60,7 +70,10 @@ def wallet(texts: Texts, locale: str | None, transfer_enabled: bool) -> InlineKe
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
-            text=texts.button("deposit", locale), callback_data=WalletCB(action="deposit").pack(), style=PRIMARY
+            text=texts.button("deposit", locale),
+            icon_custom_emoji_id=texts.icon("deposit"),
+            callback_data=WalletCB(action="deposit").pack(),
+            style=PRIMARY,
         )
     )
     builder.row(
@@ -80,7 +93,9 @@ def wallet(texts: Texts, locale: str | None, transfer_enabled: bool) -> InlineKe
         )
     builder.row(
         InlineKeyboardButton(
-            text=texts.button("home", locale), callback_data=Nav(to="home").pack()
+            text=texts.button("home", locale),
+            icon_custom_emoji_id=texts.icon("home"),
+            callback_data=Nav(to="home").pack(),
         )
     )
     return builder.as_markup()
@@ -93,12 +108,16 @@ def payment_methods(
     for name, label in providers.items():
         builder.row(
             InlineKeyboardButton(
-                text=label, callback_data=PaymentCB(action="method", provider=name).pack()
+                text=label,
+                icon_custom_emoji_id=texts.icon("payment"),
+                callback_data=PaymentCB(action="method", provider=name).pack(),
             )
         )
     builder.row(
         InlineKeyboardButton(
-            text=texts.button("back", locale), callback_data=Nav(to="wallet").pack()
+            text=texts.button("back", locale),
+            icon_custom_emoji_id=texts.icon("back"),
+            callback_data=Nav(to="wallet").pack(),
         )
     )
     return builder.as_markup()
@@ -120,12 +139,16 @@ def amount_prompt(
         builder.row(*row)
     builder.row(
         InlineKeyboardButton(
-            text=texts.button("back", locale), callback_data=Nav(to=back_to).pack()
+            text=texts.button("back", locale),
+            icon_custom_emoji_id=texts.icon("back"),
+            callback_data=Nav(to=back_to).pack(),
         )
     )
     builder.row(
         InlineKeyboardButton(
-            text=texts.button("home", locale), callback_data=Nav(to="home").pack()
+            text=texts.button("home", locale),
+            icon_custom_emoji_id=texts.icon("home"),
+            callback_data=Nav(to="home").pack(),
         )
     )
     return builder.as_markup()
@@ -136,16 +159,25 @@ def invoice(
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     if pay_url:
-        builder.row(InlineKeyboardButton(text=texts.button("pay", locale), url=pay_url, style=SUCCESS))
+        builder.row(
+            InlineKeyboardButton(
+                text=texts.button("pay", locale),
+                icon_custom_emoji_id=texts.icon("payment"),
+                url=pay_url,
+                style=SUCCESS,
+            )
+        )
     builder.row(
         InlineKeyboardButton(
             text=texts.button("check_payment", locale),
+            icon_custom_emoji_id=texts.icon("refresh"),
             callback_data=PaymentCB(action="check", payment_id=payment_id).pack(), style=PRIMARY,
         )
     )
     builder.row(
         InlineKeyboardButton(
             text=texts.button("cancel", locale),
+            icon_custom_emoji_id=texts.icon("cancel"),
             callback_data=PaymentCB(action="cancel", payment_id=payment_id).pack(), style=DANGER,
         )
     )
@@ -175,7 +207,9 @@ def transactions_filters(texts: Texts, locale: str | None, page: Page) -> Inline
         builder.row(*nav)
     builder.row(
         InlineKeyboardButton(
-            text=texts.button("back", locale), callback_data=Nav(to="wallet").pack()
+            text=texts.button("back", locale),
+            icon_custom_emoji_id=texts.icon("back"),
+            callback_data=Nav(to="wallet").pack(),
         )
     )
     return builder.as_markup()
@@ -185,7 +219,13 @@ def referral(
     texts: Texts, locale: str | None, share_url: str, link: str | None = None
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.row(InlineKeyboardButton(text=texts.button("share", locale), url=share_url))
+    builder.row(
+        InlineKeyboardButton(
+            text=texts.button("share", locale),
+            icon_custom_emoji_id=texts.icon("referral"),
+            url=share_url,
+        )
+    )
     if link:
         # A tap-to-copy button beats making the user select/retype the link.
         builder.row(button(texts.button("copy_link", locale), copy=link))
@@ -196,7 +236,9 @@ def referral(
     )
     builder.row(
         InlineKeyboardButton(
-            text=texts.button("home", locale), callback_data=Nav(to="home").pack()
+            text=texts.button("home", locale),
+            icon_custom_emoji_id=texts.icon("home"),
+            callback_data=Nav(to="home").pack(),
         )
     )
     return builder.as_markup()
@@ -224,7 +266,9 @@ def settings_menu(
         )
     builder.row(
         InlineKeyboardButton(
-            text=texts.button("back", locale), callback_data=Nav(to="profile").pack()
+            text=texts.button("back", locale),
+            icon_custom_emoji_id=texts.icon("back"),
+            callback_data=Nav(to="profile").pack(),
         )
     )
     return builder.as_markup()
@@ -241,12 +285,24 @@ def help_menu(texts: Texts, locale: str | None, support_url: str) -> InlineKeybo
         ("privacy", "🔐 Privacy Policy"),
     ]
     for key, label in topics:
-        builder.row(InlineKeyboardButton(text=label, callback_data=HelpCB(topic=key).pack()))
+        builder.row(
+            InlineKeyboardButton(
+                text=label, icon_custom_emoji_id=texts.icon("help"), callback_data=HelpCB(topic=key).pack()
+            )
+        )
     if support_url:
-        builder.row(InlineKeyboardButton(text=texts.button("support", locale), url=support_url))
+        builder.row(
+            InlineKeyboardButton(
+                text=texts.button("support", locale),
+                icon_custom_emoji_id=texts.icon("support"),
+                url=support_url,
+            )
+        )
     builder.row(
         InlineKeyboardButton(
-            text=texts.button("home", locale), callback_data=Nav(to="home").pack()
+            text=texts.button("home", locale),
+            icon_custom_emoji_id=texts.icon("home"),
+            callback_data=Nav(to="home").pack(),
         )
     )
     return builder.as_markup()

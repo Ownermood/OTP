@@ -13,6 +13,7 @@ import sys
 
 from app.bot.setup import Application, build_application, register_commands
 from app.core.config import VERSION, Settings, get_settings
+from app.core.emoji_registry import validate_premium_emojis
 from app.core.exceptions import ConfigurationError
 from app.core.logging import get_logger, setup_logging
 from app.core.money import format_money
@@ -83,6 +84,10 @@ async def run(settings: Settings) -> int:
     except Exception as exc:
         # The native "/" menu is cosmetic; a failure here must never block startup.
         logger.warning("startup.command_menu_failed", error=str(exc))
+
+    found, total = await validate_premium_emojis(app.bot)
+    if total:
+        logger.info("startup.check", component="premium_emoji", found=found, total=total)
 
     _banner(settings, me.username)
     for worker in app.workers:

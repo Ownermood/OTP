@@ -64,10 +64,12 @@ def country_grid(
     builder.row(
         InlineKeyboardButton(
             text=texts.button("show_all", locale),
+            icon_custom_emoji_id=texts.icon("country"),
             callback_data=Nav(to="countries_all").pack(), style=PRIMARY,
         ),
         InlineKeyboardButton(
             text=texts.button("search", locale),
+            icon_custom_emoji_id=texts.icon("search"),
             callback_data=Nav(to="country_search").pack(), style=PRIMARY,
         ),
     )
@@ -87,7 +89,9 @@ def country_grid(
         builder.row(*nav)
     builder.row(
         InlineKeyboardButton(
-            text=texts.button("home", locale), callback_data=Nav(to="home").pack()
+            text=texts.button("home", locale),
+            icon_custom_emoji_id=texts.icon("home"),
+            callback_data=Nav(to="home").pack(),
         )
     )
     return builder.as_markup()
@@ -125,12 +129,14 @@ def country_services(
         top_row.append(
             InlineKeyboardButton(
                 text=texts.button("show_all", locale),
+                icon_custom_emoji_id=texts.icon("service"),
                 callback_data=Nav(to="services_all").pack(), style=PRIMARY,
             )
         )
     top_row.append(
         InlineKeyboardButton(
             text=texts.button("search", locale),
+            icon_custom_emoji_id=texts.icon("search"),
             callback_data=Nav(to="buy_search").pack(), style=PRIMARY,
         )
     )
@@ -156,10 +162,14 @@ def country_services(
         builder.row(*nav)
     builder.row(
         InlineKeyboardButton(
-            text=texts.button("back", locale), callback_data=Nav(to="buy").pack()
+            text=texts.button("back", locale),
+            icon_custom_emoji_id=texts.icon("back"),
+            callback_data=Nav(to="buy").pack(),
         ),
         InlineKeyboardButton(
-            text=texts.button("home", locale), callback_data=Nav(to="home").pack()
+            text=texts.button("home", locale),
+            icon_custom_emoji_id=texts.icon("home"),
+            callback_data=Nav(to="home").pack(),
         ),
     )
     return builder.as_markup()
@@ -169,7 +179,9 @@ def purchase_confirm(texts: Texts, locale: str | None, token: str) -> InlineKeyb
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
-            text=texts.button("confirm", locale), callback_data=ConfirmCB(token=token).pack(), style=SUCCESS
+            text=texts.button("confirm", locale),
+            icon_custom_emoji_id=texts.icon("confirm"),
+            callback_data=ConfirmCB(token=token).pack(), style=SUCCESS
         )
     )
     builder.row(
@@ -180,7 +192,9 @@ def purchase_confirm(texts: Texts, locale: str | None, token: str) -> InlineKeyb
     )
     builder.row(
         InlineKeyboardButton(
-            text=texts.button("cancel", locale), callback_data=Nav(to="buy").pack(), style=DANGER
+            text=texts.button("cancel", locale),
+            icon_custom_emoji_id=texts.icon("cancel"),
+            callback_data=Nav(to="buy").pack(), style=DANGER
         )
     )
     return builder.as_markup()
@@ -197,22 +211,27 @@ def activation(
     builder.row(
         InlineKeyboardButton(
             text=texts.button("refresh", locale),
+            icon_custom_emoji_id=texts.icon("refresh"),
             callback_data=OrderCB(action="refresh", order_id=order_id).pack(),
         )
     )
     builder.row(
         InlineKeyboardButton(
             text=texts.button("cancel", locale),
+            icon_custom_emoji_id=texts.icon("cancel"),
             callback_data=OrderCB(action="cancel", order_id=order_id).pack(), style=DANGER,
         ),
         InlineKeyboardButton(
             text=texts.button("details", locale),
+            icon_custom_emoji_id=texts.icon("order"),
             callback_data=OrderCB(action="detail", order_id=order_id).pack(),
         ),
     )
     builder.row(
         InlineKeyboardButton(
-            text=texts.button("home", locale), callback_data=Nav(to="home").pack()
+            text=texts.button("home", locale),
+            icon_custom_emoji_id=texts.icon("home"),
+            callback_data=Nav(to="home").pack(),
         )
     )
     return builder.as_markup()
@@ -224,12 +243,14 @@ def cancel_confirm(texts: Texts, locale: str | None, order_id: int) -> InlineKey
     builder.row(
         InlineKeyboardButton(
             text="✅ Yes, cancel",
+            icon_custom_emoji_id=texts.icon("cancel"),
             callback_data=OrderCB(action="cancel_yes", order_id=order_id).pack(), style=DANGER,
         )
     )
     builder.row(
         InlineKeyboardButton(
             text="❌ Keep number",
+            icon_custom_emoji_id=texts.icon("confirm"),
             callback_data=OrderCB(action="detail", order_id=order_id).pack(), style=SUCCESS,
         )
     )

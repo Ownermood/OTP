@@ -26,6 +26,7 @@ from app.bot.middlewares import (
 )
 from app.bot.texts import Texts
 from app.core.config import Settings
+from app.core.emoji_registry import default_icon_ids
 from app.core.logging import get_logger
 from app.database import create_engine, create_session_factory
 from app.providers import build_payment_providers, build_smm_provider, build_sms_provider
@@ -95,6 +96,17 @@ class Application:
         logger.info("app.shutdown_complete")
 
 
+def _resolve_icons(settings: Settings) -> dict[str, str]:
+    """Premium registry defaults, overridable/extendable via CUSTOM_EMOJI.
+
+    The verified extraction is the baseline so a fresh install already looks
+    premium with no configuration; an operator's own CUSTOM_EMOJI entries
+    still win for any role they want to override or roles the registry has
+    no good match for.
+    """
+    return {**default_icon_ids(), **settings.custom_emoji}
+
+
 def build_application(settings: Settings) -> Application:
     """Construct the whole object graph. No I/O beyond opening pools."""
     bot = Bot(
@@ -106,7 +118,7 @@ def build_application(settings: Settings) -> Application:
     engine = create_engine(settings.database_url)
     session_factory = create_session_factory(engine)
 
-    texts = Texts(settings.locales_path, settings.locale, settings.custom_emoji)
+    texts = Texts(settings.locales_path, settings.locale, _resolve_icons(settings))
     pricing = PricingService(settings)
     sms_provider = build_sms_provider(settings)
     payment_providers = build_payment_providers(settings)

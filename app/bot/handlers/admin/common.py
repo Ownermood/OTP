@@ -47,31 +47,44 @@ async def _panel_keyboard(context: Context, role: AdminRole):
     if can(role, "payments"):
         pending_badge = f" ({await context.admin.pending_payment_count()})"
 
+    texts = context.texts
     builder = InlineKeyboardBuilder()
     sections = [
-        ("dashboard", "📊 Dashboard", "dashboard"),
-        ("users", "👥 Users", "search"),
-        ("orders", "📦 Orders", "orders"),
-        ("payments", f"💳 Payments{pending_badge}", "payments"),
-        ("promo", "🎟 Promo Codes", "promo"),
-        ("settings", "📲 Payment QR", "qr"),
-        ("backup", "💾 Backup", "backup"),
-        ("broadcast", "📢 Broadcast", "broadcast"),
-        ("logs", "🧾 Audit Log", "logs"),
+        ("dashboard", "📊 Dashboard", "dashboard", "statistics"),
+        ("users", "👥 Users", "search", "account"),
+        ("orders", "📦 Orders", "orders", "orders"),
+        ("payments", f"💳 Payments{pending_badge}", "payments", "payment"),
+        ("promo", "🎟 Promo Codes", "promo", None),
+        ("settings", "📲 Payment QR", "qr", None),
+        ("backup", "💾 Backup", "backup", None),
+        ("broadcast", "📢 Broadcast", "broadcast", None),
+        ("logs", "🧾 Audit Log", "logs", None),
     ]
     row: list[InlineKeyboardButton] = []
-    for permission, label, action in sections:
+    for permission, label, action, icon_role in sections:
         if not can(role, permission):
             continue
-        row.append(InlineKeyboardButton(text=label, callback_data=AdminCB(action=action).pack()))
+        row.append(
+            InlineKeyboardButton(
+                text=label,
+                icon_custom_emoji_id=texts.icon(icon_role) if icon_role else None,
+                callback_data=AdminCB(action=action).pack(),
+            )
+        )
         if len(row) == 2:
             builder.row(*row)
             row = []
     if row:
         builder.row(*row)
     builder.row(
-        InlineKeyboardButton(text="🔄 Refresh", callback_data=AdminCB(action="panel").pack()),
-        InlineKeyboardButton(text="🏠 Main Menu", callback_data=Nav(to="home").pack()),
+        InlineKeyboardButton(
+            text="🔄 Refresh",
+            icon_custom_emoji_id=texts.icon("refresh"),
+            callback_data=AdminCB(action="panel").pack(),
+        ),
+        InlineKeyboardButton(
+            text="🏠 Main Menu", icon_custom_emoji_id=texts.icon("home"), callback_data=Nav(to="home").pack()
+        ),
     )
     return builder.as_markup()
 

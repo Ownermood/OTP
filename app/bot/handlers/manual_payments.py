@@ -288,7 +288,7 @@ async def _review_caption(context: Context, payment) -> str:
     )
 
 
-def decision_keyboard(payment_id: int, missing_notification: bool = False):
+def decision_keyboard(texts, payment_id: int, missing_notification: bool = False):
     """Approve/Decline/[Resend], shared by the fresh channel post and the
     admin-panel detail screen -- one place decides what these buttons are.
 
@@ -301,11 +301,13 @@ def decision_keyboard(payment_id: int, missing_notification: bool = False):
     builder.row(
         InlineKeyboardButton(
             text="✅ Approve",
+            icon_custom_emoji_id=texts.icon("confirm"),
             callback_data=ManualCB(action="approve_confirm", payment_id=payment_id).pack(),
             style=SUCCESS,
         ),
         InlineKeyboardButton(
             text="❌ Decline",
+            icon_custom_emoji_id=texts.icon("cancel"),
             callback_data=ManualCB(action="decline", payment_id=payment_id).pack(),
             style=DANGER,
         ),
@@ -333,7 +335,7 @@ async def post_for_review(
     already committed to the database before this is ever called.
     """
     caption = await _review_caption(context, payment)
-    keyboard = decision_keyboard(payment.id)
+    keyboard = decision_keyboard(context.texts, payment.id)
     channel = context.settings.manual_payment_channel_id
 
     posted = None
