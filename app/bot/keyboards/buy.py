@@ -70,7 +70,7 @@ def country_grid(
         InlineKeyboardButton(
             text=texts.button("search", locale),
             icon_custom_emoji_id=texts.icon("search"),
-            callback_data=Nav(to="country_search").pack(), style=PRIMARY,
+            callback_data=Nav(to="country_search").pack(),
         ),
     )
     for chunk in _chunks(list(page.items), GRID_COLUMNS):
@@ -137,7 +137,7 @@ def country_services(
         InlineKeyboardButton(
             text=texts.button("search", locale),
             icon_custom_emoji_id=texts.icon("search"),
-            callback_data=Nav(to="buy_search").pack(), style=PRIMARY,
+            callback_data=Nav(to="buy_search").pack(),
         )
     )
     builder.row(*top_row)
@@ -188,6 +188,7 @@ def purchase_confirm(texts: Texts, locale: str | None, token: str) -> InlineKeyb
         InlineKeyboardButton(
             text=texts.button("add_favorite", locale),
             callback_data=FavoriteCB(action="add_token", favorite_id=0).pack(),
+            style=PRIMARY,
         )
     )
     builder.row(

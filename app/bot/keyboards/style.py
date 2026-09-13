@@ -2,25 +2,37 @@
 
 Bot API 9.4 added a ``style`` field to keyboard buttons, so colour is a real
 property of the button rather than something faked with emoji in the label.
-Three styles exist -- ``success`` (green), ``danger`` (red) and ``primary``
-(blue) -- and omitting it leaves the client's default.
+Telegram accepts exactly three values -- ``success`` (green), ``danger``
+(red) and ``primary`` (blue). There is no fourth "secondary" value to send:
+"secondary" here means *omitting* ``style`` entirely, which leaves the
+client's own neutral default -- sending an invented string is not an option.
 
 Styles are assigned by *meaning*, not by taste, so the same colour always says
 the same thing:
 
-* **success** -- the single forward/confirm action a screen exists for: Buy,
-  Confirm, Pay Now, Approve, Buy Now.
-* **danger** -- a destructive or irreversible decision: cancelling an
-  activation, "Yes, cancel", declining a payment, removing a favourite,
-  transferring balance, banning.
-* **primary** -- navigation and money-neutral secondary actions that lead
-  somewhere: Add Balance, Check Payment, Show All, Search, Track.
-* **unstyled** -- inert or incidental, and plain balance/wallet navigation:
-  page counters, Back, Home, Balance, help.
+* **success** -- buy / confirm / pay / approve / send / enable: the single
+  forward action a screen exists for.
+* **danger** -- cancel / reject / delete / disable / ban, and nothing else.
+  Never used for a merely destructive-sounding label that actually loses
+  nothing (e.g. backing out of a confirmation prompt before anything happened).
+* **primary** -- everything else that is a real, deliberate action: opening a
+  menu section, a fixed navigation entry, adjusting a balance, creating
+  something. The broad default for "this button does something and isn't one
+  of the other three".
+* **secondary (== no style set)** -- back, home, search, info/help, filter,
+  pagination, copy, refresh, resend. Also: a dynamic list of records to pick
+  from (order rows, payment rows, user search results, service/category
+  tiles, country selection) -- styling every row in a paginated list the same
+  colour as a real call-to-action drowns the one action that matters.
 
 Add Balance is *primary*, not danger: topping up is money arriving, and a red
 button on the one action that funds every purchase reads as a warning against
 doing it. Balance navigation carries no style at all.
+
+An enable/disable toggle is styled by the action its *current label* performs,
+not by how disruptive that action is in practice: a button reading "Enable X"
+is success, one reading "Disable X" is danger, even where enabling is in fact
+the more disruptive choice (maintenance mode is exactly this case).
 
 Never more than one ``success`` on a screen. If everything is highlighted,
 nothing is.

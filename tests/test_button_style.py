@@ -298,6 +298,64 @@ def test_a_missing_icon_role_degrades_to_no_icon_not_a_crash(texts):
     assert all(b.icon_custom_emoji_id is None for b in buttons)  # plain `texts` has no icons at all
 
 
+def test_no_grey_default_buttons_remain_on_the_main_menu_screens(texts):
+    """Every fixed menu entry gets an explicit colour; only back/home/search/
+    info/filter/pagination/copy/refresh/resend stay unstyled ("secondary")."""
+    secondary_words = ("back", "home", "main menu", "notifications", "support")
+    screens = [
+        keyboards.wallet(texts, "en", True),
+        keyboards.profile(texts, "en"),
+    ]
+    for markup in screens:
+        for btn in _flat(markup):
+            label = btn.text.lower()
+            if any(word in label for word in secondary_words):
+                continue
+            assert btn.style is not None, f"{btn.text!r} has no explicit style"
+
+
+def test_the_notifications_toggle_is_not_left_grey(texts):
+    """Regression: settings_menu's toggle and language picker had no style at
+    all until this pass."""
+    from app.bot.keyboards.style import PRIMARY
+
+    markup = keyboards.settings_menu(texts, "en", True, ["en", "hi"])
+    buttons = _flat(markup)
+
+    toggle = next(b for b in buttons if "notifications" in b.text.lower())
+    assert toggle.style == PRIMARY
+
+    language = next(b for b in buttons if b.text == "EN")
+    assert language.style == PRIMARY
+
+
+async def test_admin_panel_sections_are_all_primary_not_grey():
+    """The panel's own section buttons (Dashboard, Users, ...) had never been
+    coloured at all -- they are fixed navigation entries, not a dynamic list."""
+    from types import SimpleNamespace
+
+    from app.bot.handlers.admin.common import _panel_keyboard
+    from app.bot.keyboards.style import PRIMARY
+    from app.bot.texts import Texts
+    from app.core.config import ROOT_DIR
+    from app.core.constants import AdminRole
+    from app.core.emoji_registry import default_icon_ids
+
+    class _StubAdmin:
+        async def pending_payment_count(self):
+            return 0
+
+    context = SimpleNamespace(
+        texts=Texts(ROOT_DIR / "locales", "en", default_icon_ids()), admin=_StubAdmin()
+    )
+    markup = await _panel_keyboard(context, AdminRole.OWNER)
+    buttons = _flat(markup)
+    sections = [b for b in buttons if b.text not in ("🔄 Refresh", "🏠 Main Menu")]
+    assert sections, "expected at least one section button"
+    for b in sections:
+        assert b.style == PRIMARY, f"{b.text!r} is not styled primary"
+
+
 def test_manual_review_decision_buttons_carry_premium_icons(premium_texts):
     from app.bot.handlers.manual_payments import decision_keyboard
     from app.core.emoji_registry import PREMIUM_EMOJI

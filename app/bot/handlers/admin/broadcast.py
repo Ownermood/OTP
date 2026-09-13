@@ -16,7 +16,7 @@ from app.bot.handlers.admin.common import (
     router,
 )
 from app.bot.handlers.common import build_context, show, toast
-from app.bot.keyboards.style import SUCCESS
+from app.bot.keyboards.style import PRIMARY, SUCCESS
 from app.bot.states import AdminStates
 from app.bot.texts import Safe
 
@@ -30,7 +30,9 @@ async def broadcast_audience(query: CallbackQuery, **data):
     for key, label in AUDIENCES.items():
         builder.row(
             InlineKeyboardButton(
-                text=label, callback_data=AdminCB(action="broadcast_to", value=key).pack()
+                text=label,
+                callback_data=AdminCB(action="broadcast_to", value=key).pack(),
+                style=PRIMARY,
             )
         )
     builder.row(_back_button())

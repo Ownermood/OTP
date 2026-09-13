@@ -43,17 +43,24 @@ def profile(texts: Texts, locale: str | None) -> InlineKeyboardMarkup:
             text=texts.button("referral", locale),
             icon_custom_emoji_id=texts.icon("referral"),
             callback_data=Nav(to="referral").pack(),
+            style=PRIMARY,
         ),
         InlineKeyboardButton(
-            text=texts.button("favorites", locale), callback_data=Nav(to="favorites").pack()
+            text=texts.button("favorites", locale),
+            callback_data=Nav(to="favorites").pack(),
+            style=PRIMARY,
         ),
     )
     builder.row(
         InlineKeyboardButton(
-            text=texts.button("promo", locale), callback_data=WalletCB(action="promo").pack()
+            text=texts.button("promo", locale),
+            callback_data=WalletCB(action="promo").pack(),
+            style=PRIMARY,
         ),
         InlineKeyboardButton(
-            text=texts.button("settings", locale), callback_data=Nav(to="settings").pack()
+            text=texts.button("settings", locale),
+            callback_data=Nav(to="settings").pack(),
+            style=PRIMARY,
         ),
     )
     builder.row(
@@ -78,10 +85,14 @@ def wallet(texts: Texts, locale: str | None, transfer_enabled: bool) -> InlineKe
     )
     builder.row(
         InlineKeyboardButton(
-            text=texts.button("history", locale), callback_data=WalletCB(action="history").pack()
+            text=texts.button("history", locale),
+            callback_data=WalletCB(action="history").pack(),
+            style=PRIMARY,
         ),
         InlineKeyboardButton(
-            text=texts.button("promo", locale), callback_data=WalletCB(action="promo").pack()
+            text=texts.button("promo", locale),
+            callback_data=WalletCB(action="promo").pack(),
+            style=PRIMARY,
         ),
     )
     if transfer_enabled:
@@ -89,6 +100,7 @@ def wallet(texts: Texts, locale: str | None, transfer_enabled: bool) -> InlineKe
             InlineKeyboardButton(
                 text=texts.button("transfer", locale),
                 callback_data=WalletCB(action="transfer").pack(),
+                style=PRIMARY,
             )
         )
     builder.row(
@@ -111,6 +123,7 @@ def payment_methods(
                 text=label,
                 icon_custom_emoji_id=texts.icon("payment"),
                 callback_data=PaymentCB(action="method", provider=name).pack(),
+                style=PRIMARY,
             )
         )
     builder.row(
@@ -132,6 +145,7 @@ def amount_prompt(
         InlineKeyboardButton(
             text=format_money(to_minor(major), currency_symbol),
             callback_data=PaymentCB(action=action, provider=provider).pack(),
+            style=PRIMARY,
         )
         for action, major in QUICK_DEPOSIT_AMOUNTS.items()
     ]
@@ -171,7 +185,7 @@ def invoice(
         InlineKeyboardButton(
             text=texts.button("check_payment", locale),
             icon_custom_emoji_id=texts.icon("refresh"),
-            callback_data=PaymentCB(action="check", payment_id=payment_id).pack(), style=PRIMARY,
+            callback_data=PaymentCB(action="check", payment_id=payment_id).pack(),
         )
     )
     builder.row(
@@ -224,6 +238,7 @@ def referral(
             text=texts.button("share", locale),
             icon_custom_emoji_id=texts.icon("referral"),
             url=share_url,
+            style=PRIMARY,
         )
     )
     if link:
@@ -231,7 +246,9 @@ def referral(
         builder.row(button(texts.button("copy_link", locale), copy=link))
     builder.row(
         InlineKeyboardButton(
-            text=texts.button("history", locale), callback_data=Nav(to="referral_history").pack()
+            text=texts.button("history", locale),
+            callback_data=Nav(to="referral_history").pack(),
+            style=PRIMARY,
         )
     )
     builder.row(
@@ -252,6 +269,7 @@ def settings_menu(
         InlineKeyboardButton(
             text=("🔔 Notifications: ON" if notifications else "🔕 Notifications: OFF"),
             callback_data=SettingsCB(action="notifications").pack(),
+            style=PRIMARY,
         )
     )
     if len(locales) > 1:
@@ -260,6 +278,7 @@ def settings_menu(
                 InlineKeyboardButton(
                     text=code.upper(),
                     callback_data=SettingsCB(action="language", value=code).pack(),
+                    style=PRIMARY,
                 )
                 for code in locales
             ]

@@ -41,7 +41,7 @@ def smm_categories(
         InlineKeyboardButton(
             text=texts.button("search", locale),
             icon_custom_emoji_id=texts.icon("search"),
-            callback_data=SmmCB(action="search").pack(), style=PRIMARY
+            callback_data=SmmCB(action="search").pack(),
         ),
     )
     for category, count in categories:
@@ -102,7 +102,7 @@ def smm_order(texts: Texts, locale: str | None, order_id: int) -> InlineKeyboard
         InlineKeyboardButton(
             text="🔄 Track Status",
             icon_custom_emoji_id=texts.icon("refresh"),
-            callback_data=SmmCB(action="track", value=str(order_id)).pack(), style=PRIMARY
+            callback_data=SmmCB(action="track", value=str(order_id)).pack(),
         )
     )
     builder.row(

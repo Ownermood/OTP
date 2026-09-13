@@ -28,7 +28,7 @@ from app.core.config import Settings
 from app.core.constants import ROLE_PERMISSIONS, AdminRole, PaymentStatus
 from app.core.exceptions import (
     AccessDeniedError,
-    DuplicateOperationError,
+    DuplicateUtrError,
     ValidationError,
 )
 from app.core.logging import get_logger
@@ -122,7 +122,7 @@ class ManualPaymentService:
                 )
         except IntegrityError as exc:
             logger.warning("manual_payment.duplicate_utr", user_id=user_id, utr=utr)
-            raise DuplicateOperationError("this reference was already submitted") from exc
+            raise DuplicateUtrError("this reference was already submitted") from exc
 
         await self._session.commit()
         logger.info(

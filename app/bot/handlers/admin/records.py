@@ -83,7 +83,6 @@ async def pending_deposits(query: CallbackQuery, **data):
                     text="📤 Resend",
                     icon_custom_emoji_id=context.texts.icon("refresh"),
                     callback_data=ManualCB(action="resend", payment_id=payment.id).pack(),
-                    style=PRIMARY,
                 )
             )
         builder.row(*row)

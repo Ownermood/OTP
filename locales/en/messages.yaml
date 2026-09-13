@@ -763,6 +763,10 @@ errors:
   deposit_above_maximum: "⚠️ The maximum deposit is <b>{maximum}</b>. Please enter a smaller amount."
   promo_invalid: "❌ Invalid or expired promo code."
   duplicate_operation: "⏳ That is already being processed. Please wait."
+  duplicate_utr: |
+    ⚠️ <b>This reference has already been submitted.</b>
+
+    Re-sending the same UTR does not create a new request -- it never reaches an admin. If you're still waiting on that earlier submission, check <b>Balance → Payment History</b>, or contact support with the reference number.
   price_changed: |
     💱 <b>Price changed</b>
 

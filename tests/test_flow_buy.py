@@ -33,6 +33,29 @@ async def test_buy_flow_end_to_end(harness, session_factory):
     assert copy_button.copy_text.text.startswith("+91")
 
 
+async def test_country_selection_buttons_are_left_completely_unstyled(harness, session_factory):
+    """Explicit requirement: country-selection buttons are never coloured or
+    iconed, regardless of what the rest of the button-style audit does."""
+    from app.bot.keyboards.style import PRIMARY
+
+    await harness.send("/start")
+    await fund(session_factory, harness.user_id, 10_000)
+    await harness.tap("Buy Number")
+
+    buttons = [b for row in harness.screen.markup.inline_keyboard for b in row]
+    country_buttons = [b for b in buttons if "🇮🇳" in b.text or "+91" in b.text]
+    assert country_buttons, "expected at least one country button on screen"
+    for b in country_buttons:
+        assert b.style is None
+        assert b.icon_custom_emoji_id is None
+
+    show_all = next(b for b in buttons if "show all" in b.text.lower())
+    assert show_all.style == PRIMARY
+
+    search = next(b for b in buttons if "search" in b.text.lower())
+    assert search.style is None  # secondary: no such Telegram style exists, so unstyled
+
+
 async def test_buying_debits_exactly_once(harness, session_factory):
     from app.services.wallet import WalletService
 

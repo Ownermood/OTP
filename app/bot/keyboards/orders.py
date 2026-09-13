@@ -14,7 +14,7 @@ from app.bot.callbacks import (
     WalletCB,
 )
 from app.bot.keyboards.common import _nav_row
-from app.bot.keyboards.style import DANGER, SUCCESS, button
+from app.bot.keyboards.style import DANGER, PRIMARY, SUCCESS, button
 from app.bot.texts import Texts
 from app.core.money import format_money
 from app.utils.formatting import order_icon, truncate
@@ -28,17 +28,23 @@ def orders_root(texts: Texts, locale: str | None, smm_enabled: bool) -> InlineKe
             text="📱 SMS Activations",
             icon_custom_emoji_id=texts.icon("orders"),
             callback_data=OrdersListCB(kind="activation").pack(),
+            style=PRIMARY,
         )
     )
     if smm_enabled:
         builder.row(
-            InlineKeyboardButton(text="📈 SMM", callback_data=OrdersListCB(kind="smm").pack())
+            InlineKeyboardButton(
+                text="📈 SMM",
+                callback_data=OrdersListCB(kind="smm").pack(),
+                style=PRIMARY,
+            )
         )
     builder.row(
         InlineKeyboardButton(
             text="💳 Payments",
             icon_custom_emoji_id=texts.icon("payment"),
             callback_data=WalletCB(action="history").pack(),
+            style=PRIMARY,
         )
     )
     builder.row(

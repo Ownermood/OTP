@@ -222,6 +222,10 @@ async def test_declining_asks_for_a_reason_and_credits_nothing(manual_harness):
 
 
 async def test_a_reused_reference_is_rejected_at_submission(manual_harness):
+    """Regression: the generic "already being processed" wording read like a
+    fresh submission was accepted and awaiting review, when actually nothing
+    new was created and no admin was ever going to see it. The message must
+    say plainly that this reference was already used before."""
     h = manual_harness
     await _submit_manual(h)
 
@@ -234,7 +238,8 @@ async def test_a_reused_reference_is_rejected_at_submission(manual_harness):
     await h.send("402199881122")  # the same payment, claimed again
     await h.send_photo("screenshot-1")
 
-    assert "already being processed" in h.text
+    assert "already been submitted" in h.text
+    assert "already being processed" not in h.text
     assert len(h.posted_to(REVIEW_CHANNEL)) == 0
 
 

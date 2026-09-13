@@ -14,6 +14,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from app.bot.callbacks import AdminCB, Nav
 from app.bot.handlers.common import Context, build_context, show
+from app.bot.keyboards.style import PRIMARY
 from app.core.constants import AdminRole
 from app.core.exceptions import AccessDeniedError
 from app.core.logging import get_logger
@@ -69,6 +70,7 @@ async def _panel_keyboard(context: Context, role: AdminRole):
                 text=label,
                 icon_custom_emoji_id=texts.icon(icon_role) if icon_role else None,
                 callback_data=AdminCB(action=action).pack(),
+                style=PRIMARY,
             )
         )
         if len(row) == 2:

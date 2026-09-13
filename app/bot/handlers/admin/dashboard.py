@@ -104,7 +104,11 @@ async def health(query: CallbackQuery, **data):
         InlineKeyboardButton(
             text=("✅ Disable maintenance" if maintenance else "🔧 Enable maintenance"),
             callback_data=AdminCB(action="maintenance", value=str(not maintenance).lower()).pack(),
-            style=SUCCESS if maintenance else DANGER,
+            # Styled by what the label's verb does, not by which state is
+            # riskier: "Enable ..." is success, "Disable ..." is danger --
+            # same rule as every other enable/disable toggle, even though
+            # enabling maintenance is in fact the more disruptive choice.
+            style=DANGER if maintenance else SUCCESS,
         )
     )
     builder.row(_back_button())

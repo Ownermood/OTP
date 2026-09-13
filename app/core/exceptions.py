@@ -99,6 +99,19 @@ class DuplicateOperationError(BotError):
     message_key = "errors.duplicate_operation"
 
 
+class DuplicateUtrError(DuplicateOperationError):
+    """A manual-deposit reference was already submitted before.
+
+    Distinct from the generic double-click case: the base message ("already
+    being processed, please wait") reads as if a fresh request is in flight,
+    when in fact nothing new was created here at all -- reusing the base
+    message left a submitter thinking their resubmission was accepted and
+    awaiting review, with no way to tell it never reached anyone.
+    """
+
+    message_key = "errors.duplicate_utr"
+
+
 class StalePriceError(BotError):
     """The price moved between showing the quote and confirming it."""
 

@@ -208,10 +208,11 @@ async def test_maintenance_mode_blocks_users_but_not_admins(admin_harness, harne
     assert "Maintenance: <b>ON</b>" in admin_harness.text
 
 
-async def test_the_maintenance_toggle_is_danger_only_while_turning_it_on(admin_harness):
-    """Enabling maintenance blocks every user, so it is the disruptive choice;
-    disabling it restores normal service and is the safe one -- same red/green
-    logic as any other ban/unban-shaped toggle."""
+async def test_the_maintenance_toggle_is_coloured_by_its_own_verb(admin_harness):
+    """Styled by what the button's label says it does -- "Enable ..." is
+    success, "Disable ..." is danger -- the same rule as any other
+    enable/disable toggle, even though enabling maintenance is in fact the
+    more disruptive of the two in practice."""
     from app.bot.keyboards.style import DANGER, SUCCESS
 
     h = admin_harness
@@ -226,7 +227,8 @@ async def test_the_maintenance_toggle_is_danger_only_while_turning_it_on(admin_h
         for b in row
         if "maintenance" in b.text.lower()
     )
-    assert toggle.style == DANGER  # currently off: this button turns it on
+    assert "enable" in toggle.text.lower()
+    assert toggle.style == SUCCESS
 
     await h.tap("Enable maintenance")
     toggle = next(
@@ -235,7 +237,8 @@ async def test_the_maintenance_toggle_is_danger_only_while_turning_it_on(admin_h
         for b in row
         if "maintenance" in b.text.lower()
     )
-    assert toggle.style == SUCCESS  # currently on: this button turns it off
+    assert "disable" in toggle.text.lower()
+    assert toggle.style == DANGER
 
     # The admin still gets through.
     await admin_harness.send("/start")
