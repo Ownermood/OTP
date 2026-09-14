@@ -53,6 +53,9 @@ class OrderKind(StrEnum):
 
     ACTIVATION = "activation"
     SMM = "smm"
+    #: A TG-Lion Telegram number -- its own product, not an ACTIVATION: no
+    #: service dimension, no provider-side cancel, its own worker.
+    TELEGRAM = "telegram"
 
 
 class AdminRole(StrEnum):

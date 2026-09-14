@@ -61,7 +61,9 @@ async def cmd_orders(message: Message, state: FSMContext, **data) -> None:
     await show(
         message,
         context.text("orders.root"),
-        keyboards.orders_root(context.texts, context.locale, context.smm.enabled),
+        keyboards.orders_root(
+            context.texts, context.locale, context.smm.enabled, context.telegram_numbers.enabled
+        ),
     )
 
 
@@ -101,7 +103,9 @@ async def cmd_cancel(message: Message, state: FSMContext, **data) -> None:
     await show(
         message,
         context.text("common.cancelled"),
-        keyboards.main_menu(context.texts, context.locale, context.smm.enabled),
+        keyboards.main_menu(
+            context.texts, context.locale, context.smm.enabled, context.telegram_numbers.enabled
+        ),
     )
 
 
@@ -112,5 +116,7 @@ async def catch_all(message: Message, **data) -> None:
     await show(
         message,
         context.text("fallback"),
-        keyboards.main_menu(context.texts, context.locale, context.smm.enabled),
+        keyboards.main_menu(
+            context.texts, context.locale, context.smm.enabled, context.telegram_numbers.enabled
+        ),
     )

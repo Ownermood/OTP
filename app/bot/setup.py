@@ -29,8 +29,14 @@ from app.core.config import Settings
 from app.core.emoji_registry import default_icon_ids
 from app.core.logging import get_logger
 from app.database import create_engine, create_session_factory
-from app.providers import build_payment_providers, build_smm_provider, build_sms_provider
+from app.providers import (
+    build_payment_providers,
+    build_smm_provider,
+    build_sms_provider,
+    build_tg_lion_provider,
+)
 from app.providers.base import BasePaymentProvider, BaseSMMProvider, BaseSMSProvider
+from app.providers.tg_lion import TgLionProvider
 from app.services.backup import BackupService
 from app.services.catalog import CatalogService
 from app.services.notifications import NotificationService
@@ -42,6 +48,7 @@ from app.services.workers import (
     PaymentWorker,
     SmmWorker,
     SmsWorker,
+    TgLionWorker,
 )
 from app.utils.cache import TTLCache
 from app.utils.tokens import TokenStore
@@ -80,6 +87,7 @@ class Application:
     sms_provider: BaseSMSProvider
     payment_providers: dict[str, BasePaymentProvider]
     smm_provider: BaseSMMProvider | None
+    tg_lion_provider: TgLionProvider | None
     notifications: NotificationService
     workers: list = field(default_factory=list)
 
@@ -91,6 +99,8 @@ class Application:
             await provider.close()
         if self.smm_provider is not None:
             await self.smm_provider.close()
+        if self.tg_lion_provider is not None:
+            await self.tg_lion_provider.close()
         await self.bot.session.close()
         await self.engine.dispose()
         logger.info("app.shutdown_complete")
@@ -123,10 +133,16 @@ def build_application(settings: Settings) -> Application:
     sms_provider = build_sms_provider(settings)
     payment_providers = build_payment_providers(settings)
     smm_provider = build_smm_provider(settings)
+    tg_lion_provider = build_tg_lion_provider(settings)
     catalog = CatalogService(sms_provider, pricing, settings)
     smm_cache = (
         TTLCache(smm_provider.get_services, settings.cache_ttl_seconds)
         if smm_provider is not None
+        else None
+    )
+    tg_lion_cache = (
+        TTLCache(tg_lion_provider.get_countries, settings.cache_ttl_seconds)
+        if tg_lion_provider is not None
         else None
     )
     notifications = NotificationService(bot, session_factory, settings.admin_ids)
@@ -143,6 +159,8 @@ def build_application(settings: Settings) -> Application:
         payment_providers=payment_providers,
         smm_provider=smm_provider,
         smm_cache=smm_cache,
+        tg_lion_provider=tg_lion_provider,
+        tg_lion_cache=tg_lion_cache,
         notifications=notifications,
         tokens=TokenStore(),
     )
@@ -161,6 +179,7 @@ def build_application(settings: Settings) -> Application:
         sms_provider=sms_provider,
         payment_providers=payment_providers,
         smm_provider=smm_provider,
+        tg_lion_provider=tg_lion_provider,
         notifications=notifications,
     )
     application.workers = _build_workers(application, texts)
@@ -245,6 +264,12 @@ def _build_workers(app: Application, texts: Texts) -> list:
     if app.smm_provider is not None:
         workers.append(
             SmmWorker(app.session_factory, app.smm_provider, app.notifications, settings, render)
+        )
+    if app.tg_lion_provider is not None:
+        workers.append(
+            TgLionWorker(
+                app.session_factory, app.tg_lion_provider, app.notifications, settings, render
+            )
         )
     if settings.backup_enabled:
         workers.append(

@@ -16,11 +16,12 @@ from app.providers.registry import (
     build_payment_providers,
     build_smm_provider,
     build_sms_provider,
+    build_tg_lion_provider,
 )
 
 __all__ = [
     "Activation", "ActivationStatus", "BasePaymentProvider", "BaseSMMProvider",
     "BaseSMSProvider", "Invoice", "SmmOrderStatus",
     "SmmService", "SmsCountry", "SmsService", "build_payment_providers",
-    "build_smm_provider", "build_sms_provider",
+    "build_smm_provider", "build_sms_provider", "build_tg_lion_provider",
 ]

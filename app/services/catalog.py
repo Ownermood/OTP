@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from app.core.config import Settings
-from app.core.countries import dial_code
+from app.core.countries import matches_search
 from app.core.logging import get_logger
 from app.providers.base import (
     BaseSMSProvider,
@@ -94,11 +94,11 @@ class CatalogService:
         ]
 
     async def search_countries(self, service_code: str, query: str) -> list[PricedCountry]:
-        needle = query.lower()
+        needle = query.lower().lstrip("+")
         return [
             priced
             for priced in await self.countries(service_code)
-            if needle in priced.country.name.lower() or needle == str(priced.country.id)
+            if needle == str(priced.country.id) or matches_search(priced.country.name, needle)
         ]
 
     async def find_country(self, service_code: str, country_id: int) -> PricedCountry | None:
@@ -120,9 +120,7 @@ class CatalogService:
         return [
             priced
             for priced in await self.all_countries()
-            if needle in priced.country.name.lower()
-            or needle == str(priced.country.id)
-            or needle in dial_code(priced.country.name).lstrip("+")
+            if needle == str(priced.country.id) or matches_search(priced.country.name, needle)
         ]
 
     async def find_any_country(self, country_id: int) -> PricedCountry | None:

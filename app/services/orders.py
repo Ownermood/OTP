@@ -150,10 +150,14 @@ class OrderService:
     async def cancel(self, order_id: int, user_id: int) -> Order:
         """Cancel an SMS order the user owns and refund it, exactly once.
 
-        Sending an SMM panel id to ``cancel_activation`` would release the
-        wrong thing upstream while still refunding the user, so the kind is
-        checked here rather than trusted from whichever keyboard produced the
-        callback.
+        Sending an SMM panel id or a TG-Lion phone number to this provider's
+        ``cancel_activation`` would release the wrong thing upstream (or
+        error) while still refunding the user, so the kind is checked here
+        rather than trusted from whichever keyboard produced the callback.
+        Every other kind of order goes through its own service instead:
+        :class:`~app.services.smm.SmmService` for SMM,
+        :class:`~app.services.telegram_numbers.TelegramNumberService` for
+        TG-Lion.
         """
         order = await self._orders.get_owned(order_id, user_id)
         if order is None:
@@ -162,6 +166,8 @@ class OrderService:
             # SMM delivery has already started at the panel; there is nothing
             # to release, and refunding a delivered order is a straight loss.
             raise ValidationError("SMM orders cannot be cancelled")
+        if OrderKind(order.kind) is not OrderKind.ACTIVATION:
+            raise ValidationError(f"{order.kind} orders are not cancelled through OrderService")
         if OrderStatus(order.status).is_final:
             raise DuplicateOperationError("order already closed")
 

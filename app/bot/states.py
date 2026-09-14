@@ -44,6 +44,10 @@ class SmmStates(StatesGroup):
     entering_quantity = State()
 
 
+class TgLionStates(StatesGroup):
+    searching_country = State()
+
+
 class AdminStates(StatesGroup):
     searching = State()
     entering_balance = State()

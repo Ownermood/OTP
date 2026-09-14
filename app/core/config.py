@@ -96,6 +96,20 @@ class Settings(BaseSettings):
     smm_markup_percent: Decimal = Decimal("20")
     smm_poll_interval: int = 60
 
+    # --- TG-Lion (dedicated Telegram-number provider) --------------------
+    #: Off by default; a fresh install works without it configured. This is
+    #: a separate product from the SMS_PROVIDER catalogue above -- see
+    #: app/providers/tg_lion.py for why it is not just another SMS_PROVIDER.
+    tg_lion_enabled: bool = False
+    tg_lion_api_key: str = ""
+    tg_lion_your_id: str = ""
+    tg_lion_base_url: str = "https://TG-Lion.net"
+    tg_lion_poll_interval: int = 10
+    #: TG-Lion sets no activation deadline itself, so this is entirely our
+    #: own safety net -- without it, a number nobody ever gets a code for
+    #: would stay charged forever.
+    tg_lion_timeout: int = 900
+
     # --- Payments -------------------------------------------------------
     cryptobot_enabled: bool = False
     cryptobot_api_token: str = ""
@@ -247,6 +261,10 @@ class Settings(BaseSettings):
             raise ValueError("CRYPTOBOT_API_TOKEN is required when CRYPTOBOT_ENABLED=true")
         if self.smm_enabled and not (self.smm_api_url and self.smm_api_key):
             raise ValueError("SMM_API_URL and SMM_API_KEY are required when SMM_ENABLED=true")
+        if self.tg_lion_enabled and not (self.tg_lion_api_key and self.tg_lion_your_id):
+            raise ValueError(
+                "TG_LION_API_KEY and TG_LION_YOUR_ID are required when TG_LION_ENABLED=true"
+            )
         if not self.admin_ids:
             raise ValueError("ADMIN_IDS must contain at least one Telegram user id")
         if self.min_deposit > self.max_deposit:

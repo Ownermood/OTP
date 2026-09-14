@@ -170,6 +170,21 @@ async def test_a_country_can_be_found_by_dial_code(harness):
     assert any("🇮🇳" in b for b in harness.buttons())
 
 
+async def test_a_country_can_be_found_by_iso_code(harness):
+    """Short name (alpha-2) and ISO (alpha-3) codes both find the country."""
+    await harness.send("/start")
+    await harness.tap("Buy Number")
+    await harness.tap("Search")
+    await harness.send("in")
+    assert any("🇮🇳" in b for b in harness.buttons())
+
+    await harness.send("/start")
+    await harness.tap("Buy Number")
+    await harness.tap("Search")
+    await harness.send("ind")
+    assert any("🇮🇳" in b for b in harness.buttons())
+
+
 async def test_service_search_happens_inside_a_country(harness):
     await harness.send("/start")
     await harness.tap("Buy Number")

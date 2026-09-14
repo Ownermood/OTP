@@ -43,7 +43,9 @@ def _chunks(items: list, size: int) -> list[list]:
     return [items[index : index + size] for index in range(0, len(items), size)]
 
 
-def main_menu(texts: Texts, locale: str | None, smm_enabled: bool) -> InlineKeyboardMarkup:
+def main_menu(
+    texts: Texts, locale: str | None, smm_enabled: bool, tg_lion_enabled: bool = False
+) -> InlineKeyboardMarkup:
     """The home screen: one headline action, the core pair below it, then
     secondary/utility rows kept visually and physically separate from the
     primary group -- not a dense, undifferentiated grid."""
@@ -76,6 +78,15 @@ def main_menu(texts: Texts, locale: str | None, smm_enabled: bool) -> InlineKeyb
                 text=texts.button("smm", locale),
                 icon_custom_emoji_id=texts.icon("smm"),
                 callback_data=Nav(to="smm").pack(),
+                style=PRIMARY,
+            )
+        )
+    if tg_lion_enabled:
+        builder.row(
+            InlineKeyboardButton(
+                text=texts.button("telegram_numbers", locale),
+                icon_custom_emoji_id=texts.icon("phone"),
+                callback_data=Nav(to="telegram").pack(),
                 style=PRIMARY,
             )
         )

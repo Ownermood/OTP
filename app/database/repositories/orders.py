@@ -68,6 +68,21 @@ class OrderRepository(BaseRepository):
         )
         return result.scalars().all()
 
+    async def has_open_order_of_kind(self, user_id: int, kind: OrderKind) -> bool:
+        """True when the user has any unresolved order of this kind.
+
+        Used where there is no service/country pair to key a more specific
+        duplicate check on -- a TG-Lion Telegram number, for instance.
+        """
+        result = await self.session.execute(
+            select(func.count(Order.id)).where(
+                Order.user_id == user_id,
+                Order.kind == kind,
+                Order.status.in_([OrderStatus.PENDING, OrderStatus.PROCESSING]),
+            )
+        )
+        return bool(result.scalar_one())
+
     async def has_open_order(self, user_id: int, service_code: str, country_id: int | None) -> bool:
         """True when the user already has an identical activation in flight.
 

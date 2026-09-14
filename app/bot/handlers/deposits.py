@@ -171,7 +171,9 @@ async def stars_paid(message: Message, **data):
             amount=context.money(settlement.payment.amount),
             balance=context.money(settlement.balance_after),
         ),
-        reply_markup=keyboards.main_menu(context.texts, context.locale, context.smm.enabled),
+        reply_markup=keyboards.main_menu(
+            context.texts, context.locale, context.smm.enabled, context.telegram_numbers.enabled
+        ),
     )
 
 

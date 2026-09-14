@@ -82,6 +82,17 @@ class SmmCB(CallbackData, prefix="smm"):
     page: int = 1
 
 
+class TgLionCB(CallbackData, prefix="tgl"):
+    """Browse/buy a TG-Lion Telegram number. A country code carries no
+    authority -- like ``CountryCB``, it names a catalogue entry, not a price.
+    Once a number exists, its order is acted on through the ordinary
+    ``OrderCB`` (see :mod:`app.bot.handlers.tg_lion`)."""
+
+    action: str
+    country: str | None = None
+    page: int = 1
+
+
 class TransferCB(CallbackData, prefix="trf"):
     """Confirm a balance transfer.
 

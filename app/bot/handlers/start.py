@@ -49,7 +49,9 @@ async def noop(query: CallbackQuery) -> None:
 
 def _home_screen(context, is_new: bool):
     """Welcome text for a first visit, balance-led text on every return."""
-    keyboard = keyboards.main_menu(context.texts, context.locale, context.smm.enabled)
+    keyboard = keyboards.main_menu(
+        context.texts, context.locale, context.smm.enabled, context.telegram_numbers.enabled
+    )
     if is_new:
         smm_line = Safe(context.text("start.smm_line")) if context.smm.enabled else ""
         text = context.text(

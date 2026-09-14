@@ -102,7 +102,12 @@ async def harness(session_factory, settings, monkeypatch):
     from app.services.catalog import CatalogService
     from app.services.notifications import NotificationService
     from app.utils.tokens import TokenStore
-    from tests.fakes import FakePaymentProvider, FakeSmmProvider, FakeSmsProvider
+    from tests.fakes import (
+        FakePaymentProvider,
+        FakeSmmProvider,
+        FakeSmsProvider,
+        FakeTgLionProvider,
+    )
     from tests.harness import BotHarness, MockedSession
 
     mocked = MockedSession()
@@ -116,6 +121,7 @@ async def harness(session_factory, settings, monkeypatch):
     sms_provider = FakeSmsProvider(cost=1_000)
     payment_provider = FakePaymentProvider()
     smm_provider = FakeSmmProvider()
+    tg_lion_provider = FakeTgLionProvider()
     pricing = PricingService(settings)
 
     dispatcher.workflow_data.update(
@@ -129,6 +135,8 @@ async def harness(session_factory, settings, monkeypatch):
         payment_providers={payment_provider.name: payment_provider},
         smm_provider=smm_provider,
         smm_cache=None,
+        tg_lion_provider=tg_lion_provider,
+        tg_lion_cache=None,
         notifications=NotificationService(bot, session_factory, settings.admin_ids),
         tokens=TokenStore(),
     )
@@ -144,11 +152,12 @@ async def harness(session_factory, settings, monkeypatch):
         profile,
         smm,
         start,
+        tg_lion,
         wallet,
     )
 
     for module in (
-        admin, start, buy, orders, wallet, manual_payments, smm, profile
+        admin, start, buy, orders, wallet, manual_payments, smm, tg_lion, profile
     ):
         module.router._parent_router = None
     navigation.commands_router._parent_router = None
@@ -165,6 +174,7 @@ async def harness(session_factory, settings, monkeypatch):
     driver.sms = sms_provider
     driver.payments = payment_provider
     driver.smm = smm_provider
+    driver.tg_lion = tg_lion_provider
     yield driver
 
     await bot.session.close()

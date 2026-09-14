@@ -14,6 +14,7 @@ from app.providers.smm import GenericSmmProvider
 from app.providers.sms_activate import SmsActivateProvider
 from app.providers.telegram_stars import TelegramStarsProvider
 from app.providers.temporasms import TemporaSmsProvider
+from app.providers.tg_lion import TgLionProvider
 
 
 def build_sms_provider(settings: Settings) -> BaseSMSProvider:
@@ -67,3 +68,17 @@ def build_smm_provider(settings: Settings) -> BaseSMMProvider | None:
             timeout=settings.http_timeout,
         )
     raise ConfigurationError(f"Unknown SMM_PROVIDER: {settings.smm_provider}")
+
+
+def build_tg_lion_provider(settings: Settings) -> TgLionProvider | None:
+    """Instantiate the TG-Lion provider, or ``None`` when it is disabled."""
+    if not settings.tg_lion_enabled:
+        return None
+    return TgLionProvider(
+        api_key=settings.tg_lion_api_key,
+        your_id=settings.tg_lion_your_id,
+        base_url=settings.tg_lion_base_url,
+        currency_rate=settings.provider_currency_rate,
+        timeout=settings.http_timeout,
+        retries=settings.http_retries,
+    )

@@ -21,7 +21,9 @@ from app.utils.formatting import order_icon, truncate
 from app.utils.pagination import Page
 
 
-def orders_root(texts: Texts, locale: str | None, smm_enabled: bool) -> InlineKeyboardMarkup:
+def orders_root(
+    texts: Texts, locale: str | None, smm_enabled: bool, tg_lion_enabled: bool = False
+) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
@@ -36,6 +38,15 @@ def orders_root(texts: Texts, locale: str | None, smm_enabled: bool) -> InlineKe
             InlineKeyboardButton(
                 text="📈 SMM",
                 callback_data=OrdersListCB(kind="smm").pack(),
+                style=PRIMARY,
+            )
+        )
+    if tg_lion_enabled:
+        builder.row(
+            InlineKeyboardButton(
+                text=texts.button("telegram_numbers", locale),
+                icon_custom_emoji_id=texts.icon("phone"),
+                callback_data=OrdersListCB(kind="telegram").pack(),
                 style=PRIMARY,
             )
         )

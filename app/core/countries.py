@@ -122,3 +122,70 @@ def flag(country_name: str) -> str:
     if len(code) != 2:
         return ""
     return "".join(chr(ord(letter) + 127397) for letter in code)
+
+
+#: ISO 3166-1 alpha-2 -> alpha-3. A fixed international standard, not
+#: provider-sourced business data -- unlike prices or stock, these values
+#: cannot go stale or vary by source, so deriving ISO-3 from the alpha-2
+#: table above (rather than a second name-keyed table) cannot drift out of
+#: sync with it.
+_ALPHA2_TO_ALPHA3: dict[str, str] = {
+    "AE": "ARE", "AF": "AFG", "AL": "ALB", "AM": "ARM", "AO": "AGO", "AR": "ARG",
+    "AT": "AUT", "AU": "AUS", "AZ": "AZE", "BA": "BIH", "BD": "BGD", "BE": "BEL",
+    "BF": "BFA", "BG": "BGR", "BH": "BHR", "BJ": "BEN", "BO": "BOL", "BR": "BRA",
+    "BW": "BWA", "BY": "BLR", "CA": "CAN", "CG": "COG", "CH": "CHE", "CI": "CIV",
+    "CL": "CHL", "CM": "CMR", "CN": "CHN", "CO": "COL", "CR": "CRI", "CY": "CYP",
+    "CZ": "CZE", "DE": "DEU", "DK": "DNK", "DO": "DOM", "DZ": "DZA", "EC": "ECU",
+    "EE": "EST", "EG": "EGY", "ES": "ESP", "ET": "ETH", "FI": "FIN", "FR": "FRA",
+    "GA": "GAB", "GB": "GBR", "GE": "GEO", "GH": "GHA", "GM": "GMB", "GN": "GIN",
+    "GR": "GRC", "GT": "GTM", "HK": "HKG", "HN": "HND", "HR": "HRV", "HT": "HTI",
+    "HU": "HUN", "ID": "IDN", "IE": "IRL", "IL": "ISR", "IN": "IND", "IQ": "IRQ",
+    "IR": "IRN", "IT": "ITA", "JM": "JAM", "JO": "JOR", "JP": "JPN", "KE": "KEN",
+    "KG": "KGZ", "KH": "KHM", "KR": "KOR", "KW": "KWT", "KZ": "KAZ", "LA": "LAO",
+    "LB": "LBN", "LK": "LKA", "LR": "LBR", "LT": "LTU", "LU": "LUX", "LV": "LVA",
+    "LY": "LBY", "MA": "MAR", "MD": "MDA", "ME": "MNE", "MG": "MDG", "ML": "MLI",
+    "MM": "MMR", "MN": "MNG", "MO": "MAC", "MR": "MRT", "MT": "MLT", "MU": "MUS",
+    "MW": "MWI", "MX": "MEX", "MY": "MYS", "MZ": "MOZ", "NA": "NAM", "NE": "NER",
+    "NG": "NGA", "NI": "NIC", "NL": "NLD", "NO": "NOR", "NP": "NPL", "NZ": "NZL",
+    "OM": "OMN", "PA": "PAN", "PE": "PER", "PG": "PNG", "PH": "PHL", "PK": "PAK",
+    "PL": "POL", "PR": "PRI", "PT": "PRT", "PY": "PRY", "QA": "QAT", "RO": "ROU",
+    "RS": "SRB", "RU": "RUS", "RW": "RWA", "SA": "SAU", "SC": "SYC", "SD": "SDN",
+    "SE": "SWE", "SG": "SGP", "SI": "SVN", "SK": "SVK", "SL": "SLE", "SN": "SEN",
+    "SO": "SOM", "SV": "SLV", "SY": "SYR", "TD": "TCD", "TG": "TGO", "TH": "THA",
+    "TJ": "TJK", "TM": "TKM", "TN": "TUN", "TR": "TUR", "TW": "TWN", "TZ": "TZA",
+    "UA": "UKR", "UG": "UGA", "US": "USA", "UY": "URY", "UZ": "UZB", "VE": "VEN",
+    "VN": "VNM", "YE": "YEM", "ZA": "ZAF", "ZM": "ZMB", "ZW": "ZWE",
+}
+
+
+def iso3_code(country_name: str) -> str:
+    """Return the ISO alpha-3 code for a country name, or ``""`` when unknown."""
+    return _ALPHA2_TO_ALPHA3.get(iso_code(country_name), "")
+
+
+def matches_search(name: str, needle: str, *short_codes: str) -> bool:
+    """True if ``needle`` (any case, untrimmed) identifies this country.
+
+    Matches on the full name (substring), the ISO alpha-2/alpha-3 code (exact --
+    these are short enough that substring matching would false-positive), a
+    colloquial short name ("uk", "usa", "uae", "england", ...) that is not
+    itself the ISO code but is already a recognised alias in ``ISO_CODES``,
+    the dial code (substring, so "91" finds every India-prefixed number), and
+    any caller-supplied short codes (e.g. a provider's own country code), also
+    exact. Case/whitespace are normalised here rather than trusted from every
+    call site. One place for this so every country picker in the bot -- the
+    SMS marketplace and TG-Lion alike -- searches the same way.
+    """
+    needle = needle.strip().lower().lstrip("+")
+    if not needle:
+        return False
+    if needle in name.lower():
+        return True
+    country_iso2 = iso_code(name)
+    if needle == country_iso2.lower() or needle == iso3_code(name).lower():
+        return True
+    if country_iso2 and ISO_CODES.get(_NORMALISE.sub("", needle)) == country_iso2:
+        return True
+    if needle in dial_code(name).lstrip("+"):
+        return True
+    return any(needle == code.lower() for code in short_codes if code)

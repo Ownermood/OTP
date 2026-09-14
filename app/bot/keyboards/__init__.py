@@ -22,6 +22,13 @@ from app.bot.keyboards.orders import (
     orders_root,
 )
 from app.bot.keyboards.smm import smm_categories, smm_order, smm_services
+from app.bot.keyboards.tg_lion import (
+    tg_lion_confirm,
+    tg_lion_countries,
+    tg_number_purchased,
+    tg_number_received,
+    tg_number_waiting,
+)
 from app.bot.keyboards.wallet import (
     amount_prompt,
     help_menu,
@@ -59,6 +66,11 @@ __all__ = [
     "smm_categories",
     "smm_order",
     "smm_services",
+    "tg_lion_confirm",
+    "tg_lion_countries",
+    "tg_number_purchased",
+    "tg_number_received",
+    "tg_number_waiting",
     "transactions_filters",
     "wallet",
 ]

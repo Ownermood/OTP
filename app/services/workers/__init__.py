@@ -13,6 +13,7 @@ from app.services.workers.health import HealthWorker
 from app.services.workers.payments import PaymentWorker
 from app.services.workers.smm import SmmWorker
 from app.services.workers.sms import SmsWorker
+from app.services.workers.tg_lion import TgLionWorker
 
 __all__ = [
     "IDLE_INTERVAL",
@@ -24,4 +25,5 @@ __all__ = [
     "PaymentWorker",
     "SmmWorker",
     "SmsWorker",
+    "TgLionWorker",
 ]

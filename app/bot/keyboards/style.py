@@ -41,6 +41,7 @@ nothing is.
 from __future__ import annotations
 
 from aiogram.types import CopyTextButton, InlineKeyboardButton
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 SUCCESS = "success"
 DANGER = "danger"
@@ -74,3 +75,20 @@ def button(
         icon_custom_emoji_id=icon,
         copy_text=CopyTextButton(text=copy) if copy is not None else None,
     )
+
+
+def copy_keyboard(phone: str | None, code: str | None):
+    """A tap-to-copy shortcut for a push notification carrying a number
+    and/or a code -- shared by every worker that sends one, so a delivered
+    OTP always offers the same one-tap copy regardless of which provider
+    found it."""
+    builder = InlineKeyboardBuilder()
+    row = []
+    if code:
+        row.append(button("📋 Copy OTP", copy=code))
+    if phone:
+        row.append(button("📋 Copy Number", copy=phone))
+    if not row:
+        return None
+    builder.row(*row)
+    return builder.as_markup()

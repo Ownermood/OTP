@@ -8,10 +8,9 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from app.bot.keyboards.style import button
+from app.bot.keyboards.style import copy_keyboard
 from app.core.config import Settings
 from app.core.constants import OrderKind
 from app.core.logging import get_logger
@@ -108,7 +107,7 @@ class SmsWorker(BaseWorker):
             await self._notifications.notify_user(
                 order.user_id,
                 self._render("sms.received", order=order, code=status.code, text=status.text),
-                reply_markup=self._copy_keyboard(order.phone, status.code),
+                reply_markup=copy_keyboard(order.phone, status.code),
                 essential=True,
             )
         elif status.state in ("cancelled", "expired"):
@@ -116,17 +115,3 @@ class SmsWorker(BaseWorker):
             await self._notifications.notify_user(
                 order.user_id, self._render("sms.cancelled", order=order), essential=True
             )
-
-    def _copy_keyboard(self, phone: str | None, code: str | None):
-        """A tap-to-copy shortcut on the push itself -- no need to navigate
-        to My Orders just to copy the number or the code."""
-        builder = InlineKeyboardBuilder()
-        row = []
-        if code:
-            row.append(button("📋 Copy OTP", copy=code))
-        if phone:
-            row.append(button("📋 Copy Number", copy=phone))
-        if not row:
-            return None
-        builder.row(*row)
-        return builder.as_markup()

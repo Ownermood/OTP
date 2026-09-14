@@ -33,6 +33,9 @@ buttons:
   add_favorite: "⭐ Add to Favorites"
   remove: "🗑 Remove"
   buy_now: "🛍 Buy Now"
+  buy_again: "🛍 Buy Again"
+  get_otp: "📨 Get OTP"
+  telegram_numbers: "📨 Telegram Numbers"
   deposit: "➕ Add Balance"
   history: "📜 History"
   promo: "🎟 Promo Code"
@@ -142,9 +145,9 @@ buy:
   search_country_prompt: |
     🔍 <b>SEARCH COUNTRY</b>
 
-    Send me a country name or dial code:
+    Send me a country name, ISO code, or dial code:
 
-    <i>Example: india · 91</i>
+    <i>Example: india · in · ind · 91</i>
   search_service_prompt: |
     🔍 <b>SEARCH SERVICE</b>
 
@@ -667,6 +670,59 @@ smm:
     🆔 Order: <code>#{order_id}</code>
     📈 {service}
     {status_icon} Status: <b>{status}</b>
+
+telegram:
+  disabled: |
+    📨 <b>TELEGRAM NUMBERS</b>
+
+    This module is currently unavailable.
+  countries: |
+    📨 <b>TELEGRAM NUMBERS</b>
+
+    Pick a country:
+  country_detail: |
+    📨 <b>{country}</b>
+
+    💰 Price: <b>{price}</b>
+    📦 Stock: {stock}
+
+    Buy this number, then request your Telegram login code on it.
+  purchased: |
+    <tg-emoji id="success">✅</tg-emoji> <b>NUMBER PURCHASED</b>
+
+    📱 Number: <b>{phone}</b>
+    💰 Price: {price}
+
+    {divider}
+
+    Log in to Telegram with this number, then tap <b>Get OTP</b> below.
+  waiting: |
+    ⏳ <b>WAITING FOR YOUR CODE…</b>
+
+    📱 Number: <b>{phone}</b>
+
+    <i>Request the Telegram login code on this number, then tap Refresh.</i>
+  received: |
+    🎉 <b>CODE RECEIVED</b>
+
+    📱 Number: <b>{phone}</b>
+    🔑 Code: <b>{code}</b>
+  cancelled: |
+    🚫 <b>CANCELLED</b>
+
+    ↩️ <b>{price}</b> has been refunded to your balance.
+  expired: |
+    ⌛ <b>NUMBER EXPIRED</b>
+
+    Order <code>#{order_id}</code> received no code in time.
+
+    ↩️ <b>{price}</b> has been refunded to your balance.
+  failed: |
+    ❌ <b>PURCHASE FAILED</b>
+
+    Order <code>#{order_id}</code> could not be completed.
+
+    ↩️ <b>{price}</b> has been refunded to your balance.
 
 help:
   main: |

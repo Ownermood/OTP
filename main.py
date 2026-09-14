@@ -62,6 +62,13 @@ async def preflight(app: Application) -> bool:
             logger.error("startup.smm_provider_failed")
             ok = False
 
+    if app.tg_lion_provider is not None:
+        if await app.tg_lion_provider.health_check():
+            logger.info("startup.check", component="tg_lion", status="connected")
+        else:
+            # Not fatal: Telegram numbers are one product line, not the whole bot.
+            logger.warning("startup.tg_lion_provider_unreachable")
+
     return ok
 
 

@@ -21,6 +21,7 @@ logger = get_logger(__name__)
 TITLES = {
     OrderKind.ACTIVATION: "SMS ACTIVATIONS",
     OrderKind.SMM: "SMM ORDERS",
+    OrderKind.TELEGRAM: "TELEGRAM NUMBERS",
 }
 
 
@@ -31,7 +32,9 @@ async def open_orders(query: CallbackQuery, state: FSMContext, **data):
     await show(
         query,
         context.text("orders.root"),
-        keyboards.orders_root(context.texts, context.locale, context.smm.enabled),
+        keyboards.orders_root(
+            context.texts, context.locale, context.smm.enabled, context.telegram_numbers.enabled
+        ),
     )
 
 
@@ -69,6 +72,8 @@ async def order_detail(query: CallbackQuery, callback_data: OrderCB, **data):
     if callback_data.action == "refresh":
         if order.kind == OrderKind.SMM:
             order = await context.smm.refresh_status(order)
+        elif order.kind == OrderKind.TELEGRAM:
+            order = await context.telegram_numbers.refresh(order)
         else:
             order = await context.orders.refresh_activation(order)
 
@@ -101,7 +106,13 @@ async def cancel_prompt(query: CallbackQuery, callback_data: OrderCB, **data):
 @router.callback_query(OrderCB.filter(F.action == "cancel_yes"))
 async def cancel_order(query: CallbackQuery, callback_data: OrderCB, **data):
     context = build_context(data)
-    order = await context.orders.cancel(callback_data.order_id, query.from_user.id)
+    # Pre-fetched only to route by kind: OrderService.cancel refuses anything
+    # but ACTIVATION, and TG-Lion has its own cancel with no upstream call.
+    pending = await context.orders.get_owned(callback_data.order_id, query.from_user.id)
+    if pending.kind == OrderKind.TELEGRAM:
+        order = await context.telegram_numbers.cancel(callback_data.order_id, query.from_user.id)
+    else:
+        order = await context.orders.cancel(callback_data.order_id, query.from_user.id)
     balance = await context.wallet.get_balance(query.from_user.id)
     await show(
         query,

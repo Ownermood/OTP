@@ -27,6 +27,7 @@ from app.services.pricing import PricingService
 from app.services.promo import PromoService
 from app.services.referrals import ReferralService
 from app.services.smm import SmmService
+from app.services.telegram_numbers import TelegramNumberService
 from app.services.users import UserService
 from app.services.wallet import WalletService
 
@@ -49,6 +50,7 @@ class Context:
     referrals: ReferralService
     promo: PromoService
     smm: SmmService
+    telegram_numbers: TelegramNumberService
     admin: AdminService
     catalog: CatalogService
     tokens: Any
@@ -93,6 +95,14 @@ def build_context(data: dict[str, Any]) -> Context:
             wallet,
             settings,
             data.get("smm_cache"),
+        ),
+        telegram_numbers=TelegramNumberService(
+            session,
+            data.get("tg_lion_provider"),
+            pricing,
+            wallet,
+            settings,
+            data.get("tg_lion_cache"),
         ),
         admin=AdminService(session, wallet),
         catalog=data["catalog"],

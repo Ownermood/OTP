@@ -9,6 +9,7 @@ from app.providers.base import (
     Activation,
     ActivationStatus,
     BasePaymentProvider,
+    BaseProvider,
     BaseSMMProvider,
     BaseSMSProvider,
     CountryOffer,
@@ -18,6 +19,7 @@ from app.providers.base import (
     SmsCountry,
     SmsService,
 )
+from app.providers.tg_lion import TgLionCode, TgLionCountry, TgLionNumber
 
 
 class FakeSmsProvider(BaseSMSProvider):
@@ -137,3 +139,45 @@ class FakeSmmProvider(BaseSMMProvider):
 
     async def get_balance(self) -> int:
         return 100_000
+
+
+class FakeTgLionProvider(BaseProvider):
+    """A scriptable TG-Lion double: country -> number -> code, no service dimension."""
+
+    name = "tg_lion"
+
+    def __init__(self, cost: int = 2_000) -> None:
+        self.cost = cost
+        self.created = 0
+        self.fail_next = False
+        #: When set, the next ``get_code`` returns this instead of ``None``.
+        self.next_code: TgLionCode | None = None
+        #: When set, ``get_price`` returns this instead of ``cost`` -- lets a
+        #: test prove a purchase re-prices from this live call rather than
+        #: from whatever the (possibly cached) country listing last showed.
+        self.price_override: int | None = None
+
+    async def get_countries(self) -> list[TgLionCountry]:
+        return [
+            TgLionCountry(code="in", name="India", cost=self.cost, available=50),
+            TgLionCountry(code="us", name="United States", cost=self.cost, available=30),
+        ]
+
+    async def get_price(self, country_code: str) -> int:
+        return self.price_override if self.price_override is not None else self.cost
+
+    async def create_number(self, country_code: str) -> TgLionNumber:
+        # No cost: TG-Lion's real getNumber response carries only "Number"
+        # (see reference/OTPBotPanel/otpbotpannel-main/tg_lion.py) -- the
+        # real adapter never populates TgLionNumber.cost either, so this
+        # double must not pretend otherwise.
+        if self.fail_next:
+            raise ProviderError("tg_lion: no stock")
+        self.created += 1
+        return TgLionNumber(number=f"+1929000{self.created:04d}")
+
+    async def get_code(self, number: str) -> TgLionCode | None:
+        return self.next_code
+
+    async def get_balance(self) -> int:
+        return 50_000

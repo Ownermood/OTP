@@ -23,6 +23,7 @@ from app.bot.handlers import (
     referrals,  # noqa: F401  -- registers on the profile router
     smm,
     start,
+    tg_lion,
     transfers,  # noqa: F401  -- registers on the wallet router
     wallet,
 )
@@ -42,6 +43,7 @@ def build_router() -> Router:
         wallet.router,
         manual_payments.router,
         smm.router,
+        tg_lion.router,
         profile.router,
         # Dead last: only reached once nothing else -- no command, no active
         # FSM state's handler -- has matched.
