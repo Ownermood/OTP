@@ -55,6 +55,23 @@ class Sent:
                     return button.callback_data
         return None
 
+    def pager_callback_for(self, page_no: int) -> str | None:
+        """The callback data for a numbered-pager page-jump button.
+
+        An exact match on ``"3"`` (or ``"[3]"`` for the current page) --
+        unlike ``callback_for``, this can't accidentally match some other
+        button whose label merely contains that digit, e.g. a country
+        button showing its own numbered name.
+        """
+        if self.markup is None:
+            return None
+        candidates = {str(page_no), f"[{page_no}]"}
+        for row in self.markup.inline_keyboard:
+            for button in row:
+                if button.text in candidates:
+                    return button.callback_data
+        return None
+
 
 class MockedSession(BaseSession):
     """Captures outbound calls and answers them with plausible objects."""
@@ -137,6 +154,12 @@ class BotHarness:
         self.user_id = user_id
         self._update_id = 0
         self._message_id = 500
+        #: The screen a button press simulates originating from, tracked
+        #: independently of ``session.sent`` -- a test may clear the session
+        #: log right before pressing to isolate "what got sent by this one
+        #: press", and that must not blind ``press`` to the message the
+        #: button it's pressing actually lives on.
+        self._last_screen: Sent | None = None
 
     @property
     def screen(self) -> Sent:
@@ -184,7 +207,8 @@ class BotHarness:
         await self.dispatcher.feed_update(
             self.bot, Update(update_id=self._update_id, message=message)
         )
-        return self.screen
+        self._last_screen = self.screen
+        return self._last_screen
 
     async def send_photo(self, file_id: str = "proof-file-id") -> Sent | None:
         """Deliver a photo from the user, as a payment screenshot would arrive."""
@@ -211,6 +235,8 @@ class BotHarness:
         await self.dispatcher.feed_update(
             self.bot, Update(update_id=self._update_id, message=message)
         )
+        if self.session.screens:
+            self._last_screen = self.session.screens[-1]
         return self.session.screens[-1] if self.session.screens else None
 
     def posted_to(self, chat_id: int) -> list[Sent]:
@@ -230,7 +256,8 @@ class BotHarness:
 
         Returns ``None`` when the bot deliberately sent nothing back.
         """
-        previous = self.session.last
+        assert self._last_screen is not None, "no screen to press a button on"
+        previous = self._last_screen
         self.session.clear()
         self._update_id += 1
         self._message_id += 1
@@ -254,6 +281,8 @@ class BotHarness:
         )
         # A swallowed update (throttled, deduped) is a valid outcome, so this
         # returns None rather than asserting that something was sent.
+        if self.session.screens:
+            self._last_screen = self.session.screens[-1]
         return self.session.screens[-1] if self.session.screens else None
 
     def _user(self) -> TgUser:

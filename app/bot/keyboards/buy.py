@@ -102,6 +102,14 @@ def _recent_key(order) -> str:
     return f"{order.service_code}@{order.country_id}"
 
 
+#: Fallback truncation width for a country name with no ISO code. Wide
+#: enough that distinct names sharing a long common prefix (e.g. providers
+#: numbering unmapped territories "Region 001", "Region 002", ...) still end
+#: up as distinct button labels instead of colliding on the same ellipsis --
+#: 10 was short enough that this happened routinely.
+_COUNTRY_NAME_FALLBACK_WIDTH = 24
+
+
 def country_label(priced, currency: str) -> str:
     """``🇮🇳 IN +91 · ₹13`` -- flag, short code, dial code, cheapest price.
 
@@ -109,7 +117,7 @@ def country_label(priced, currency: str) -> str:
     country we have no code for falls back to its (truncated) name.
     """
     name = priced.country.name
-    short = iso_code(name) or truncate(name, 10)
+    short = iso_code(name) or truncate(name, _COUNTRY_NAME_FALLBACK_WIDTH)
     dial = dial_code(name)
     head = " ".join(part for part in (priced.country.flag, short, dial) if part)
     return f"{head} · {format_money(priced.price, currency)}"
