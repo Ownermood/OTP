@@ -86,7 +86,7 @@ async def user_detail(query: CallbackQuery, callback_data: AdminCB, **data):
     if can(role, "balance"):
         builder.row(
             InlineKeyboardButton(
-                text="💰 Adjust balance",
+                text="Adjust balance",
                 icon_custom_emoji_id=context.texts.icon("balance"),
                 callback_data=AdminCB(action="balance", value=str(user.id)).pack(),
                 style=PRIMARY,
@@ -95,7 +95,10 @@ async def user_detail(query: CallbackQuery, callback_data: AdminCB, **data):
     if can(role, "ban"):
         builder.row(
             InlineKeyboardButton(
-                text=("✅ Unban" if user.is_banned else "🚫 Ban"),
+                text=("Unban" if user.is_banned else "Ban"),
+                icon_custom_emoji_id=context.texts.icon(
+                    "confirm" if user.is_banned else "cancel"
+                ),
                 callback_data=AdminCB(
                     action="unban" if user.is_banned else "ban", value=str(user.id)
                 ).pack(),

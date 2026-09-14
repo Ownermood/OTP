@@ -40,7 +40,8 @@ async def show_qr(query: CallbackQuery, state: FSMContext, **data):
     if file_id:
         builder.row(
             InlineKeyboardButton(
-                text="🗑 Remove QR",
+                text="Remove QR",
+                icon_custom_emoji_id=context.texts.icon("cancel"),
                 callback_data=AdminCB(action="qr_clear").pack(),
                 style=DANGER,
             )

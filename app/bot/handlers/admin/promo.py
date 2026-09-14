@@ -26,7 +26,7 @@ async def promo_list(query: CallbackQuery, **data):
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
-            text="➕ Create",
+            text="Create",
             icon_custom_emoji_id=context.texts.icon("deposit"),
             callback_data=AdminCB(action="promo_new").pack(),
             style=PRIMARY,

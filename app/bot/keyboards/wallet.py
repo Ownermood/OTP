@@ -298,12 +298,12 @@ def help_menu(texts: Texts, locale: str | None, support_url: str) -> InlineKeybo
     them: how things work, then troubleshooting, then policy fine print."""
     builder = InlineKeyboardBuilder()
     topics = [
-        ("buy", "📱 How to Buy"),
-        ("payment", "💳 Payment / Deposit"),
-        ("orders", "📦 OTP / Orders"),
-        ("referral", "🎁 Referral"),
-        ("account", "👤 Account / Balance"),
-        ("troubleshooting", "🛠 Troubleshooting"),
+        ("buy", "How to Buy"),
+        ("payment", "Payment / Deposit"),
+        ("orders", "OTP / Orders"),
+        ("referral", "Referral"),
+        ("account", "Account / Balance"),
+        ("troubleshooting", "Troubleshooting"),
     ]
     for key, label in topics:
         builder.row(
@@ -312,9 +312,9 @@ def help_menu(texts: Texts, locale: str | None, support_url: str) -> InlineKeybo
             )
         )
     policies = [
-        ("refund", "💰 Refund Policy"),
-        ("terms", "📄 Terms of Service"),
-        ("privacy", "🔐 Privacy Policy"),
+        ("refund", "Refund Policy"),
+        ("terms", "Terms of Service"),
+        ("privacy", "Privacy Policy"),
     ]
     for chunk in _chunks(
         [

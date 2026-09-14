@@ -11,51 +11,50 @@ common:
   cancelled: "✅ Cancelled."
 
 buttons:
-  copy_upi: "📋 Copy UPI ID"
-  buy: "🛍 Buy Number"
+  buy: "Buy Number"
   smm: "📈 SMM Panel"
-  orders: "📦 My Orders"
-  profile: "👤 My Profile"
+  orders: "My Orders"
+  profile: "My Profile"
   favorites: "⭐ Favorites"
-  wallet: "💳 Balance"
-  referral: "🎁 Referral"
-  help: "ℹ️ Help"
-  search: "🔍 Search"
-  show_all: "🗂 Show All"
+  wallet: "Balance"
+  referral: "Referral"
+  help: "Help"
+  search: "Search"
+  show_all: "Show All"
   back: "🔙 Back"
-  home: "🏠 Main Menu"
-  cancel: "❌ Cancel"
-  confirm: "✅ Confirm"
-  refresh: "🔄 Refresh"
-  paid: "✅ I Have Paid"
+  home: "Main Menu"
+  cancel: "Cancel"
+  confirm: "Confirm"
+  refresh: "Refresh"
+  paid: "I Have Paid"
   previous: "⬅️"
   next: "➡️"
   add_favorite: "⭐ Add to Favorites"
-  remove: "🗑 Remove"
-  buy_now: "🛍 Buy Now"
-  buy_again: "🛍 Buy Again"
-  get_otp: "📨 Get OTP"
-  telegram_numbers: "📨 Telegram Numbers"
-  deposit: "➕ Add Balance"
+  remove: "Remove"
+  buy_now: "Buy Now"
+  buy_again: "Buy Again"
+  get_otp: "Get OTP"
+  telegram_numbers: "Telegram Numbers"
+  deposit: "Add Balance"
   history: "📜 History"
   promo: "🎟 Promo Code"
   transfer: "💸 Transfer"
   settings: "⚙️ Settings"
-  support: "🆘 Contact Support"
-  share: "📤 Share Link"
-  details: "📦 Details"
-  pay: "💳 Pay Now"
-  check_payment: "🔄 Check Payment"
+  support: "Contact Support"
+  share: "Share Link"
+  details: "Details"
+  pay: "Pay Now"
+  check_payment: "Check Payment"
   recent: "🕘 Recently Used"
   # -- labels that used to be hard-coded in Python --------------------------
-  orders_sms: "📱 SMS Activations"
+  orders_sms: "SMS Activations"
   orders_smm: "📈 SMM"
-  payments: "💳 Payments"
-  cancel_yes: "✅ Yes, cancel"
-  keep_number: "❌ Keep Number"
-  track: "🔄 Track Status"
-  approve: "✅ Approve"
-  decline: "❌ Decline"
+  payments: "Payments"
+  cancel_yes: "Yes, cancel"
+  keep_number: "Keep Number"
+  track: "Track Status"
+  approve: "Approve"
+  decline: "Decline"
   copy_number: "📋 Copy Number"
   copy_code: "📋 Copy Code"
   copy_upi: "📋 Copy UPI ID"
@@ -215,25 +214,25 @@ sms:
 
     🔐 Code: <b>{code}</b>
   expired: |
-    ⌛ <b>ACTIVATION EXPIRED</b>
+    <tg-emoji id="expired">⌛</tg-emoji> <b>ACTIVATION EXPIRED</b>
 
     Order <code>#{order_id}</code> did not receive an SMS in time.
 
     ↩️ <b>{price}</b> has been refunded to your balance.
   cancelled: |
-    🚫 <b>ACTIVATION CANCELLED</b>
+    <tg-emoji id="cancel">🚫</tg-emoji> <b>ACTIVATION CANCELLED</b>
 
     Order <code>#{order_id}</code> was cancelled by the provider.
 
     ↩️ <b>{price}</b> has been refunded to your balance.
   failed: |
-    ❌ <b>ORDER FAILED</b>
+    <tg-emoji id="error">❌</tg-emoji> <b>ORDER FAILED</b>
 
     Order <code>#{order_id}</code> could not be completed.
 
     ↩️ <b>{price}</b> has been refunded to your balance.
   cancel_confirm: |
-    ⚠️ <b>Cancel Activation?</b>
+    <tg-emoji id="warning">⚠️</tg-emoji> <b>Cancel Activation?</b>
 
     Order: <code>#{order_id}</code>
     📱 {phone}
@@ -242,7 +241,7 @@ sms:
 
     {refund_policy}
   cancel_done: |
-    🚫 <b>ACTIVATION CANCELLED</b>
+    <tg-emoji id="cancel">🚫</tg-emoji> <b>ACTIVATION CANCELLED</b>
 
     ↩️ <b>{price}</b> refunded.
     💳 New balance: <b>{balance}</b>
@@ -310,7 +309,7 @@ favorites:
 
 profile:
   main: |
-    👤 <b>MY PROFILE</b>
+    <tg-emoji id="account">👤</tg-emoji> <b>MY PROFILE</b>
 
     Hello, {name}!
 
@@ -319,7 +318,7 @@ profile:
 
     {divider}
 
-    📊 <b>STATISTICS</b>
+    <tg-emoji id="statistics">📊</tg-emoji> <b>STATISTICS</b>
 
     📱 Numbers purchased: {activations}
     📈 SMM orders: {smm_orders}
@@ -337,7 +336,7 @@ settings:
 
 wallet:
   main: |
-    💳 <b>WALLET</b>
+    <tg-emoji id="balance">💳</tg-emoji> <b>WALLET</b>
 
     Current balance:
     <b>{balance}</b>
@@ -346,11 +345,11 @@ wallet:
 
     Choose an option:
   select_method: |
-    💳 <b>ADD BALANCE</b>
+    <tg-emoji id="deposit">💳</tg-emoji> <b>ADD BALANCE</b>
 
     Select a payment method:
   enter_amount: |
-    💰 <b>ENTER AMOUNT</b>
+    <tg-emoji id="balance">💰</tg-emoji> <b>ENTER AMOUNT</b>
 
     Minimum: {minimum}
     Maximum: {maximum}
@@ -570,7 +569,7 @@ promo:
 
 referral:
   main: |
-    🎁 <b>REFERRAL PROGRAM</b>
+    <tg-emoji id="referral">🎁</tg-emoji> <b>REFERRAL PROGRAM</b>
 
     Invite friends and earn on every deposit they make.
 
@@ -708,17 +707,17 @@ telegram:
     📱 Number: <b>{phone}</b>
     🔑 Code: <b>{code}</b>
   cancelled: |
-    🚫 <b>CANCELLED</b>
+    <tg-emoji id="cancel">🚫</tg-emoji> <b>CANCELLED</b>
 
     ↩️ <b>{price}</b> has been refunded to your balance.
   expired: |
-    ⌛ <b>NUMBER EXPIRED</b>
+    <tg-emoji id="expired">⌛</tg-emoji> <b>NUMBER EXPIRED</b>
 
     Order <code>#{order_id}</code> received no code in time.
 
     ↩️ <b>{price}</b> has been refunded to your balance.
   failed: |
-    ❌ <b>PURCHASE FAILED</b>
+    <tg-emoji id="error">❌</tg-emoji> <b>PURCHASE FAILED</b>
 
     Order <code>#{order_id}</code> could not be completed.
 
@@ -726,7 +725,7 @@ telegram:
 
 help:
   main: |
-    ℹ️ <b>HELP CENTER</b>
+    <tg-emoji id="help">ℹ️</tg-emoji> <b>HELP CENTER</b>
 
     Everything in one place — pick a topic below.
   faq_buy: |
@@ -757,7 +756,7 @@ help:
     • A number that never receives its code within the window is refunded
       automatically — no need to ask
   faq_referral: |
-    🎁 <b>REFERRAL PROGRAM</b>
+    <tg-emoji id="referral">🎁</tg-emoji> <b>REFERRAL PROGRAM</b>
 
     Share your personal link from <b>Balance → Referral</b>. When someone
     joins through it and makes their first deposit, you earn a bonus —
@@ -850,13 +849,13 @@ errors:
 
 admin:
   panel: |
-    👨‍💼 <b>ADMIN PANEL</b>
+    <tg-emoji id="admin">👨‍💼</tg-emoji> <b>ADMIN PANEL</b>
 
     Role: <b>{role}</b>
 
     Choose a section:
   payments: |
-    💳 <b>PAYMENT MANAGEMENT</b>
+    <tg-emoji id="payment">💳</tg-emoji> <b>PAYMENT MANAGEMENT</b>
 
     {divider}
 
@@ -867,9 +866,9 @@ admin:
 
     {divider}
   orders: |
-    📦 <b>ORDERS</b>
+    <tg-emoji id="orders">📦</tg-emoji> <b>ORDERS</b>
   dashboard: |
-    📊 <b>DASHBOARD</b> — {period}
+    <tg-emoji id="statistics">📊</tg-emoji> <b>DASHBOARD</b> — {period}
 
     👥 Total users: <b>{users_total}</b>
     🆕 New: {users_new}

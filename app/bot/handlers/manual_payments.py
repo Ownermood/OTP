@@ -168,6 +168,7 @@ def _paid_or_cancel(context: Context):
     builder.row(
         InlineKeyboardButton(
             text=context.button("paid"),
+            icon_custom_emoji_id=context.texts.icon("confirm"),
             callback_data=PaymentCB(action="paid", provider=PROVIDER).pack(),
             style=SUCCESS,
         )
@@ -175,6 +176,7 @@ def _paid_or_cancel(context: Context):
     builder.row(
         InlineKeyboardButton(
             text=context.button("cancel"),
+            icon_custom_emoji_id=context.texts.icon("cancel"),
             callback_data=Nav(to="wallet").pack(),
             style=DANGER,
         )
@@ -300,13 +302,13 @@ def decision_keyboard(texts, payment_id: int, missing_notification: bool = False
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
-            text="✅ Approve",
+            text=texts.button("approve"),
             icon_custom_emoji_id=texts.icon("confirm"),
             callback_data=ManualCB(action="approve_confirm", payment_id=payment_id).pack(),
             style=SUCCESS,
         ),
         InlineKeyboardButton(
-            text="❌ Decline",
+            text=texts.button("decline"),
             icon_custom_emoji_id=texts.icon("cancel"),
             callback_data=ManualCB(action="decline", payment_id=payment_id).pack(),
             style=DANGER,
@@ -315,7 +317,7 @@ def decision_keyboard(texts, payment_id: int, missing_notification: bool = False
     if missing_notification:
         builder.row(
             InlineKeyboardButton(
-                text="📤 Resend Review",
+                text="Resend Review",
                 icon_custom_emoji_id=texts.icon("refresh"),
                 callback_data=ManualCB(action="resend", payment_id=payment_id).pack(),
             )

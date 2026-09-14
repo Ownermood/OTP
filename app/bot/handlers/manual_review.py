@@ -127,12 +127,14 @@ async def confirm_approve(query: CallbackQuery, callback_data: ManualCB, **data)
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
-            text="✅ Yes, Approve",
+            text="Yes, Approve",
+            icon_custom_emoji_id=context.texts.icon("confirm"),
             callback_data=ManualCB(action="approve", payment_id=payment.id).pack(),
             style=SUCCESS,
         ),
         InlineKeyboardButton(
-            text="❌ Cancel",
+            text="Cancel",
+            icon_custom_emoji_id=context.texts.icon("cancel"),
             callback_data=ManualCB(action="approve_cancel", payment_id=payment.id).pack(),
         ),
     )

@@ -75,14 +75,17 @@ async def broadcast_preview(message: Message, state: FSMContext, **data):
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
-            text=f"✅ Send to {len(recipients)}",
+            text=f"Send to {len(recipients)}",
+            icon_custom_emoji_id=context.texts.icon("confirm"),
             callback_data=AdminCB(action="broadcast_send").pack(),
             style=SUCCESS,
         )
     )
     builder.row(
         InlineKeyboardButton(
-            text="❌ Cancel", callback_data=AdminCB(action="panel").pack()
+            text="Cancel",
+            icon_custom_emoji_id=context.texts.icon("cancel"),
+            callback_data=AdminCB(action="panel").pack(),
         )
     )
     await show(

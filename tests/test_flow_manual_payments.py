@@ -53,7 +53,7 @@ async def test_manual_deposit_reaches_the_review_channel(manual_harness):
     assert "shop@okaxis" in qr.text
     assert "₹500.00" in qr.text
     assert "verifies the payment" in qr.text
-    assert [b.lower() for b in qr.buttons()] == ["📋 copy upi id", "✅ i have paid", "❌ cancel"]
+    assert [b.lower() for b in qr.buttons()] == ["📋 copy upi id", "i have paid", "cancel"]
 
     await h.tap("I Have Paid")
     assert "UTR / TRANSACTION ID" in h.text
@@ -71,7 +71,7 @@ async def test_manual_deposit_reaches_the_review_channel(manual_harness):
     assert "DEPOSIT REQUEST" in posted[0].text
     assert "402199881122" in posted[0].text
     assert "₹500.00" in posted[0].text
-    assert posted[0].buttons() == ["✅ Approve", "❌ Decline"]
+    assert posted[0].buttons() == ["Approve", "Decline"]
 
     # Nothing has been credited yet.
     async with h.dispatcher.workflow_data["session_factory"]() as session:
@@ -86,7 +86,7 @@ async def test_approving_from_the_channel_credits_and_notifies(manual_harness):
     approve = await _submit_manual(h)
 
     await h.press(approve)
-    assert h.buttons() == ["✅ Yes, Approve", "❌ Cancel"]
+    assert h.buttons() == ["Yes, Approve", "Cancel"]
     async with h.dispatcher.workflow_data["session_factory"]() as session:
         assert await WalletService(session).get_balance(h.user_id) == 0  # not yet
 
@@ -124,7 +124,7 @@ async def test_cancelling_the_approve_confirmation_credits_nothing(manual_harnes
     cancel = h.screen.callback_for("Cancel")
     await h.press(cancel)
 
-    assert h.buttons() == ["✅ Approve", "❌ Decline"]
+    assert h.buttons() == ["Approve", "Decline"]
     async with h.dispatcher.workflow_data["session_factory"]() as session:
         assert await WalletService(session).get_balance(h.user_id) == 0
 
@@ -464,7 +464,7 @@ async def test_a_stale_photo_falls_back_to_a_text_review_message(
     assert len(posted) == 1
     assert posted[0].method == "SendMessage"
     assert "DEPOSIT REQUEST" in posted[0].text
-    assert posted[0].buttons() == ["✅ Approve", "❌ Decline"]
+    assert posted[0].buttons() == ["Approve", "Decline"]
 
     async with session_factory() as session:
         payment = await session.get(Payment, 1)
@@ -603,7 +603,7 @@ async def test_a_stale_proof_photo_does_not_hide_the_review_screen(manual_harnes
     await h.tap("402199881122")
 
     assert "DEPOSIT REQUEST" in h.text
-    assert h.screen.buttons() == ["✅ Approve", "❌ Decline"]
+    assert h.screen.buttons() == ["Approve", "Decline"]
 
 
 async def test_an_empty_queue_says_so(manual_harness):
@@ -629,10 +629,10 @@ async def test_a_request_can_be_approved_from_the_panel(manual_harness, session_
     await h.tap("402199881122")
 
     assert "DEPOSIT REQUEST" in h.text
-    assert h.screen.buttons() == ["✅ Approve", "❌ Decline"]
+    assert h.screen.buttons() == ["Approve", "Decline"]
 
     await h.tap("Approve")
-    assert h.buttons() == ["✅ Yes, Approve", "❌ Cancel"]
+    assert h.buttons() == ["Yes, Approve", "Cancel"]
     await h.tap("Yes, Approve")
     async with session_factory() as session:
         assert await WalletService(session).get_balance(h.user_id) == 50_000

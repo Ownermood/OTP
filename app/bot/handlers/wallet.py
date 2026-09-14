@@ -24,11 +24,13 @@ from app.utils.validators import parse_promo_code
 router = Router(name="wallet")
 logger = get_logger(__name__)
 
-#: Display names for the payment methods, keyed by provider name.
+#: Display names for the payment methods, keyed by provider name. No leading
+#: emoji here -- payment_methods() already gives every row the "payment"
+#: premium icon, so a Unicode glyph in the label would double up.
 METHOD_LABELS = {
-    "cryptobot": "🩵 Crypto",
-    "telegram_stars": "⭐ Telegram Stars",
-    "manual": "📲 UPI / QR",
+    "cryptobot": "Crypto",
+    "telegram_stars": "Telegram Stars",
+    "manual": "UPI / QR",
 }
 
 #: History filter -> transaction types.

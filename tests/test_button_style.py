@@ -369,7 +369,7 @@ async def test_admin_panel_sections_are_all_primary_not_grey():
     )
     markup = await _panel_keyboard(context, AdminRole.OWNER)
     buttons = _flat(markup)
-    sections = [b for b in buttons if b.text not in ("🔄 Refresh", "🏠 Main Menu")]
+    sections = [b for b in buttons if b.text not in ("Refresh", "Main Menu")]
     assert sections, "expected at least one section button"
     for b in sections:
         assert b.style == PRIMARY, f"{b.text!r} is not styled primary"

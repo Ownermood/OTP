@@ -80,7 +80,7 @@ async def pending_deposits(query: CallbackQuery, **data):
         if not sent:
             row.append(
                 InlineKeyboardButton(
-                    text="📤 Resend",
+                    text="Resend",
                     icon_custom_emoji_id=context.texts.icon("refresh"),
                     callback_data=ManualCB(action="resend", payment_id=payment.id).pack(),
                 )
@@ -116,7 +116,7 @@ async def list_payments(query: CallbackQuery, **data):
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
-            text="⏳ Pending deposits",
+            text="Pending deposits",
             icon_custom_emoji_id=context.texts.icon("pending"),
             callback_data=AdminCB(action="pending").pack(),
             style=PRIMARY,

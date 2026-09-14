@@ -27,7 +27,7 @@ def orders_root(
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
-            text="📱 SMS Activations",
+            text=texts.button("orders_sms", locale),
             icon_custom_emoji_id=texts.icon("orders"),
             callback_data=OrdersListCB(kind="activation").pack(),
             style=PRIMARY,
@@ -36,7 +36,7 @@ def orders_root(
     if smm_enabled:
         builder.row(
             InlineKeyboardButton(
-                text="📈 SMM",
+                text=texts.button("orders_smm", locale),
                 callback_data=OrdersListCB(kind="smm").pack(),
                 style=PRIMARY,
             )
@@ -52,7 +52,7 @@ def orders_root(
         )
     builder.row(
         InlineKeyboardButton(
-            text="💳 Payments",
+            text=texts.button("payments", locale),
             icon_custom_emoji_id=texts.icon("payment"),
             callback_data=WalletCB(action="history").pack(),
             style=PRIMARY,

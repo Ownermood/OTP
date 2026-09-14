@@ -100,7 +100,7 @@ def smm_order(texts: Texts, locale: str | None, order_id: int) -> InlineKeyboard
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
-            text="🔄 Track Status",
+            text=texts.button("track", locale),
             icon_custom_emoji_id=texts.icon("refresh"),
             callback_data=SmmCB(action="track", value=str(order_id)).pack(),
         )

@@ -234,6 +234,7 @@ def activation(
             text=texts.button("details", locale),
             icon_custom_emoji_id=texts.icon("order"),
             callback_data=OrderCB(action="detail", order_id=order_id).pack(),
+            style=PRIMARY,
         ),
     )
     builder.row(
@@ -251,14 +252,14 @@ def cancel_confirm(texts: Texts, locale: str | None, order_id: int) -> InlineKey
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
-            text="✅ Yes, cancel",
+            text=texts.button("cancel_yes", locale),
             icon_custom_emoji_id=texts.icon("cancel"),
             callback_data=OrderCB(action="cancel_yes", order_id=order_id).pack(), style=DANGER,
         )
     )
     builder.row(
         InlineKeyboardButton(
-            text="❌ Keep number",
+            text=texts.button("keep_number", locale),
             icon_custom_emoji_id=texts.icon("confirm"),
             callback_data=OrderCB(action="detail", order_id=order_id).pack(), style=SUCCESS,
         )

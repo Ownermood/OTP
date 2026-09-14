@@ -51,10 +51,10 @@ async def _panel_keyboard(context: Context, role: AdminRole):
     texts = context.texts
     builder = InlineKeyboardBuilder()
     sections = [
-        ("dashboard", "📊 Dashboard", "dashboard", "statistics"),
-        ("users", "👥 Users", "search", "account"),
-        ("orders", "📦 Orders", "orders", "orders"),
-        ("payments", f"💳 Payments{pending_badge}", "payments", "payment"),
+        ("dashboard", "Dashboard", "dashboard", "statistics"),
+        ("users", "Users", "search", "account"),
+        ("orders", "Orders", "orders", "orders"),
+        ("payments", f"Payments{pending_badge}", "payments", "payment"),
         ("promo", "🎟 Promo Codes", "promo", None),
         ("settings", "📲 Payment QR", "qr", None),
         ("backup", "💾 Backup", "backup", None),
@@ -80,12 +80,12 @@ async def _panel_keyboard(context: Context, role: AdminRole):
         builder.row(*row)
     builder.row(
         InlineKeyboardButton(
-            text="🔄 Refresh",
+            text="Refresh",
             icon_custom_emoji_id=texts.icon("refresh"),
             callback_data=AdminCB(action="panel").pack(),
         ),
         InlineKeyboardButton(
-            text="🏠 Main Menu", icon_custom_emoji_id=texts.icon("home"), callback_data=Nav(to="home").pack()
+            text="Main Menu", icon_custom_emoji_id=texts.icon("home"), callback_data=Nav(to="home").pack()
         ),
     )
     return builder.as_markup()

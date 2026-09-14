@@ -28,7 +28,7 @@ async def test_upi_is_the_only_method_offered(upi_harness):
     await upi_harness.tap("Add Balance")
 
     buttons = upi_harness.buttons()
-    assert "📲 UPI / QR" in buttons
+    assert "UPI / QR" in buttons
     assert not any("Crypto" in b or "Stars" in b for b in buttons)
 
 
