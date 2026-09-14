@@ -13,7 +13,7 @@ from app.bot.keyboards.style import PRIMARY
 from app.core.constants import OrderStatus
 from app.core.money import format_money
 from app.services.manual_payments import ManualPaymentService
-from app.utils.formatting import order_icon
+from app.utils.formatting import order_icon, truncate
 
 
 @router.callback_query(AdminCB.filter(F.action == "orders"))
@@ -67,12 +67,15 @@ async def pending_deposits(query: CallbackQuery, **data):
     builder = InlineKeyboardBuilder()
     for payment in requests[:10]:
         sent = payment.review_message_id is not None
+        # Amount leads -- what a reviewer triages by at a glance -- then the
+        # id to cross-reference against the channel post, then just enough
+        # of the reference to recognise it without the row running long.
         row = [
             InlineKeyboardButton(
                 text=(
-                    f"{'📤' if sent else '⚠️'} #{payment.id} · "
+                    f"{'📤' if sent else '⚠️'} "
                     f"{format_money(payment.amount, context.settings.currency_symbol)} · "
-                    f"{payment.invoice_id}"
+                    f"#{payment.id} · {truncate(payment.invoice_id, 14)}"
                 ),
                 callback_data=ManualCB(action="open", payment_id=payment.id).pack(),
             )

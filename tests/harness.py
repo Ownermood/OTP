@@ -21,6 +21,7 @@ from aiogram.types import (
     InlineKeyboardMarkup,
     Message,
     PhotoSize,
+    TextQuote,
     Update,
 )
 from aiogram.types import (
@@ -192,17 +193,40 @@ class BotHarness:
     def buttons(self) -> list[str]:
         return self.screen.buttons()
 
-    async def send(self, text: str) -> Sent:
-        """Deliver a text message from the user."""
+    async def send(
+        self,
+        text: str,
+        *,
+        reply_to_message_id: int | None = None,
+        quote_text: str | None = None,
+    ) -> Sent:
+        """Deliver a text message from the user.
+
+        ``reply_to_message_id`` simulates the user using Telegram's native
+        Reply on one of the bot's own messages; ``quote_text`` additionally
+        simulates them selecting an exact excerpt of it (a client-populated
+        ``TextQuote``, never something the bot invents).
+        """
         self.session.clear()
         self._update_id += 1
         self._message_id += 1
+        reply_to_message = (
+            Message(
+                message_id=reply_to_message_id,
+                date=datetime.now(),
+                chat=Chat(id=self.user_id, type="private"),
+            )
+            if reply_to_message_id is not None
+            else None
+        )
         message = Message(
             message_id=self._message_id,
             date=datetime.now(),
             chat=Chat(id=self.user_id, type="private"),
             from_user=self._user(),
             text=text,
+            reply_to_message=reply_to_message,
+            quote=TextQuote(text=quote_text, position=0) if quote_text else None,
         )
         await self.dispatcher.feed_update(
             self.bot, Update(update_id=self._update_id, message=message)

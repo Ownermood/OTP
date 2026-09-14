@@ -12,6 +12,7 @@ from app.bot.handlers.admin.common import _back_button, _back_only, _guard, rout
 from app.bot.handlers.common import build_context, show, toast
 from app.bot.keyboards.style import DANGER, PRIMARY, SUCCESS
 from app.bot.states import AdminStates
+from app.bot.texts import Safe
 from app.core.exceptions import ValidationError
 from app.core.logging import get_logger
 from app.core.money import format_money, parse_amount
@@ -68,7 +69,7 @@ async def do_search(message: Message, state: FSMContext, **data):
     builder.row(_back_button())
 
     body = "\n\n".join(lines) if lines else "Select a user below."
-    await show(message, f"🔍 <b>RESULTS</b>\n\n{body}", builder.as_markup())
+    await show(message, context.text("admin.search_results", body=Safe(body)), builder.as_markup())
 
 
 @router.callback_query(AdminCB.filter(F.action == "user"))

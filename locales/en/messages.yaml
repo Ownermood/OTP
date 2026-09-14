@@ -101,18 +101,15 @@ fallback: |
 
 start:
   welcome: |
-    <tg-emoji id="welcome">⚡️</tg-emoji> <b>WELCOME TO {service_name}</b>
+    <tg-emoji id="home">👋</tg-emoji> <b>Welcome, {name}!</b>
+    <i><tg-emoji id="balance">💰</tg-emoji> Balance: {balance}</i>
 
-    <tg-emoji id="buy">📱</tg-emoji> Virtual Numbers & SMS Verification
-    {smm_line}
     {divider}
 
-    Choose an option below:
-  smm_line: "📈 Instagram, Telegram, YouTube & more\n"
+    <tg-emoji id="buy">🛍️</tg-emoji> <b>Buy verified numbers instantly</b> — fast, reliable, ready in seconds.
   returning: |
-    <tg-emoji id="welcome">⚡️</tg-emoji> <b>{service_name}</b>
-
-    <tg-emoji id="wallet">💳</tg-emoji> Balance: <b>{balance}</b>
+    <tg-emoji id="home">👋</tg-emoji> <b>Welcome back, {name}!</b>
+    <i><tg-emoji id="balance">💰</tg-emoji> Balance: {balance}</i>
 
     {divider}
 
@@ -142,23 +139,23 @@ buy:
 
     <i>{count} services available</i>
   search_country_prompt: |
-    🔍 <b>SEARCH COUNTRY</b>
+    <tg-emoji id="search">🔍</tg-emoji> <b>SEARCH COUNTRY</b>
 
     Send me a country name, ISO code, or dial code:
 
     <i>Example: india · in · ind · 91</i>
   search_service_prompt: |
-    🔍 <b>SEARCH SERVICE</b>
+    <tg-emoji id="search">🔍</tg-emoji> <b>SEARCH SERVICE</b>
 
     Send me the service name or code:
 
     <i>Example: whats · wa</i>
   search_results: |
-    🔎 <b>Results for:</b> {query}
+    <tg-emoji id="search">🔎</tg-emoji> <b>Results for:</b> {query}
 
     Found {count} match(es):
   search_empty: |
-    🔎 <b>No matches for:</b> {query}
+    <tg-emoji id="search">🔎</tg-emoji> <b>No matches for:</b> {query}
 
     Try a shorter word.
   confirm: |
@@ -205,7 +202,7 @@ buy:
 
 sms:
   received: |
-    <tg-emoji id="sms">📨</tg-emoji> <b>SMS RECEIVED</b>
+    <tg-emoji id="success">📨</tg-emoji> <b>SMS RECEIVED</b>
 
     🛍 Service: {service}
     📱 Number: <b>{phone}</b>
@@ -368,7 +365,7 @@ wallet:
 
     <i>Your balance updates automatically once the payment lands.</i>
   success: |
-    ✅ <b>PAYMENT RECEIVED</b>
+    <tg-emoji id="success">✅</tg-emoji> <b>PAYMENT RECEIVED</b>
 
     ➕ Added: <b>{amount}</b>
     💳 New balance: <b>{balance}</b>
@@ -383,7 +380,7 @@ wallet:
   admin_credit: |
     🛠 <b>BALANCE UPDATED</b>
 
-    ➕ <b>{amount}</b> was added to your balance by an administrator.
+    <tg-emoji id="deposit">➕</tg-emoji> <b>{amount}</b> was added to your balance by an administrator.
     💳 New balance: <b>{balance}</b>
 
     📝 {reason}
@@ -406,7 +403,7 @@ wallet:
 
     <i>Send the amount and I will show you the QR.</i>
   manual_qr: |
-    <tg-emoji id="wallet">💳</tg-emoji> <b>UPI DEPOSIT</b>
+    <tg-emoji id="payment">💳</tg-emoji> <b>UPI DEPOSIT</b>
 
     💰 Amount: <b>{amount}</b>
     🏦 UPI ID: <b>{upi_id}</b>
@@ -464,30 +461,50 @@ wallet:
     👤 User: {name} ({username})
     🆔 <code>{user_id}</code>
     💰 Amount: <b>{amount}</b>
+    💳 Method: UPI / Bank Transfer
     🔖 UTR: <code>{utr}</code>
     🕒 Submitted: {submitted_at}
-    💳 Current balance: {balance}
+    💰 Current balance: {balance}
     📌 Status: <b>Pending</b>
 
     {divider}
-  manual_verdict_approved: "✅ <b>APPROVED</b> — request #{request_id} by {reviewer}"
-  manual_verdict_declined: "❌ <b>DECLINED</b> — request #{request_id} by {reviewer}"
+  manual_verdict_approved: |
+    <tg-emoji id="success">✅</tg-emoji> <b>APPROVED</b> — request #{request_id}
+
+    👤 User: <code>{user_id}</code>
+    💰 Amount: <b>{amount}</b>
+
+    <i>Reviewed by {reviewer}</i>
+  manual_verdict_declined: |
+    <tg-emoji id="error">❌</tg-emoji> <b>DECLINED</b> — request #{request_id}
+
+    👤 User: <code>{user_id}</code>
+    💰 Amount: <b>{amount}</b>
+    📝 Reason: {reason}
+
+    <i>Reviewed by {reviewer}</i>
+  # Also reused verbatim (no placeholders) by the unrelated TG-Lion order
+  # screen -- keep this one plain; add new placeholders to
+  # manual_review_already_decided below instead of here.
   manual_already_reviewed: "⚠️ This request has already been reviewed."
+  # The manual-review flow's own richer version -- shown as a callback-query
+  # alert popup, which Telegram renders as plain text, so no HTML tags here.
+  manual_review_already_decided: "⚠️ This request has already been reviewed. Outcome: {status}, by {reviewer_id} at {time}."
   manual_decline_reason: |
-    ❌ <b>DECLINE REQUEST #{request_id}</b>
+    <tg-emoji id="error">❌</tg-emoji> <b>DECLINE REQUEST #{request_id}</b>
 
     Send a short reason. The user will see it.
 
     <i>Example: amount does not match, or screenshot unreadable</i>
   manual_decline_done: "❌ Request #{request_id} declined — {reason}"
   manual_approved: |
-    ✅ <b>PAYMENT APPROVED</b>
+    <tg-emoji id="success">✅</tg-emoji> <b>PAYMENT APPROVED</b>
 
     🆔 Request: <code>#{request_id}</code>
     ➕ Added: <b>{amount}</b>
     💳 New balance: <b>{balance}</b>
   manual_declined: |
-    ❌ <b>PAYMENT DECLINED</b>
+    <tg-emoji id="error">❌</tg-emoji> <b>PAYMENT DECLINED</b>
 
     🆔 Request: <code>#{request_id}</code>
     💰 Amount: {amount}
@@ -499,7 +516,7 @@ wallet:
     <i>If you believe this is a mistake, contact support with your reference number.</i>
   manual_review_missing_notice: |
 
-    ⚠️ <b>Notification Missing</b> — this request was never posted to the review channel. Use Resend Review below.
+    <tg-emoji id="warning">⚠️</tg-emoji> <b>Notification Missing</b> — this request was never posted to the review channel. Use Resend Review below.
   manual_resend_done: "📤 Review card resent."
   manual_resend_failed: "⚠️ Still could not reach the review channel."
   manual_post_failed: |
@@ -524,14 +541,14 @@ wallet:
 
     Enter the amount:
   transfer_confirm: |
-    ⚠️ <b>CONFIRM TRANSFER</b>
+    <tg-emoji id="warning">⚠️</tg-emoji> <b>CONFIRM TRANSFER</b>
 
     👤 Recipient: @{username}
     💰 Amount: <b>{amount}</b>
 
     This cannot be undone.
   transfer_done: |
-    ✅ <b>TRANSFER SENT</b>
+    <tg-emoji id="success">✅</tg-emoji> <b>TRANSFER SENT</b>
 
     💰 {amount} → @{username}
     💳 New balance: <b>{balance}</b>
@@ -562,7 +579,7 @@ promo:
 
     <i>Add balance and the bonus is credited automatically.</i>
   deposit_bonus: |
-    🎁 <b>PROMO BONUS</b>
+    <tg-emoji id="referral">🎁</tg-emoji> <b>PROMO BONUS</b>
 
     ➕ {amount} added on top of your deposit.
     💳 New balance: <b>{balance}</b>
@@ -583,9 +600,9 @@ referral:
 
     🔗 Your link: <b>{link}</b>
   earned: |
-    🎁 <b>REFERRAL REWARD</b>
+    <tg-emoji id="referral">🎁</tg-emoji> <b>REFERRAL REWARD</b>
 
-    ➕ <b>{amount}</b> earned from an invited user's deposit.
+    <tg-emoji id="deposit">➕</tg-emoji> <b>{amount}</b> earned from an invited user's deposit.
 
     <i>Check 🎁 Referral for your totals.</i>
   history: |
@@ -642,7 +659,7 @@ smm:
     💳 Balance: {balance}
     💵 After: {balance_after}
   created: |
-    📦 <b>ORDER CREATED</b>
+    <tg-emoji id="orders">📦</tg-emoji> <b>ORDER CREATED</b>
 
     🆔 Order: <code>#{order_id}</code>
     📈 Service: {service}
@@ -655,7 +672,7 @@ smm:
 
     <i>Use Track Status to check progress.</i>
   status: |
-    🔄 <b>ORDER STATUS</b>
+    <tg-emoji id="refresh">🔄</tg-emoji> <b>ORDER STATUS</b>
 
     🆔 Order: <code>#{order_id}</code>
     {status_icon} Status: <b>{status}</b>
@@ -664,7 +681,7 @@ smm:
     ▶️ Start count: {start_count}
     ⏳ Remaining: {remains}
   finished: |
-    ✅ <b>SMM ORDER FINISHED</b>
+    <tg-emoji id="success">✅</tg-emoji> <b>SMM ORDER FINISHED</b>
 
     🆔 Order: <code>#{order_id}</code>
     📈 {service}
@@ -729,7 +746,7 @@ help:
 
     Everything in one place — pick a topic below.
   faq_buy: |
-    📱 <b>HOW TO BUY A NUMBER</b>
+    <tg-emoji id="phone">📱</tg-emoji> <b>HOW TO BUY A NUMBER</b>
 
     1. Tap <b>Buy Number</b>
     2. Pick a country, then a service (or search for it)
@@ -747,7 +764,7 @@ help:
     <i>Still pending after a while? Check Balance → Payment History, or
     contact support with your request id.</i>
   faq_orders: |
-    📦 <b>OTP & ORDERS</b>
+    <tg-emoji id="orders">📦</tg-emoji> <b>OTP & ORDERS</b>
 
     Every number you buy shows up under <b>Orders</b> with its live status:
     🟡 waiting for the code, 🟢 delivered, 🔴 expired or cancelled.
@@ -762,7 +779,7 @@ help:
     joins through it and makes their first deposit, you earn a bonus —
     credited straight to your balance, automatically.
   faq_account: |
-    👤 <b>ACCOUNT & BALANCE</b>
+    <tg-emoji id="account">👤</tg-emoji> <b>ACCOUNT & BALANCE</b>
 
     <b>Account</b> shows your profile, lifetime spend and referral earnings.
     <b>Balance</b> shows what you can spend right now, plus deposit and
@@ -777,7 +794,7 @@ help:
     • <b>Something looks stuck</b> — tap Home and try again; nothing you do
       in the bot can charge you twice
   faq_refund: |
-    💰 <b>REFUND POLICY</b>
+    <tg-emoji id="balance">💰</tg-emoji> <b>REFUND POLICY</b>
 
     {refund_policy}
   terms: |
@@ -804,12 +821,12 @@ policies:
 
 errors:
   generic: |
-    ⚠️ <b>Something went wrong.</b>
+    <tg-emoji id="warning">⚠️</tg-emoji> <b>Something went wrong.</b>
 
     Please try again in a moment. If the problem continues, contact support.
   configuration: "⚠️ The bot is misconfigured. An administrator has been notified."
   provider_unavailable: |
-    ⚠️ <b>Provider unavailable</b>
+    <tg-emoji id="warning">⚠️</tg-emoji> <b>Provider unavailable</b>
 
     Our numbers provider is not responding right now. Please try again shortly.
   provider_auth: "⚠️ Provider authorisation failed. An administrator has been notified."
@@ -832,11 +849,11 @@ errors:
   promo_invalid: "❌ Invalid or expired promo code."
   duplicate_operation: "⏳ That is already being processed. Please wait."
   duplicate_utr: |
-    ⚠️ <b>This reference has already been submitted.</b>
+    <tg-emoji id="warning">⚠️</tg-emoji> <b>This reference has already been submitted.</b>
 
     Re-sending the same UTR does not create a new request -- it never reaches an admin. If you're still waiting on that earlier submission, check <b>Balance → Payment History</b>, or contact support with the reference number.
   price_changed: |
-    💱 <b>Price changed</b>
+    <tg-emoji id="payment">💱</tg-emoji> <b>Price changed</b>
 
     The price moved while you were deciding. Please review the new price and confirm again.
   maintenance: |
@@ -854,6 +871,14 @@ admin:
     Role: <b>{role}</b>
 
     Choose a section:
+  menu_finance: |
+    <tg-emoji id="payment">💱</tg-emoji> <b>FINANCE</b>
+
+    Payments, promo codes, the payment QR and pricing:
+  menu_ops: |
+    🛠 <b>OPERATIONS</b>
+
+    Broadcast, backup and the audit log:
   payments: |
     <tg-emoji id="payment">💳</tg-emoji> <b>PAYMENT MANAGEMENT</b>
 
@@ -906,11 +931,15 @@ admin:
     💰 Provider balance: <b>{provider_balance}</b>
     🔧 Maintenance: <b>{maintenance}</b>
   search_prompt: |
-    🔍 <b>SEARCH</b>
+    <tg-emoji id="search">🔍</tg-emoji> <b>SEARCH</b>
 
     Send a user id, username, order id, provider order id, payment id or phone number:
+  search_results: |
+    <tg-emoji id="search">🔍</tg-emoji> <b>RESULTS</b>
+
+    {body}
   user_detail: |
-    👤 <b>USER</b>
+    <tg-emoji id="account">👤</tg-emoji> <b>USER</b>
 
     🆔 ID: <code>{user_id}</code>
     👤 Username: {username}
@@ -923,7 +952,7 @@ admin:
     📅 Joined: {joined}
     Status: <b>{status}</b>
   balance_prompt: |
-    💰 <b>ADJUST BALANCE</b>
+    <tg-emoji id="balance">💰</tg-emoji> <b>ADJUST BALANCE</b>
 
     👤 User: <code>{user_id}</code>
     💳 Current: <b>{balance}</b>
@@ -938,7 +967,7 @@ admin:
 
     Send a short reason for the audit log:
   balance_done: |
-    ✅ <b>BALANCE ADJUSTED</b>
+    <tg-emoji id="success">✅</tg-emoji> <b>BALANCE ADJUSTED</b>
 
     👤 User: <code>{user_id}</code>
     💰 Change: <b>{amount}</b>
@@ -964,7 +993,7 @@ admin:
 
     {preview}
   broadcast_done: |
-    ✅ <b>BROADCAST FINISHED</b>
+    <tg-emoji id="success">✅</tg-emoji> <b>BROADCAST FINISHED</b>
 
     📤 Delivered: <b>{delivered}</b>
     ❌ Failed: {failed}
@@ -994,7 +1023,7 @@ admin:
 
     Send the activation limit:
   promo_created: |
-    ✅ <b>PROMO CREATED</b>
+    <tg-emoji id="success">✅</tg-emoji> <b>PROMO CREATED</b>
 
     🎟 Code: <code>{code}</code>
     💰 Bonus: <b>{amount}</b>
@@ -1029,7 +1058,7 @@ admin:
     ⚠️ Check it carefully — this is where every user's money will go.
     Scan it yourself once before you send it.
   qr_saved: |
-    ✅ <b>PAYMENT QR UPDATED</b>
+    <tg-emoji id="success">✅</tg-emoji> <b>PAYMENT QR UPDATED</b>
 
     🏦 UPI ID: <code>{upi_id}</code>
 

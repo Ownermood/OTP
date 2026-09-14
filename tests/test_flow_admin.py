@@ -28,7 +28,9 @@ async def test_admin_panel_opens_for_the_owner(admin_harness):
     assert "Owner" in admin_harness.text
     assert "Choose a section" in admin_harness.text
     buttons = " ".join(admin_harness.buttons())
-    assert "Dashboard" in buttons and "Broadcast" in buttons
+    # Top level is broad categories now; Broadcast lives one tap deeper, in
+    # Operations -- see test_broadcast_lives_under_operations.
+    assert "Dashboard" in buttons and "Operations" in buttons
 
 
 async def test_the_orders_screen_does_not_borrow_the_panels_prompt(admin_harness):
@@ -48,11 +50,20 @@ async def test_admin_panel_shows_the_pending_count_and_a_refresh_button(admin_ha
     await h.send("/start")
     await h.send("/admin")
 
-    assert any("Payments" in b and "(0)" in b for b in h.buttons())
+    # The pending-payment count now badges the Finance category at the top
+    # level (Payments itself lives one tap deeper, inside Finance).
+    assert any("Finance" in b and "(0)" in b for b in h.buttons())
     assert any("Refresh" in b for b in h.buttons())
 
     await h.tap("Refresh")
     assert "ADMIN PANEL" in h.text
+
+    await h.tap("Finance")
+    assert any("Payments" in b and "(0)" in b for b in h.buttons())
+    assert any("Refresh" in b for b in h.buttons())
+
+    await h.tap("Refresh")
+    assert "FINANCE" in h.text
 
 
 async def test_admin_dashboard_renders(admin_harness):
@@ -70,6 +81,7 @@ async def test_payments_screen_shows_the_status_breakdown(admin_harness):
     h = admin_harness
     await h.send("/start")
     await h.send("/admin")
+    await h.tap("Finance")
     await h.tap("Payments")
 
     assert "PAYMENT MANAGEMENT" in h.text
@@ -101,7 +113,7 @@ async def test_admin_can_search_and_adjust_a_balance(admin_harness, session_fact
     assert "RESULTS" in admin_harness.text
 
     await admin_harness.tap("user")
-    assert "👤 <b>USER</b>" in admin_harness.text
+    assert "<b>USER</b>" in admin_harness.text
 
     await admin_harness.tap("Adjust balance")
     await admin_harness.send("250")
@@ -164,6 +176,7 @@ async def test_admin_can_create_a_promo(admin_harness, session_factory):
 
     await admin_harness.send("/start")
     await admin_harness.send("/admin")
+    await admin_harness.tap("Finance")
     await admin_harness.tap("Promo")
     await admin_harness.tap("Create")
 
@@ -184,6 +197,7 @@ async def test_admin_can_create_a_percentage_promo(admin_harness, session_factor
 
     await admin_harness.send("/start")
     await admin_harness.send("/admin")
+    await admin_harness.tap("Finance")
     await admin_harness.tap("Promo")
     await admin_harness.tap("Create")
     await admin_harness.send("BOOST10")
@@ -253,6 +267,7 @@ async def test_a_broadcast_is_previewed_before_it_is_sent(admin_harness, session
     h = admin_harness
     await h.send("/start")
     await h.send("/admin")
+    await h.tap("Operations")
     await h.tap("Broadcast")
     await h.tap("All users")
 
@@ -278,6 +293,7 @@ async def test_the_broadcast_confirmation_colours_send_not_cancel(admin_harness)
     h = admin_harness
     await h.send("/start")
     await h.send("/admin")
+    await h.tap("Operations")
     await h.tap("Broadcast")
     await h.tap("All users")
     await h.send("<b>Scheduled maintenance tonight</b>")
@@ -294,6 +310,7 @@ async def test_cancelling_a_broadcast_sends_nothing(admin_harness):
     h = admin_harness
     await h.send("/start")
     await h.send("/admin")
+    await h.tap("Operations")
     await h.tap("Broadcast")
     await h.tap("All users")
     await h.send("oops wrong text")

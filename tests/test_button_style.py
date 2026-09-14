@@ -230,18 +230,26 @@ def test_text_without_markers_is_untouched(texts):
 
 def test_the_welcome_screen_expands_its_markers():
     """End to end through get(), not just the helper."""
-    texts = Texts(ROOT_DIR / "locales", "en", {"welcome": "5350513667437440642"})
+    texts = Texts(ROOT_DIR / "locales", "en", {"home": "5350513667437440642"})
 
-    rendered = texts.get("start.welcome", service_name="Shop", smm_line="")
+    rendered = texts.get(
+        "start.welcome",
+        name="Alex",
+        balance="₹0.00",
+    )
 
-    assert '<tg-emoji emoji-id="5350513667437440642">⚡️</tg-emoji>' in rendered
+    assert '<tg-emoji emoji-id="5350513667437440642">👋</tg-emoji>' in rendered
 
 
 def test_the_welcome_screen_reads_fine_without_them(texts):
-    rendered = texts.get("start.welcome", service_name="Shop", smm_line="")
+    rendered = texts.get(
+        "start.welcome",
+        name="Alex",
+        balance="₹0.00",
+    )
 
     assert "tg-emoji" not in rendered
-    assert "⚡️" in rendered
+    assert "👋" in rendered
 
 
 def test_no_locale_string_leaves_a_raw_marker_behind(texts):
@@ -367,7 +375,7 @@ async def test_admin_panel_sections_are_all_primary_not_grey():
     context = SimpleNamespace(
         texts=Texts(ROOT_DIR / "locales", "en", default_icon_ids()), admin=_StubAdmin()
     )
-    markup = await _panel_keyboard(context, AdminRole.OWNER)
+    markup = await _panel_keyboard(context, AdminRole.OWNER, 1)
     buttons = _flat(markup)
     sections = [b for b in buttons if b.text not in ("Refresh", "Main Menu")]
     assert sections, "expected at least one section button"

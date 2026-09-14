@@ -114,6 +114,47 @@ async def test_approving_acknowledges_the_callback_so_the_button_stops_spinning(
     assert any(s.method == "AnswerCallbackQuery" for s in h.session.sent)
 
 
+async def test_a_blocked_user_notification_does_not_break_the_approval(manual_harness, monkeypatch):
+    """The credit and the reviewer's own verdict must not depend on the
+    depositor's own notification succeeding -- a blocked bot / deleted
+    account on their side is routine, not a reason to leave the reviewer's
+    tap looking like it failed. See NotificationService._send, which already
+    swallows exactly this and returns False rather than raising."""
+    from aiogram.exceptions import TelegramForbiddenError
+
+    from app.services.wallet import WalletService
+    from tests.harness import MockedSession
+
+    h = manual_harness
+    approve = await _submit_manual(h)
+
+    original = MockedSession.make_request
+
+    async def user_has_blocked_the_bot(self, bot, method, timeout=None):
+        if type(method).__name__ == "SendMessage" and "PAYMENT APPROVED" in getattr(
+            method, "text", ""
+        ):
+            raise TelegramForbiddenError(
+                method=method, message="Forbidden: bot was blocked by the user"
+            )
+        return await original(self, bot, method, timeout)
+
+    monkeypatch.setattr(MockedSession, "make_request", user_has_blocked_the_bot)
+
+    await h.press(approve)
+    confirm = h.screen.callback_for("Yes, Approve")
+    await h.press(confirm)  # must not raise despite the notification failing
+
+    # The reviewer's own result screen still shows a completed approval.
+    verdict = next(
+        s for s in h.session.screens if "APPROVED" in s.text and "request #" in s.text.lower()
+    )
+    assert str(h.user_id) in verdict.text
+
+    async with h.dispatcher.workflow_data["session_factory"]() as session:
+        assert await WalletService(session).get_balance(h.user_id) == 50_000
+
+
 async def test_cancelling_the_approve_confirmation_credits_nothing(manual_harness):
     from app.services.wallet import WalletService
 
@@ -242,6 +283,70 @@ async def test_approving_twice_credits_once(manual_harness):
         assert await WalletService(session).get_balance(h.user_id) == 50_000
 
 
+async def test_the_second_approve_tap_reports_outcome_reviewer_and_time(manual_harness):
+    """The 'already processed' alert is a real state, not a bare shrug --
+    it names what happened, who decided it and when, straight from the
+    persisted row (payment.status/reviewed_by/reviewed_at)."""
+    h = manual_harness
+    approve = await _submit_manual(h)
+
+    await h.press(approve)
+    confirm = h.screen.callback_for("Yes, Approve")
+    await h.press(confirm)
+    h.forget_last_tap()
+    await h.press(confirm)
+
+    alert = next(a for a in h.alerts if "already been reviewed" in a)
+    assert "approved" in alert.lower()
+    assert str(h.user_id) in alert  # the reviewer, since this harness self-reviews
+    assert " at " in alert  # a timestamp is present, not just the outcome
+
+
+async def test_the_approved_verdict_shows_amount_and_user_with_navigation(manual_harness):
+    """The reviewer's own result screen -- not just the depositor's DM --
+    must show what was credited and to whom, plus somewhere useful to go."""
+    h = manual_harness
+    approve = await _submit_manual(h)
+
+    await h.press(approve)
+    confirm = h.screen.callback_for("Yes, Approve")
+    await h.press(confirm)
+
+    verdict = next(s for s in h.session.screens if "APPROVED" in s.text)
+    assert f"#{1}" in verdict.text or "request #1" in verdict.text.lower()
+    assert str(h.user_id) in verdict.text
+    assert "₹500.00" in verdict.text
+
+    buttons = " ".join(verdict.buttons())
+    assert "Pending Deposits" in buttons
+    assert "Payment Management" in buttons
+    assert "Main Menu" in buttons
+
+
+async def test_a_stale_approve_tap_after_a_decline_reports_the_real_outcome(manual_harness):
+    """Two reviewers, same payment: one declines while the other's Approve
+    tap (from before either of them decided) is still live. The stale tap
+    must report what actually happened -- declined -- never silently
+    approve and never credit."""
+    from app.services.wallet import WalletService
+
+    h = manual_harness
+    approve_confirm = await _submit_manual(h)  # the review card's own "Approve" button
+    decline = h.posted_to(REVIEW_CHANNEL)[0].callback_for("Decline")
+
+    await h.press(decline)
+    await h.send("blurry screenshot")
+
+    # The original "Approve" tap, captured before the decline, is now stale.
+    await h.press(approve_confirm)
+
+    alert = next(a for a in h.alerts if "already been reviewed" in a)
+    assert "declined" in alert.lower()
+
+    async with h.dispatcher.workflow_data["session_factory"]() as session:
+        assert await WalletService(session).get_balance(h.user_id) == 0
+
+
 async def test_declining_asks_for_a_reason_and_credits_nothing(manual_harness):
     from app.services.wallet import WalletService
 
@@ -262,6 +367,63 @@ async def test_declining_asks_for_a_reason_and_credits_nothing(manual_harness):
         assert await WalletService(session).get_balance(h.user_id) == 0
 
 
+async def test_the_declined_verdict_shows_amount_reason_and_navigation(manual_harness):
+    """The reviewer's own result screen for a decline: amount, user
+    reference and the reason they typed, plus somewhere useful to go --
+    not just a bare 'DECLINED' line."""
+    h = manual_harness
+    await _submit_manual(h)
+    decline = h.posted_to(REVIEW_CHANNEL)[0].callback_for("Decline")
+
+    await h.press(decline)
+    await h.send("amount does not match the screenshot")
+
+    verdict = next(s for s in h.session.screens if "DECLINED" in s.text and "request #" in s.text.lower())
+    assert str(h.user_id) in verdict.text
+    assert "₹500.00" in verdict.text
+    assert "amount does not match the screenshot" in verdict.text
+
+    buttons = " ".join(verdict.buttons())
+    assert "Pending Deposits" in buttons
+    assert "Payment Management" in buttons
+    assert "Main Menu" in buttons
+
+
+async def test_declining_with_a_native_reply_threads_the_confirmation(manual_harness):
+    """When the admin actually uses Telegram's Reply on the bot's own
+    decline-reason prompt, the confirmation sent back must carry real
+    ``reply_parameters`` pointing at that message -- never a fabricated
+    HTML blockquote. See app/utils/quotes.py."""
+    h = manual_harness
+    await _submit_manual(h)
+    decline = h.posted_to(REVIEW_CHANNEL)[0].callback_for("Decline")
+
+    await h.press(decline)
+    prompt_message_id = h.screen.payload.get("message_id") or 555
+
+    await h.send("amount does not match the screenshot", reply_to_message_id=prompt_message_id)
+
+    done = next(s for s in h.session.screens if s.text.startswith("❌ Request #"))
+    reply_params = done.payload.get("reply_parameters")
+    assert reply_params is not None
+    assert reply_params["message_id"] == prompt_message_id
+    assert "<blockquote>" not in done.text
+
+
+async def test_declining_without_a_reply_sends_no_reply_parameters(manual_harness):
+    """The common case -- the admin just types the reason, without using
+    Reply -- must not fabricate a reply-to relationship that never existed."""
+    h = manual_harness
+    await _submit_manual(h)
+    decline = h.posted_to(REVIEW_CHANNEL)[0].callback_for("Decline")
+
+    await h.press(decline)
+    await h.send("amount does not match the screenshot")
+
+    done = next(s for s in h.session.screens if s.text.startswith("❌ Request #"))
+    assert done.payload.get("reply_parameters") is None
+
+
 async def test_declining_from_the_panel_also_closes_out_the_channel_copy(
     manual_harness, session_factory
 ):
@@ -274,6 +436,7 @@ async def test_declining_from_the_panel_also_closes_out_the_channel_copy(
     await _submit_manual(h)
 
     await h.send("/admin")
+    await h.tap("Finance")
     await h.tap("Payments")
     await h.tap("Pending deposits")
     await h.tap("402199881122")
@@ -352,6 +515,7 @@ async def test_pending_deposits_are_visible_in_the_panel(manual_harness):
     await _submit_manual(h)
 
     await h.send("/admin")
+    await h.tap("Finance")
     await h.tap("Payments")
     await h.tap("Pending deposits")
 
@@ -398,6 +562,7 @@ async def test_a_missed_notification_can_be_resent(manual_harness, monkeypatch, 
         assert payment.review_message_id is None  # confirmed missing
 
     await h.send("/admin")
+    await h.tap("Finance")
     await h.tap("Payments")
     await h.tap("Pending deposits")
     assert "⚠️" in h.text or any("⚠️" in b for b in h.buttons())
@@ -598,6 +763,7 @@ async def test_a_stale_proof_photo_does_not_hide_the_review_screen(manual_harnes
     monkeypatch.setattr(MockedSession, "make_request", failing_make_request)
 
     await h.send("/admin")
+    await h.tap("Finance")
     await h.tap("Payments")
     await h.tap("Pending deposits")
     await h.tap("402199881122")
@@ -610,6 +776,7 @@ async def test_an_empty_queue_says_so(manual_harness):
     h = manual_harness
     await h.send("/start")
     await h.send("/admin")
+    await h.tap("Finance")
     await h.tap("Payments")
     await h.tap("Pending deposits")
 
@@ -624,6 +791,7 @@ async def test_a_request_can_be_approved_from_the_panel(manual_harness, session_
     await _submit_manual(h)
 
     await h.send("/admin")
+    await h.tap("Finance")
     await h.tap("Payments")
     await h.tap("Pending deposits")
     await h.tap("402199881122")
@@ -651,6 +819,7 @@ async def test_approving_from_the_panel_also_closes_out_the_channel_copy(
     await _submit_manual(h)
 
     await h.send("/admin")
+    await h.tap("Finance")
     await h.tap("Payments")
     await h.tap("Pending deposits")
     await h.tap("402199881122")
@@ -678,6 +847,7 @@ async def test_an_approved_request_leaves_the_queue(manual_harness):
     await h.press(confirm)
 
     await h.send("/admin")
+    await h.tap("Finance")
     await h.tap("Payments")
     await h.tap("Pending deposits")
 

@@ -26,6 +26,7 @@ def owner_harness(harness, settings):
 async def _upload_qr(h, file_id: str = "my-branded-qr") -> None:
     """Upload a QR. The button reads Upload the first time, Replace after."""
     await h.send("/admin")
+    await h.tap("Finance")
     await h.tap("Payment QR")
     await h.tap("Replace QR" if any("Replace" in b for b in h.buttons()) else "Upload QR")
     await h.send_photo(file_id)
@@ -38,6 +39,7 @@ async def test_the_panel_says_what_users_currently_see(owner_harness):
     h = owner_harness
     await h.send("/start")
     await h.send("/admin")
+    await h.tap("Finance")
     await h.tap("Payment QR")
 
     assert "PAYMENT QR" in h.text
@@ -122,6 +124,7 @@ async def test_removing_the_qr_falls_back_to_the_configured_one(owner_harness):
     await _upload_qr(h)
 
     await h.send("/admin")
+    await h.tap("Finance")
     await h.tap("Payment QR")
     await h.tap("Remove QR")
 
@@ -143,6 +146,7 @@ async def test_a_file_instead_of_a_photo_is_named_not_ignored(owner_harness):
     h = owner_harness
     await h.send("/start")
     await h.send("/admin")
+    await h.tap("Finance")
     await h.tap("Payment QR")
     await h.tap("Upload QR")
 
@@ -213,6 +217,7 @@ async def test_removing_the_qr_is_audited(owner_harness, session_factory):
     await h.send("/start")
     await _upload_qr(h)
     await h.send("/admin")
+    await h.tap("Finance")
     await h.tap("Payment QR")
     await h.tap("Remove QR")
 
@@ -243,6 +248,7 @@ async def test_the_owner_can_take_a_backup(owner_harness, tmp_path, settings):
 
     await h.send("/start")
     await h.send("/admin")
+    await h.tap("Operations")
     await h.tap("Backup")
 
     sent = [s for s in h.session.sent if s.method == "SendDocument"]
@@ -272,6 +278,7 @@ async def test_taking_a_backup_is_audited(owner_harness, tmp_path, settings, ses
 
     await h.send("/start")
     await h.send("/admin")
+    await h.tap("Operations")
     await h.tap("Backup")
 
     async with session_factory() as session:
@@ -302,6 +309,7 @@ async def test_a_non_sqlite_database_says_so_rather_than_failing(owner_harness, 
     h = owner_harness
     await h.send("/start")
     await h.send("/admin")
+    await h.tap("Operations")
     await h.tap("Backup")
 
     assert "SQLite only" in h.text

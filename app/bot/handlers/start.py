@@ -10,7 +10,6 @@ from aiogram.types import CallbackQuery, Message
 from app.bot import keyboards
 from app.bot.callbacks import Nav, NoopCB
 from app.bot.handlers.common import build_context, show
-from app.bot.texts import Safe
 from app.core.logging import get_logger
 
 router = Router(name="start")
@@ -48,21 +47,20 @@ async def noop(query: CallbackQuery) -> None:
 
 
 def _home_screen(context, is_new: bool):
-    """Welcome text for a first visit, balance-led text on every return."""
+    """A premium landing card, not an account-details dump.
+
+    Same shape for a first visit and every return -- only the greeting and
+    closing line differ -- because raw identifiers (user id, @username) are
+    one tap away on My Account and have no place on the first thing a buyer
+    sees. Balance stays, but as a quiet status line, not a headline stat.
+    """
     keyboard = keyboards.main_menu(
         context.texts, context.locale, context.smm.enabled, context.telegram_numbers.enabled
     )
-    if is_new:
-        smm_line = Safe(context.text("start.smm_line")) if context.smm.enabled else ""
-        text = context.text(
-            "start.welcome",
-            service_name=context.settings.service_name,
-            smm_line=smm_line,
-        )
-    else:
-        text = context.text(
-            "start.returning",
-            service_name=context.settings.service_name,
-            balance=context.money(context.user.balance),
-        )
+    name = context.user.full_name or context.user.username or "there"
+    text = context.text(
+        "start.welcome" if is_new else "start.returning",
+        name=name,
+        balance=context.money(context.user.balance),
+    )
     return text, keyboard

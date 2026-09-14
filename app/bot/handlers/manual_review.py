@@ -15,7 +15,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, InlineKeyboardButton, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from app.bot.callbacks import ManualCB
+from app.bot.callbacks import AdminCB, ManualCB, Nav
 from app.bot.handlers.common import Context, build_context, show, toast
 from app.bot.handlers.manual_payments import (
     _review_caption,
@@ -24,15 +24,43 @@ from app.bot.handlers.manual_payments import (
     post_for_review,
     router,
 )
-from app.bot.keyboards.style import SUCCESS
+from app.bot.keyboards.style import PRIMARY, SUCCESS
 from app.bot.states import ManualPaymentStates
 from app.core.constants import PaymentStatus
 from app.core.exceptions import AccessDeniedError
 from app.core.logging import get_logger
 from app.services.admin import require
+from app.utils.formatting import format_datetime
 from app.utils.quotes import build_reply_parameters
 
 logger = get_logger(__name__)
+
+
+def _verdict_keyboard(context: Context):
+    """Where a reviewer actually wants to go right after a decision --
+    straight back to the queue, the wider payments screen, or home."""
+    texts = context.texts
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(
+            text="Pending Deposits",
+            icon_custom_emoji_id=texts.icon("pending"),
+            callback_data=AdminCB(action="pending").pack(),
+            style=PRIMARY,
+        ),
+        InlineKeyboardButton(
+            text="Payment Management",
+            icon_custom_emoji_id=texts.icon("payment"),
+            callback_data=AdminCB(action="payments").pack(),
+            style=PRIMARY,
+        ),
+    )
+    builder.row(
+        InlineKeyboardButton(
+            text="Main Menu", icon_custom_emoji_id=texts.icon("home"), callback_data=Nav(to="home").pack()
+        )
+    )
+    return builder.as_markup()
 
 @router.callback_query(ManualCB.filter(F.action == "open"))
 async def open_request(query: CallbackQuery, callback_data: ManualCB, **data):
@@ -90,7 +118,7 @@ async def resend_review(query: CallbackQuery, callback_data: ManualCB, **data):
         await toast(query, context.text("errors.order_not_found"), alert=True)
         return
     if payment.status != PaymentStatus.PENDING:
-        await toast(query, context.text("wallet.manual_already_reviewed"), alert=True)
+        await toast(query, _already_reviewed_text(context, payment), alert=True)
         return
 
     sent = await post_for_review(query.bot, context, manual, payment, data["notifications"])
@@ -120,7 +148,7 @@ async def confirm_approve(query: CallbackQuery, callback_data: ManualCB, **data)
         await toast(query, context.text("errors.order_not_found"), alert=True)
         return
     if payment.status != PaymentStatus.PENDING:
-        await toast(query, context.text("wallet.manual_already_reviewed"), alert=True)
+        await toast(query, _already_reviewed_text(context, payment), alert=True)
         return
 
     await query.answer()
@@ -169,7 +197,7 @@ async def approve(query: CallbackQuery, callback_data: ManualCB, **data):
 
     decision = await manual.approve(callback_data.payment_id, query.from_user.id)
     if not decision.applied:
-        await toast(query, context.text("wallet.manual_already_reviewed"), alert=True)
+        await toast(query, _already_reviewed_text(context, decision.payment), alert=True)
         await _record_verdict(query.bot, context, decision, query.from_user, tapped_from=query.message)
         return
 
@@ -228,7 +256,7 @@ async def do_decline(message: Message, state: FSMContext, **data):
 
     decision = await manual.decline(payment_id, message.from_user.id, reason)
     if not decision.applied:
-        await message.answer(context.text("wallet.manual_already_reviewed"))
+        await message.answer(_already_reviewed_text(context, decision.payment))
         return
 
     tapped_from = (
@@ -255,6 +283,21 @@ async def do_decline(message: Message, state: FSMContext, **data):
     )
 
 
+def _already_reviewed_text(context: Context, payment) -> str:
+    """The alert shown for a second (duplicate, or genuinely late) tap --
+    a proper "already processed" state, not a silent no-op. Plain text
+    only: this doubles as a callback-query alert, which Telegram renders
+    without any HTML parsing at all."""
+    status = "approved" if payment.status == PaymentStatus.PAID else "declined"
+    when = format_datetime(payment.reviewed_at) if payment.reviewed_at else "—"
+    return context.text(
+        "wallet.manual_review_already_decided",
+        status=status,
+        reviewer_id=payment.reviewed_by if payment.reviewed_by is not None else "—",
+        time=when,
+    )
+
+
 async def _record_verdict(bot, context: Context, decision, reviewer, *, tapped_from=None) -> None:
     """Close the decision out everywhere it might still be showing.
 
@@ -272,12 +315,26 @@ async def _record_verdict(bot, context: Context, decision, reviewer, *, tapped_f
     treatment too, purely as a convenience -- the channel update above is
     what actually matters.
     """
-    verdict = context.text(
-        "wallet.manual_verdict_approved" if decision.approved else "wallet.manual_verdict_declined",
-        reviewer=f"@{reviewer.username}" if reviewer.username else str(reviewer.id),
-        request_id=decision.payment.id,
-    )
     payment = decision.payment
+    reviewer_label = f"@{reviewer.username}" if reviewer.username else str(reviewer.id)
+    if decision.approved:
+        verdict = context.text(
+            "wallet.manual_verdict_approved",
+            reviewer=reviewer_label,
+            request_id=payment.id,
+            user_id=payment.user_id,
+            amount=context.money(payment.amount),
+        )
+    else:
+        verdict = context.text(
+            "wallet.manual_verdict_declined",
+            reviewer=reviewer_label,
+            request_id=payment.id,
+            user_id=payment.user_id,
+            amount=context.money(payment.amount),
+            reason=payment.review_note or "—",
+        )
+    keyboard = _verdict_keyboard(context)
 
     targets: list[tuple[int, int]] = []
     if payment.review_message_id:
@@ -304,7 +361,12 @@ async def _record_verdict(bot, context: Context, decision, reviewer, *, tapped_f
                 error=str(exc),
             )
         try:
-            await bot.send_message(chat_id=chat_id, text=verdict, reply_to_message_id=message_id)
+            await bot.send_message(
+                chat_id=chat_id,
+                text=verdict,
+                reply_to_message_id=message_id,
+                reply_markup=keyboard,
+            )
         except TelegramAPIError as exc:
             logger.warning(
                 "manual_payment.verdict_reply_failed",
